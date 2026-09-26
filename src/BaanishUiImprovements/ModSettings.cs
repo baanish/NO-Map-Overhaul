@@ -12,14 +12,18 @@ internal sealed class ModSettings
         RunwayColor = config.Bind("Map", "RunwayColor", new Color(0f, 0.85f, 0f, 0.85f), "Fill colour of runway strips.");
         RunwayLabelColor = config.Bind("Map", "RunwayLabelColor", new Color(0.6f, 1f, 0.6f, 1f), "Colour of the runway numbers on the map.");
         RunwayBothEnds = config.Bind("Map", "NumberBothEnds", true, "Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from.");
-        RunwayLabelSize = config.Bind("Map", "RunwayLabelSize", 13f, new ConfigDescription("Runway number size on the map.", new AcceptableValueRange<float>(4f, 64f)));
-        OutlineColor = config.Bind("Map", "OutlineColor", new Color(0.02f, 0.08f, 0.02f, 0.85f), "Dark rim around runways and approach dashes so they stay readable over bright map linework.");
+        RunwayLabelSize = config.Bind("Map", "RunwayLabelSize", 8f, new ConfigDescription("Runway number size on the map.", new AcceptableValueRange<float>(4f, 64f)));
+        OutlineColor = config.Bind("Map", "OutlineColor", new Color(0.02f, 0.08f, 0.02f, 0.85f), "Dark rim around runways, approach dashes, and map text so they stay readable over bright map linework.");
         OutlineWidth = config.Bind("Map", "OutlineWidth", 0.75f, new ConfigDescription("Rim width around runways and approach dashes, in map icon units. 0 turns it off.", new AcceptableValueRange<float>(0f, 6f)));
         RunwayMinWidth = config.Bind("Map", "RunwayMinWidth", 6f, new ConfigDescription("Minimum drawn runway width when zoomed out, in map icon units.", new AcceptableValueRange<float>(1f, 30f)));
 
         ShowBoundaries = config.Bind("Airbase Boundary", "ShowBoundary", false, "Shade each friendly airbase's landing zone: stop inside it after landing and the sortie ends as returned instead of crashed. The same circle is the capture zone. Uses the game's friendly map colour.");
         BoundaryFillOpacity = config.Bind("Airbase Boundary", "FillOpacity", 0.01f, new ConfigDescription("Opacity of the shaded zone. The game blends in linear colour space, so small values already read strongly over the dark map.", new AcceptableValueRange<float>(0f, 1f)));
         BoundaryEdgeOpacity = config.Bind("Airbase Boundary", "EdgeOpacity", 0.1f, new ConfigDescription("Opacity of the zone's edge line. 0 hides it.", new AcceptableValueRange<float>(0f, 1f)));
+
+        ShowAirbaseNames = config.Bind("Airbase Names", "ShowNames", false, "Name every airbase, friendly, enemy, and neutral, just under it on the full map.");
+        AirbaseNameColor = config.Bind("Airbase Names", "Color", new Color(0.6f, 1f, 0.6f, 0.75f), "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
+        AirbaseNameSize = config.Bind("Airbase Names", "Size", 8f, new ConfigDescription("Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f)));
 
         ApproachRangeKm = config.Bind("Approach", "TriggerRangeKm", 5f, new ConfigDescription("Show the approach line and HUD callout for the nearest runway within this distance.", new AcceptableValueRange<float>(0.5f, 30f)));
         ApproachLineLengthKm = config.Bind("Approach", "LineLengthKm", 5f, new ConfigDescription("Length of the dashed centerline drawn off the nearest runway end. Each dash plus gap is 500 m.", new AcceptableValueRange<float>(0.5f, 30f)));
@@ -43,6 +47,10 @@ internal sealed class ModSettings
     public ConfigEntry<bool> ShowBoundaries { get; }
     public ConfigEntry<float> BoundaryFillOpacity { get; }
     public ConfigEntry<float> BoundaryEdgeOpacity { get; }
+
+    public ConfigEntry<bool> ShowAirbaseNames { get; }
+    public ConfigEntry<Color> AirbaseNameColor { get; }
+    public ConfigEntry<float> AirbaseNameSize { get; }
 
     public ConfigEntry<float> ApproachRangeKm { get; }
     public ConfigEntry<float> ApproachLineLengthKm { get; }

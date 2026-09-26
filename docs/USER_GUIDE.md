@@ -23,7 +23,7 @@ To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` fi
 
 ## What you see
 
-Everything below applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get only the airbase boundary. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+Everything below except airbase names applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
 
 ### On the map
 
@@ -49,6 +49,10 @@ Turn on **Airbase Boundary → ShowBoundary** to shade each friendly airbase's l
 
 The circle is the game's own rule. An aircraft that counts as landed inside it (radar altitude under 5 m, speed under 2.5 m/s) ends the sortie as returned rather than crashed. The same radius is the airbase's capture range, so the circle is also the capture zone.
 
+### Airbase names
+
+Turn on **Airbase Names → ShowNames** to label every airbase on the full map, friendly, enemy, and neutral, just under where the game draws a friendly airbase's icon. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
+
 ## How the runway end is chosen
 
 Within range, the mod picks the runway nearest to you, measured to the runway strip itself, and then whichever of its two ends is closer. Heading plays no part. The map line and the HUD label always show the same end.
@@ -65,13 +69,16 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Map | RunwayColor | `00D900D9` | Strip fill. |
 | Map | RunwayLabelColor | `99FF99FF` | Runway number colour. |
 | Map | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
-| Map | RunwayLabelSize | `13` | Runway number size. |
-| Map | OutlineColor | `051405D9` | Rim around strips and approach dashes. |
-| Map | OutlineWidth | `0.75` | Rim width. `0` turns it off. |
+| Map | RunwayLabelSize | `8` | Runway number size. |
+| Map | OutlineColor | `051405D9` | Rim around strips, approach dashes, and map text. |
+| Map | OutlineWidth | `0.75` | Rim width around strips and dashes. `0` turns it off. Text always gets a 1-unit rim. |
 | Map | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
 | Airbase Boundary | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |
 | Airbase Boundary | FillOpacity | `0.01` | Opacity of the shaded zone. |
 | Airbase Boundary | EdgeOpacity | `0.1` | Opacity of the edge line. `0` hides it. |
+| Airbase Names | ShowNames | `false` | Name every airbase on the full map. |
+| Airbase Names | Color | `99FF99BF` | Name colour. |
+| Airbase Names | Size | `8` | Name size. |
 | Approach | TriggerRangeKm | `5` | How close to a runway the line and callout appear. |
 | Approach | LineLengthKm | `5` | Approach line length. |
 | Approach | LineColor | `00D90066` | Approach line colour. |

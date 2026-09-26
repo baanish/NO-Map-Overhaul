@@ -30,6 +30,9 @@ public sealed class Plugin : BaseUnityPlugin
     private RunwayMapOverlay _mapOverlay = null!;
     private RunwayHudCallout _hudCallout = null!;
     private AirbaseBoundaryOverlay _boundaryOverlay = null!;
+    private AirbaseLabelOverlay _labelOverlay = null!;
+    private readonly List<Airbase> _namedAirbases = new();
+    private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
     private Aircraft? _checkedAircraft;
     private bool _checkedIsHelicopter;
@@ -40,6 +43,7 @@ public sealed class Plugin : BaseUnityPlugin
         _mapOverlay = new RunwayMapOverlay(_settings);
         _hudCallout = new RunwayHudCallout(_settings);
         _boundaryOverlay = new AirbaseBoundaryOverlay(_settings);
+        _labelOverlay = new AirbaseLabelOverlay(_settings);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -90,6 +94,7 @@ public sealed class Plugin : BaseUnityPlugin
         _mapOverlay.Reset();
         _hudCallout.Reset();
         _boundaryOverlay.Reset();
+        _labelOverlay.Reset();
         _approach = null;
     }
 
@@ -108,7 +113,37 @@ public sealed class Plugin : BaseUnityPlugin
         CollectFriendlyAirbases(map.HQ, includeRunways: !rotary);
         _approach = SelectApproach(aircraft, rotary);
         _mapOverlay.Render(map, _runways, _approach, _hudCallout.HudStyle);
+
+        // Both layers take the first slot each refresh, so the one rendered last draws lowest: boundary, then names.
+        CollectNamedAirbases();
+        _labelOverlay.Render(map, _namedAirbases, _hudCallout.HudStyle);
         _boundaryOverlay.Render(map, _airbases);
+    }
+
+    /// <summary>
+    /// Every faction's airbases, not just ours, one per name: Ignus free flight stacks three airbases named
+    /// "Feldspar International Airport" around one field. Friendly ones claim their name first, so the label lands
+    /// under the game's icon. Skips carriers, airbases the mission switched off, and any without a centre to place a label at,
+    /// so an unplaceable airbase never claims a name another could show.
+    /// </summary>
+    private void CollectNamedAirbases()
+    {
+        _namedAirbases.Clear();
+        _airbaseNames.Clear();
+        AddNamed(_airbases);
+        AddNamed(FactionRegistry.airbaseLookup.Values);
+    }
+
+    private void AddNamed(IEnumerable<Airbase> airbases)
+    {
+        foreach (var airbase in airbases)
+        {
+            if (airbase != null && !airbase.AttachedAirbase && !airbase.disabled && airbase.center != null &&
+                airbase.SavedAirbase != null && _airbaseNames.Add(airbase.SavedAirbase.DisplayName))
+            {
+                _namedAirbases.Add(airbase);
+            }
+        }
     }
 
     /// <summary>
