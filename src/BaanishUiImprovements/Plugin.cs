@@ -113,10 +113,11 @@ public sealed class Plugin : BaseUnityPlugin
         CollectFriendlyAirbases(map.HQ, includeRunways: !rotary);
         _approach = SelectApproach(aircraft, rotary);
         _mapOverlay.Render(map, _runways, _approach, _hudCallout.HudStyle);
-        _boundaryOverlay.Render(map, _airbases);
 
+        // Both layers take the first slot each refresh, so the one rendered last draws lowest: boundary, then names.
         CollectNamedAirbases();
         _labelOverlay.Render(map, _namedAirbases, _hudCallout.HudStyle);
+        _boundaryOverlay.Render(map, _airbases);
     }
 
     /// <summary>

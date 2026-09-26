@@ -76,16 +76,24 @@ internal sealed class AirbaseLabelOverlay
         _labels.Clear();
     }
 
+    /// <summary>
+    /// Re-takes the icon layer's first slot every refresh, just before the boundary overlay does the same, so the names
+    /// settle second: over the boundary, under the runways and the game's unit icons.
+    /// </summary>
     private RectTransform EnsureLayer(DynamicMap map)
     {
-        if (_layer != null && _layer.parent == map.iconLayer.transform)
+        if (_layer == null || _layer.parent != map.iconLayer.transform)
         {
-            return _layer;
+            Reset();
+            _layer = new GameObject("BaanishAirbaseLabelLayer", typeof(RectTransform)).GetComponent<RectTransform>();
+            _layer.SetParent(map.iconLayer.transform, false);
         }
 
-        Reset();
-        _layer = new GameObject("BaanishAirbaseLabelLayer", typeof(RectTransform)).GetComponent<RectTransform>();
-        _layer.SetParent(map.iconLayer.transform, false);
+        if (_layer.GetSiblingIndex() != 0)
+        {
+            _layer.SetAsFirstSibling();
+        }
+
         return _layer;
     }
 }

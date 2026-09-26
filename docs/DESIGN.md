@@ -9,8 +9,8 @@ Plugin.RefreshMap   (on DynamicMap.onMapChanged: 10 Hz, and per frame during pan
   ├─ collect runways    FactionHQ.GetAirbases() of DynamicMap.HQ, carriers skipped
   ├─ select approach    ApproachSelector.Select (pure logic, unit-tested)
   ├─ RunwayMapOverlay   strips, numbers, dashed approach line
-  ├─ AirbaseBoundaryOverlay   landing-zone circles (off by default)
-  └─ AirbaseLabelOverlay      every airbase's name, full map only (off by default)
+  ├─ AirbaseLabelOverlay      every airbase's name, full map only (off by default)
+  └─ AirbaseBoundaryOverlay   landing-zone circles (off by default)
 
 Plugin.LateUpdate   (every frame)
   ├─ RunwayHudCallout.Render            "RWY 27" follows the camera
@@ -49,7 +49,7 @@ The game ends a sortie as returned when a landed aircraft stops within `Airbase.
 
 ## Airbase names
 
-The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the local faction's, and shows only while `DynamicMap.mapMaximized`. The names cover every airbase in `FactionRegistry.airbaseLookup` instead, skipping carriers and `Airbase.disabled`, with one label per `DisplayName` (friendly airbases claim theirs first, so it lands under the icon; Ignus free flight has three Feldspar airbases), and follow the icon's full-map-only rule. The full map is north-up, so each label sits a fixed distance below `Airbase.center` in map space and needs no per-frame rotation. The text is `SavedAirbase.DisplayName`, the same name the game's map tooltip shows.
+The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the local faction's, and shows only while `DynamicMap.mapMaximized`. The names cover every airbase in `FactionRegistry.airbaseLookup` instead, skipping carriers, `Airbase.disabled`, and airbases with no `center` to place a label at, with one label per `DisplayName` (friendly airbases claim theirs first, so it lands under the icon; Ignus free flight has three Feldspar airbases), and follow the icon's full-map-only rule. The full map is north-up, so each label sits a fixed distance below `Airbase.center` in map space and needs no per-frame rotation. The text is `SavedAirbase.DisplayName`, the same name the game's map tooltip shows. Like the boundary, the names layer re-takes the icon layer's first slot every refresh, and it renders just before the boundary, so the names sit over the boundary and under the runways and unit icons.
 
 ## The HUD callout
 
