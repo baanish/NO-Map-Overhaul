@@ -77,7 +77,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Airbase Boundary | FillOpacity | `0.01` | Opacity of the shaded zone. |
 | Airbase Boundary | EdgeOpacity | `0.1` | Opacity of the edge line. `0` hides it. |
 | Airbase Names | ShowNames | `false` | Name every airbase on the full map. |
-| Airbase Names | Color | `99FF9959` | Name colour. |
+| Airbase Names | Color | `99FF99BF` | Name colour. |
 | Airbase Names | Size | `8` | Name size. |
 | Approach | TriggerRangeKm | `5` | How close to a runway the line and callout appear. |
 | Approach | LineLengthKm | `5` | Approach line length. |

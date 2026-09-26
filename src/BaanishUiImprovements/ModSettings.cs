@@ -22,7 +22,7 @@ internal sealed class ModSettings
         BoundaryEdgeOpacity = config.Bind("Airbase Boundary", "EdgeOpacity", 0.1f, new ConfigDescription("Opacity of the zone's edge line. 0 hides it.", new AcceptableValueRange<float>(0f, 1f)));
 
         ShowAirbaseNames = config.Bind("Airbase Names", "ShowNames", false, "Name every airbase, friendly, enemy, and neutral, just under it on the full map.");
-        AirbaseNameColor = config.Bind("Airbase Names", "Color", new Color(0.6f, 1f, 0.6f, 0.35f), "Colour of the airbase names, the runway numbers' green by default. Keep the alpha low so they stay behind the icons.");
+        AirbaseNameColor = config.Bind("Airbase Names", "Color", new Color(0.6f, 1f, 0.6f, 0.75f), "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
         AirbaseNameSize = config.Bind("Airbase Names", "Size", 8f, new ConfigDescription("Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f)));
 
         ApproachRangeKm = config.Bind("Approach", "TriggerRangeKm", 5f, new ConfigDescription("Show the approach line and HUD callout for the nearest runway within this distance.", new AcceptableValueRange<float>(0.5f, 30f)));
