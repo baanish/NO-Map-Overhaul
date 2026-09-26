@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Optional airbase names on the full map, off by default: a faint label under every airbase, friendly, enemy, and neutral, so a base named on comms is easy to find.
+
+### Changed
+
+- Runway numbers and airbase names get a thin dark rim, so they read at a smaller size: both now default to 8.
+
 ## 0.1.0 - unreleased
 
 First release: runway markers.

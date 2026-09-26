@@ -195,15 +195,15 @@ internal sealed class RunwayMapOverlay
     {
         private readonly Airbase.Runway _runway;
         private readonly FeatheredRect _strip;
-        private readonly TextMeshProUGUI _startLabel;
-        private readonly TextMeshProUGUI _endLabel;
+        private readonly OutlinedText _startLabel;
+        private readonly OutlinedText _endLabel;
 
         public RunwayGraphic(Transform layer, Airbase.Runway runway)
         {
             _runway = runway;
             _strip = NewFeatheredRect("RunwayStrip", layer, new Vector2(0.5f, 0.5f));
-            _startLabel = NewLabel(layer);
-            _endLabel = NewLabel(layer);
+            _startLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
+            _endLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
         }
 
         public void Update(ModSettings settings, float factor, float inverseScale, TextMeshProUGUI? hudStyle)
@@ -223,47 +223,30 @@ internal sealed class RunwayMapOverlay
 
             // A number sits past the end it names: that is where a pilot landing on that number touches down.
             var gap = axis * (LabelGap * inverseScale);
-            PlaceLabel(_startLabel, start - gap, settings, inverseScale, hudStyle);
-            PlaceLabel(_endLabel, end + gap, settings, inverseScale, hudStyle);
-            (_startLabel.text, _endLabel.text) = EndNumbers(_runway);
-            _endLabel.enabled = _runway.Reversable || settings.RunwayBothEnds.Value;
+            var (startNumber, endNumber) = EndNumbers(_runway);
+            PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
+            PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
+            _endLabel.Visible = _runway.Reversable || settings.RunwayBothEnds.Value;
         }
 
         public void KeepLabelsUpright()
         {
-            _startLabel.rectTransform.rotation = Quaternion.identity;
-            _endLabel.rectTransform.rotation = Quaternion.identity;
+            _startLabel.Rect.rotation = Quaternion.identity;
+            _endLabel.Rect.rotation = Quaternion.identity;
         }
 
         public void Destroy()
         {
             Object.Destroy(_strip.gameObject);
-            Object.Destroy(_startLabel.gameObject);
-            Object.Destroy(_endLabel.gameObject);
+            _startLabel.Destroy();
+            _endLabel.Destroy();
         }
 
-        private static void PlaceLabel(TextMeshProUGUI label, Vector2 position, ModSettings settings, float inverseScale, TextMeshProUGUI? hudStyle)
+        private static void PlaceLabel(OutlinedText label, string number, Vector2 position, ModSettings settings, float inverseScale, TextMeshProUGUI? hudStyle)
         {
-            if (hudStyle != null && label.font != hudStyle.font)
-            {
-                label.font = hudStyle.font;
-                label.fontSharedMaterial = hudStyle.fontSharedMaterial;
-                label.fontStyle = hudStyle.fontStyle;
-            }
-
-            label.rectTransform.localPosition = position;
-            label.fontSize = settings.RunwayLabelSize.Value * inverseScale;
-            label.color = settings.RunwayLabelColor.Value;
-        }
-
-        private static TextMeshProUGUI NewLabel(Transform layer)
-        {
-            var label = NewRect("RunwayLabel", layer).gameObject.AddComponent<TextMeshProUGUI>();
-            label.raycastTarget = false;
-            label.enableWordWrapping = false;
-            label.overflowMode = TextOverflowModes.Overflow;
-            label.alignment = TextAlignmentOptions.Center;
-            return label;
+            label.Rect.localPosition = position;
+            label.Rect.localScale = Vector3.one * inverseScale;
+            label.Set(number, settings.RunwayLabelSize.Value, settings.RunwayLabelColor.Value, settings.OutlineColor.Value, hudStyle);
         }
     }
 }

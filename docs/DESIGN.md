@@ -9,7 +9,8 @@ Plugin.RefreshMap   (on DynamicMap.onMapChanged: 10 Hz, and per frame during pan
   ├─ collect runways    FactionHQ.GetAirbases() of DynamicMap.HQ, carriers skipped
   ├─ select approach    ApproachSelector.Select (pure logic, unit-tested)
   ├─ RunwayMapOverlay   strips, numbers, dashed approach line
-  └─ AirbaseBoundaryOverlay   landing-zone circles (off by default)
+  ├─ AirbaseBoundaryOverlay   landing-zone circles (off by default)
+  └─ AirbaseLabelOverlay      every airbase's name, full map only (off by default)
 
 Plugin.LateUpdate   (every frame)
   ├─ RunwayHudCallout.Render            "RWY 27" follows the camera
@@ -40,11 +41,15 @@ A runway's `Start` is the end you land at when not reversed. `RunwayUsage.GetSta
 
 Positions follow the game's icon convention. Map-local `(x, y)` is the global `(x, z)` times `DynamicMap.mapDisplayFactor`. The overlay multiplies widths and font sizes by `1 / mapImage.localScale.x`, the inverse map scale, so they stay a constant size on screen as the player zooms. The game's unit icons use the same factor. Strips and dashes are `FeatheredRect` meshes and the numbers are `TextMeshProUGUI`. The map canvas has no anti-aliasing, so every hard edge on a rotated shape stair-steps. `EdgeProfile` gives each shape its edge as nested rings: fill, the dark rim, then a fade to transparent, with each colour change spread across about one screen pixel. The boundary's `CircleGraphic` uses the same profile. The numbers reset their world rotation every frame so they stay upright while the minimap rotates.
 
-The numbers borrow the font, material, and style of the HUD label the callout clones. They don't use TextMeshPro's outline, because it eats into the thin HUD font.
+Map text (runway numbers and airbase names) is an `OutlinedText`: the font and style of the HUD label the callout clones, with a one-unit rim in `OutlineColor` made of eight dark copies offset around the face. TextMeshPro's own SDF outline doesn't work with this font. An outline thin enough to fit its atlas padding eats into the thin glyphs, and a wider one draws each glyph's quad as a box. The copies sit in a container scaled by the inverse map scale, so zooming changes no font size and regenerates no text meshes.
 
 ## The airbase boundary
 
 The game ends a sortie as returned when a landed aircraft stops within `Airbase.GetRadius()` of `Airbase.center`, checked by `FactionHQ.AnyNearAirbase` in `Aircraft.ServerDisableUnit`. `GetRadius()` returns `SavedAirbase.CaptureRange`, so the landing zone and the capture zone are one circle. `CircleGraphic` draws it as UI mesh, a filled disk plus an anti-aliased edge ring. The ring keeps a constant width at any zoom, which a scaled sprite couldn't do. The boundary layer re-takes the first sibling slot every frame, so it always sits under the runways.
+
+## Airbase names
+
+The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the local faction's, and shows only while `DynamicMap.mapMaximized`. The names cover every airbase in `FactionRegistry.airbaseLookup` instead, skipping carriers and `Airbase.disabled`, with one label per `DisplayName` (friendly airbases claim theirs first, so it lands under the icon; Ignus free flight has three Feldspar airbases), and follow the icon's full-map-only rule. The full map is north-up, so each label sits a fixed distance below `Airbase.center` in map space and needs no per-frame rotation. The text is `SavedAirbase.DisplayName`, the same name the game's map tooltip shows.
 
 ## The HUD callout
 

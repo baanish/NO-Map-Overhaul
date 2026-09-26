@@ -30,6 +30,9 @@ public sealed class Plugin : BaseUnityPlugin
     private RunwayMapOverlay _mapOverlay = null!;
     private RunwayHudCallout _hudCallout = null!;
     private AirbaseBoundaryOverlay _boundaryOverlay = null!;
+    private AirbaseLabelOverlay _labelOverlay = null!;
+    private readonly List<Airbase> _namedAirbases = new();
+    private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
     private Aircraft? _checkedAircraft;
     private bool _checkedIsHelicopter;
@@ -40,6 +43,7 @@ public sealed class Plugin : BaseUnityPlugin
         _mapOverlay = new RunwayMapOverlay(_settings);
         _hudCallout = new RunwayHudCallout(_settings);
         _boundaryOverlay = new AirbaseBoundaryOverlay(_settings);
+        _labelOverlay = new AirbaseLabelOverlay(_settings);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -90,6 +94,7 @@ public sealed class Plugin : BaseUnityPlugin
         _mapOverlay.Reset();
         _hudCallout.Reset();
         _boundaryOverlay.Reset();
+        _labelOverlay.Reset();
         _approach = null;
     }
 
@@ -109,6 +114,34 @@ public sealed class Plugin : BaseUnityPlugin
         _approach = SelectApproach(aircraft, rotary);
         _mapOverlay.Render(map, _runways, _approach, _hudCallout.HudStyle);
         _boundaryOverlay.Render(map, _airbases);
+
+        CollectNamedAirbases();
+        _labelOverlay.Render(map, _namedAirbases, _hudCallout.HudStyle);
+    }
+
+    /// <summary>
+    /// Every faction's airbases, not just ours, one per name: Ignus free flight stacks three airbases named
+    /// "Feldspar International Airport" around one field. Friendly ones claim their name first, so the label lands
+    /// under the game's icon. Skips carriers, and airbases the mission switched off.
+    /// </summary>
+    private void CollectNamedAirbases()
+    {
+        _namedAirbases.Clear();
+        _airbaseNames.Clear();
+        AddNamed(_airbases);
+        AddNamed(FactionRegistry.airbaseLookup.Values);
+    }
+
+    private void AddNamed(IEnumerable<Airbase> airbases)
+    {
+        foreach (var airbase in airbases)
+        {
+            if (airbase != null && !airbase.AttachedAirbase && !airbase.disabled && airbase.SavedAirbase != null &&
+                _airbaseNames.Add(airbase.SavedAirbase.DisplayName))
+            {
+                _namedAirbases.Add(airbase);
+            }
+        }
     }
 
     /// <summary>
