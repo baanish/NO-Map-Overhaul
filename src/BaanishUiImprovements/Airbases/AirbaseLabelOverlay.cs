@@ -35,11 +35,6 @@ internal sealed class AirbaseLabelOverlay
         {
             foreach (var airbase in airbases)
             {
-                if (airbase.center == null)
-                {
-                    continue;
-                }
-
                 if (!_labels.TryGetValue(airbase, out var label))
                 {
                     label = new OutlinedText("AirbaseLabel", layer, new Vector2(0.5f, 1f), TextAlignmentOptions.Top);

@@ -122,7 +122,8 @@ public sealed class Plugin : BaseUnityPlugin
     /// <summary>
     /// Every faction's airbases, not just ours, one per name: Ignus free flight stacks three airbases named
     /// "Feldspar International Airport" around one field. Friendly ones claim their name first, so the label lands
-    /// under the game's icon. Skips carriers, and airbases the mission switched off.
+    /// under the game's icon. Skips carriers, airbases the mission switched off, and any without a centre to place a label at,
+    /// so an unplaceable airbase never claims a name another could show.
     /// </summary>
     private void CollectNamedAirbases()
     {
@@ -136,8 +137,8 @@ public sealed class Plugin : BaseUnityPlugin
     {
         foreach (var airbase in airbases)
         {
-            if (airbase != null && !airbase.AttachedAirbase && !airbase.disabled && airbase.SavedAirbase != null &&
-                _airbaseNames.Add(airbase.SavedAirbase.DisplayName))
+            if (airbase != null && !airbase.AttachedAirbase && !airbase.disabled && airbase.center != null &&
+                airbase.SavedAirbase != null && _airbaseNames.Add(airbase.SavedAirbase.DisplayName))
             {
                 _namedAirbases.Add(airbase);
             }

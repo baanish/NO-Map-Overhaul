@@ -23,7 +23,7 @@ To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` fi
 
 ## What you see
 
-Everything below except airbase names applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get only the airbase boundary. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+Everything below except airbase names applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
 
 ### On the map
 
