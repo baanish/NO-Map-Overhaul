@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-09-26
 
 ### Added
 
@@ -10,7 +10,7 @@
 
 - Runway numbers and airbase names get a thin dark rim, so they read at a smaller size: both now default to 8.
 
-## 0.1.0 - unreleased
+## 0.1.0 - 2026-09-26
 
 First release: runway markers.
 

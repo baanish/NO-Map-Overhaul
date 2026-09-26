@@ -17,13 +17,13 @@ dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, or game-version compatibility.
 
-## In-game status for v0.1.0
+## In-game status for v0.2.0
 
 Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight, with other client mods loaded. Status recorded on 2026-09-26. Everything below was confirmed in game by the author.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
-| Plugin loads | Observed | `Baanish UI Improvements 0.1.0 loaded.` in `LogOutput.log`. |
+| Plugin loads | Observed | `Baanish UI Improvements <version> loaded.` in `LogOutput.log`. |
 | Strip alignment | Observed | North Boscali (Heartland): strips sit on the runway outlines painted on the map, both runways. |
 | Runway numbers | Observed | North Boscali 03, 21, 12, 30 at the correct ends in the HUD font; Opal with both ends numbered. |
 | Contrast on busy map art | Observed | Feldspar: the dark rim keeps strips visible over bright linework. |

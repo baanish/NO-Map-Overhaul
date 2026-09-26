@@ -12,7 +12,10 @@ markers:
 An optional airbase boundary, off by default, shades each friendly airbase's
 landing zone: stop inside it after landing and the sortie counts as returned.
 
-Helicopters see only the airbase boundary, and carriers are left out. The mod
+Optional airbase names, off by default, label every airbase on the full map,
+friendly, enemy, and neutral, so a base called out on comms is easy to find.
+
+Helicopters see only the airbase boundary and names, and carriers are left out. The mod
 only draws. It patches no game code and sends nothing over the network.
 
 Coming soon: map markers and drawing, waypoints with HUD markers, and an

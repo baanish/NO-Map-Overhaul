@@ -16,7 +16,7 @@ BepInEx/config/com.baanish.nuclearoption.uiimprovements.cfg
 To confirm the mod loaded, look for this line in `BepInEx/LogOutput.log`:
 
 ```text
-[Info   :Baanish UI Improvements] Baanish UI Improvements 0.1.0 loaded.
+[Info   :Baanish UI Improvements] Baanish UI Improvements 0.2.0 loaded.
 ```
 
 To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` file.

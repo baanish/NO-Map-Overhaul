@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>BaanishUiImprovements</AssemblyName>
     <RootNamespace>BaanishUiImprovements</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Description>Map and HUD navigation aids for Nuclear Option.</Description>
     <Authors>baanish</Authors>
     <LangVersion>latest</LangVersion>
