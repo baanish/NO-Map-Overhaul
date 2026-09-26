@@ -18,9 +18,7 @@ It doesn't guess which way you'll land: it always shows the end you're closest t
 These came from squadron requests and aren't built yet:
 
 - Map markers, and drawing on the map.
-- Waypoints, with HUD markers or edge-of-screen arrows.
-- Traffic pattern overlays.
-- A clearer gun reticle.
+- Waypoints, with HUD markers.
 - An arrow toward incoming missiles outside your view, to help find one to shoot down.
 
 ## Requirements
