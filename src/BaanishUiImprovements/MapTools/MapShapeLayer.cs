@@ -40,7 +40,7 @@ internal sealed class MapShapeLayer : IMapCanvas
     private float _lastTick = -1f;
     private float _factor;
     private float _inverseScale;
-    private (float Line, float Rim, Color RimColor, float Text) _style;
+    private (float Line, float Rim, Color RimColor, float Text, DistanceUnit Units) _style;
     private ShapeGraphics? _target;
     private Quaternion _uprightFor;
     private bool _redrawnSinceUpright;
@@ -95,7 +95,7 @@ internal sealed class MapShapeLayer : IMapCanvas
 
         var factor = map.mapDisplayFactor;
         var inverseScale = 1f / map.mapImage.transform.localScale.x;
-        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value);
+        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units);
         var restyle = fresh || factor != _factor || inverseScale != _inverseScale || !style.Equals(_style) || !ReferenceEquals(hudStyle, _hudStyle);
         var synced = store.Version != _storeVersion;
         if (!restyle && !synced && !tick && !AnyOverlayInvalid(tools))
