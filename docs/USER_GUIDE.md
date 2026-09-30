@@ -169,4 +169,4 @@ So Dustbowl Highway Strip becomes `DSTBWL HWY STRP`.
 
 - Only runways at your own faction's airbases are shown.
 - The HUD label hides when the runway threshold is behind the camera. It doesn't pin to the screen edge.
-- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter.
+- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter. The mod doesn't patch the game, so it can't hold that click back.
