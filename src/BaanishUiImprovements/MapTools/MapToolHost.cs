@@ -146,8 +146,11 @@ internal sealed class MapToolHost
         }
     }
 
-    /// <summary>A different map, or none (a destroyed one counts as none), means the player left the mission: drawings and history go.</summary>
-    private void TrackMission(DynamicMap? map)
+    /// <summary>
+    /// A different map, or none (a destroyed one counts as none), means the player left the mission: drawings and history
+    /// go. Checked every update, which doesn't run while the mod is off, so the perf test checks before saving the drawings.
+    /// </summary>
+    public void TrackMission(DynamicMap? map)
     {
         var current = map == null ? null : map;
         if (ReferenceEquals(current, _map))

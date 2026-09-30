@@ -59,7 +59,7 @@ public sealed class Plugin : BaseUnityPlugin
         _missileArrows = new IncomingMissileArrows(_settings);
         _mapTools = new MapToolHost(_settings);
         _performance = new PerformanceLog(_settings, Logger);
-        _perfTest = new PerfTest(_settings, _performance, _mapTools.Context, Logger);
+        _perfTest = new PerfTest(_settings, _performance, _mapTools, Logger);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {

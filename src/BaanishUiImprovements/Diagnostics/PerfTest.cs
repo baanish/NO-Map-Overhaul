@@ -46,6 +46,7 @@ internal sealed class PerfTest
 
     private readonly ModSettings _settings;
     private readonly PerformanceLog _performance;
+    private readonly MapToolHost _mapTools;
     private readonly MapToolContext _context;
     private readonly ManualLogSource _log;
     private readonly FrameStats _stats = new();
@@ -61,11 +62,12 @@ internal sealed class PerfTest
     private float _phaseStart;
     private bool _requested;
 
-    public PerfTest(ModSettings settings, PerformanceLog performance, MapToolContext context, ManualLogSource log)
+    public PerfTest(ModSettings settings, PerformanceLog performance, MapToolHost mapTools, ManualLogSource log)
     {
         _settings = settings;
         _performance = performance;
-        _context = context;
+        _mapTools = mapTools;
+        _context = mapTools.Context;
         _log = log;
         settings.PerfTestButton.CustomDrawer = DrawButton;
         settings.PerfTest.SettingChanged += (_, _) =>
@@ -182,6 +184,7 @@ internal sealed class PerfTest
         _map = map;
         _mapWasOpen = DynamicMap.mapMaximized;
         _settings.PerfTestShowsDrawings = true;
+        _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
         _stress = null;
         _results.Clear();
