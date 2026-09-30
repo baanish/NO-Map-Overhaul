@@ -6,10 +6,9 @@ using UnityEngine;
 namespace BaanishUiImprovements.Airbases;
 
 /// <summary>
-/// Names every airbase on the full map, just under its centre, where the game draws its own icon for friendly ones.
-/// Enemy and neutral airbases get no game icon at all, so the label is the only way to find a base named on comms.
-/// Full map only, like the game's airbase icons: it is north-up there, so map-space down is screen down and the
-/// labels need no per-frame work.
+/// Names the player's side's airbases on the full map, just under the game's icon for each, so a base named on comms
+/// is easy to find. Full map only, like the game's airbase icons: it is north-up there, so map-space down is screen
+/// down and the labels need no per-frame work.
 /// </summary>
 internal sealed class AirbaseLabelOverlay
 {
@@ -23,6 +22,20 @@ internal sealed class AirbaseLabelOverlay
     private RectTransform? _layer;
 
     public AirbaseLabelOverlay(ModSettings settings) => _settings = settings;
+
+    /// <summary>
+    /// The name the game shows for an airbase: its map tooltip and spawn menu read <c>SavedAirbase.DisplayName</c>. A
+    /// mission editor airbase whose author cleared that name falls back to its unique name, which the editor fills the
+    /// name in from. Null if it has neither.
+    /// </summary>
+    public static string? NameOf(Airbase airbase)
+    {
+        var saved = airbase.SavedAirbase;
+        return saved == null ? null
+            : !string.IsNullOrWhiteSpace(saved.DisplayName) ? saved.DisplayName
+            : !string.IsNullOrWhiteSpace(saved.UniqueName) ? saved.UniqueName
+            : null;
+    }
 
     public void Render(DynamicMap map, IReadOnlyList<Airbase> airbases, TextMeshProUGUI? hudStyle)
     {
@@ -44,7 +57,7 @@ internal sealed class AirbaseLabelOverlay
                 var center = airbase.center.GlobalPosition();
                 label.Rect.localPosition = new Vector2(center.x, center.z) * factor + Vector2.down * (IconClearance * inverseScale);
                 label.Rect.localScale = Vector3.one * inverseScale;
-                label.Set(airbase.SavedAirbase.DisplayName, _settings.AirbaseNameSize.Value, _settings.AirbaseNameColor.Value,
+                label.Set(NameOf(airbase) ?? string.Empty, _settings.AirbaseNameSize.Value, _settings.AirbaseNameColor.Value,
                     _settings.OutlineColor.Value, hudStyle);
                 _seen.Add(airbase);
             }

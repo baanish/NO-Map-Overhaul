@@ -9,7 +9,7 @@ Plugin.RefreshMap   (on DynamicMap.onMapChanged: 10 Hz, and per frame during pan
   ├─ collect runways    FactionHQ.GetAirbases() of DynamicMap.HQ, carriers skipped
   ├─ select approach    ApproachSelector.Select (pure logic, unit-tested)
   ├─ RunwayMapOverlay   strips, numbers, dashed approach line
-  ├─ AirbaseLabelOverlay      every airbase's name, full map only (off by default)
+  ├─ AirbaseLabelOverlay      friendly airbases' names, full map only (off by default)
   └─ AirbaseBoundaryOverlay   landing-zone circles (off by default)
 
 Plugin.LateUpdate   (every frame)
@@ -49,7 +49,7 @@ The game ends a sortie as returned when a landed aircraft stops within `Airbase.
 
 ## Airbase names
 
-The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the local faction's, and shows only while `DynamicMap.mapMaximized`. The names cover every airbase in `FactionRegistry.airbaseLookup` instead, skipping carriers, `Airbase.disabled`, and airbases with no `center` to place a label at, with one label per `DisplayName` (friendly airbases claim theirs first, so it lands under the icon; Ignus free flight has three Feldspar airbases), and follow the icon's full-map-only rule. The full map is north-up, so each label sits a fixed distance below `Airbase.center` in map space and needs no per-frame rotation. The text is `SavedAirbase.DisplayName`, the same name the game's map tooltip shows. The boundary layer keeps the icon layer's first slot, and the names layer the slot after it, so the names sit over the boundary and under the runways and unit icons. Each moves only when out of place: when both took the first slot every refresh they swapped places ten times a second, and each move re-sorts the map's canvas.
+The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the local faction's (`DynamicMap.RefreshAirbases`), and shows only while `DynamicMap.mapMaximized`. The names cover the same list, the one the runways and boundary read, and follow the icon's full-map-only rule. That list holds whatever the faction owns right now: the map's own airbases, ones the mission editor placed (`Airbase.IsCustom`, with their `SavedAirbase` from the mission), and ones captured (`Airbase.CaptureFaction` moves an airbase between factions' lists). It holds a disabled airbase too, which the game still marks, in its neutral colour. Carriers are skipped: the game spawns an airbase attached to a unit (`Airbase.AttachedAirbase`) only for a ship, and the ship's icon marks it. There's one label per name, and one in use claims a shared name before one switched off (Ignus free flight has three Feldspar airbases). The full map is north-up, so each label sits a fixed distance below `Airbase.center` in map space and needs no per-frame rotation. The text is `SavedAirbase.DisplayName`, the same name the game's map tooltip and spawn menu show. A mission editor airbase's author can clear that name, so an empty one falls back to `SavedAirbase.UniqueName`, which the editor fills the name in from; an airbase with neither gets no label. Other sides' airbases are never named, since the game doesn't mark them. The boundary layer keeps the icon layer's first slot, and the names layer the slot after it, so the names sit over the boundary and under the runways and unit icons. Each moves only when out of place: when both took the first slot every refresh they swapped places ten times a second, and each move re-sorts the map's canvas.
 
 ## The HUD callout
 
@@ -65,7 +65,7 @@ The mod never calls `AirbaseOverlay`'s landing methods, because they send networ
 
 `ModSettings` binds every setting through its `Bind` helper, which tags each one with a `ConfigurationManagerAttributes`: the name F1 shows, an `Order`, and whether it's advanced. ConfigurationManager 18.4.1 lists a plugin's sections in the order they're first bound and sorts settings by descending `Order`, so the helper counts `Order` down and the constructor reads top to bottom like the F1 window. It has no nested or collapsible sections, only the plugin's own header folds, so `SettingSections` names each section `Group / Feature`. Advanced settings hide until the player ticks **Advanced settings** or searches. A range becomes a slider, and a 0 to 1 range shows as a whole percentage with no text box unless `ShowRangeAsPercent` is false. An enum becomes a dropdown labelled by each value's `[Description]`, or by its name split into words.
 
-BepInEx keeps a saved value only under its exact section and key. A setting that moves gets a row in `SettingsMigration.Moves`. Before anything binds, `Plugin` hands BepInEx's private dictionary of saved but unbound values to `SettingsMigration.MoveSavedValues`, which re-files each moved value under its new place, so the setting picks it up as it binds.
+BepInEx keeps a saved value only under its exact section and key. A setting that moves gets a row in `SettingsMigration.Moves`, and one that's gone a row in `SettingsMigration.Removed`, since BepInEx writes back every saved value no setting claims. Before anything binds, `Plugin` hands BepInEx's private dictionary of saved but unbound values to `SettingsMigration.MoveSavedValues`, which re-files each moved value under its new place, so the setting picks it up as it binds, and drops each removed one.
 
 ## Measuring cost
 
@@ -184,7 +184,7 @@ What the mod reads, and why each is fair:
 | Missile arrows | `MissileWarning.knownMissiles`, then the missile's `HUDUnitMarker`: the missile while current, `TryGetKnownPosition` once `outdated` | Points where the game's own marker is, faded when the marker is |
 | Ground height under a fixed point | A ray down that passes through units | Terrain and sea only, so a hidden ship or building doesn't lift a label |
 | Runways, boundaries, the HUD callout | `DynamicMap.HQ.GetAirbases()`, carriers skipped | Your side's airbases, which the game already marks |
-| Airbase names | Your side's; every other airbase only with ShowEnemyAndNeutral, off by default; carriers skipped | Fixed places on the map, not units, and opt-in since the game doesn't name them |
+| Airbase names | `DynamicMap.HQ.GetAirbases()`, carriers skipped | Your side's airbases, which the game already marks |
 
 The perf test anchors its stress drawings through the same `TryResolve`, so it only uses units live on the player's map. The freeze logic, `Tracking/KnownPositions`, is Unity-free: `KnownPositionsTests` covers it directly, and `MeasureToolTests` covers an arrow and its label going stale and being spotted again.
 

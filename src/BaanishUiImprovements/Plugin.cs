@@ -210,29 +210,27 @@ public sealed class Plugin : BaseUnityPlugin
     }
 
     /// <summary>
-    /// Our airbases, plus every other faction's when the player opts in (off by default, so names don't reveal where
-    /// the enemy's bases are), one per name: Ignus free flight stacks three airbases named
-    /// "Feldspar International Airport" around one field. Friendly ones claim their name first, so the label lands
-    /// under the game's icon. Skips carriers, airbases the mission switched off, and any without a centre to place a label at,
-    /// so an unplaceable airbase never claims a name another could show.
+    /// Our airbases, carriers left out: every one the game marks with an icon on the full map, since
+    /// <c>DynamicMap.RefreshAirbases</c> reads the same list. That's the map's own, ones the mission editor placed, and
+    /// ones captured. The game marks one the mission switched off too, so it's named, but one in use claims a shared
+    /// name first. One label per name: Ignus free flight stacks three airbases named "Feldspar International Airport"
+    /// around one field. Skips any without a centre to place a label at or a name to show, so it never claims a name
+    /// another could show. Other sides' airbases are never named: the game doesn't mark them.
     /// </summary>
     private void CollectNamedAirbases()
     {
         _namedAirbases.Clear();
         _airbaseNames.Clear();
-        AddNamed(_airbases);
-        if (_settings.AirbaseNamesEnemyAndNeutral.Value)
-        {
-            AddNamed(FactionRegistry.airbaseLookup.Values);
-        }
+        AddNamed(disabled: false);
+        AddNamed(disabled: true);
     }
 
-    private void AddNamed(IEnumerable<Airbase> airbases)
+    private void AddNamed(bool disabled)
     {
-        foreach (var airbase in airbases)
+        foreach (var airbase in _airbases)
         {
-            if (airbase != null && !airbase.AttachedAirbase && !airbase.disabled && airbase.center != null &&
-                airbase.SavedAirbase != null && _airbaseNames.Add(airbase.SavedAirbase.DisplayName))
+            if (airbase.disabled == disabled && airbase.center != null && AirbaseLabelOverlay.NameOf(airbase) is { } name &&
+                _airbaseNames.Add(name))
             {
                 _namedAirbases.Add(airbase);
             }

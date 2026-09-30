@@ -36,7 +36,6 @@ internal sealed class ModSettings
         ApproachLineWidth = Bind(SettingSections.MapApproachLine, "LineWidth", 1f, "Line width", "Approach line width, in map icon units.", new AcceptableValueRange<float>(0.5f, 10f), advanced: true);
 
         ShowAirbaseNames = Bind(SettingSections.MapAirbaseNames, "ShowNames", false, "Show airbase names", "Name your faction's airbases just under them on the full map.");
-        AirbaseNamesEnemyAndNeutral = Bind(SettingSections.MapAirbaseNames, "ShowEnemyAndNeutral", false, "Include enemy and neutral", "Also name enemy and neutral airbases. Off by default, since the names show where bases are that the game doesn't mark.");
         AirbaseNameColor = Bind(SettingSections.MapAirbaseNames, "Color", new Color(0.6f, 1f, 0.6f, 0.75f), "Name colour", "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
         AirbaseNameSize = Bind(SettingSections.MapAirbaseNames, "Size", 8f, "Name size", "Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
 
@@ -99,7 +98,6 @@ internal sealed class ModSettings
     public ConfigEntry<float> BoundaryEdgeOpacity { get; }
 
     public ConfigEntry<bool> ShowAirbaseNames { get; }
-    public ConfigEntry<bool> AirbaseNamesEnemyAndNeutral { get; }
     public ConfigEntry<Color> AirbaseNameColor { get; }
     public ConfigEntry<float> AirbaseNameSize { get; }
 

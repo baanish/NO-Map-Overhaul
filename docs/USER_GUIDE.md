@@ -23,7 +23,7 @@ To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` fi
 
 ## What you see
 
-Everything below except airbase names applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+Everything below applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
 
 ### On the map
 
@@ -53,7 +53,7 @@ The circle is the game's own rule. An aircraft that counts as landed inside it (
 
 ### Airbase names
 
-Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, just under where the game draws their icon. Turn on **Include enemy and neutral** as well to name every other airbase too. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. It's off by default because it also shows you where bases are that the game doesn't mark. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
+Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, just under where the game draws their icon. Every airbase the game gives your side an icon for gets a name: the map's own, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them, and carriers get none either, since the ship's icon marks the deck. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
 
 ### Missile arrows
 
@@ -93,7 +93,6 @@ The table lists the sections in the order F1 shows them.
 | Map / Approach Line | Line colour | LineColor | `00D90066` | Approach line colour. |
 | Map / Approach Line | Line width, *advanced* | LineWidth | `1` | Approach line width. |
 | Map / Airbase Names | Show airbase names | ShowNames | `false` | Name your faction's airbases on the full map. |
-| Map / Airbase Names | Include enemy and neutral | ShowEnemyAndNeutral | `false` | Also name enemy and neutral airbases. |
 | Map / Airbase Names | Name colour | Color | `99FF99BF` | Name colour. |
 | Map / Airbase Names | Name size, *advanced* | Size | `8` | Name size. |
 | Map / Airbase Boundary | Show landing zone | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |

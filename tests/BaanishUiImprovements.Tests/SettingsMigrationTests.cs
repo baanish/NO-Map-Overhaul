@@ -9,6 +9,7 @@ internal static class SettingsMigrationTests
     {
         ("a 0.4.0 settings file moves into the new sections", OldFileMovesIntoNewSections),
         ("a value already in the new section wins", NewValueWins),
+        ("a removed setting's value is dropped from its old and new sections", RemovedSettingIsDropped),
         ("each move has its own source and target", MovesAreDistinct),
     };
 
@@ -25,7 +26,8 @@ internal static class SettingsMigrationTests
             Expect(after.TryGetValue((newSection, key), out var value) && value == before[(oldSection, key)], $"expected {newSection}/{key} to keep {before[(oldSection, key)]}");
         }
 
-        Expect(after.Count == before.Count, $"expected {before.Count} settings after the move, got {after.Count}");
+        Expect(!after.ContainsKey(("Airbase Names", "ShowEnemyAndNeutral")), "expected the removed enemy and neutral airbase names setting dropped");
+        Expect(after.Count == before.Count - 1, $"expected {before.Count - 1} settings after the move, got {after.Count}");
         var left = after.Keys.Where(k => !SettingsMigration.Moves.Any(m => m.NewSection == k.Item1 && m.Key == k.Item2)).ToList();
         Expect(left.SequenceEqual(new[] { ("General", "Enabled") }), $"expected only General/Enabled left in place, got {string.Join(", ", left)}");
         ExpectText(after[(SettingSections.MapAirbaseBoundary, "FillOpacity")], "0.009577462");
@@ -42,6 +44,18 @@ internal static class SettingsMigrationTests
         var moved = SettingsMigration.MoveSavedValues(saved, (section, key) => (section, key));
         Expect(moved == 0, $"expected nothing moved, got {moved}");
         Expect(saved.Count == 1 && saved[(SettingSections.MapRunways, "ShowRunways")] == "true", "expected only the new value, unchanged");
+    }
+
+    private static void RemovedSettingIsDropped()
+    {
+        var saved = new Dictionary<(string, string), string>
+        {
+            [("Airbase Names", "ShowEnemyAndNeutral")] = "true",
+            [(SettingSections.MapAirbaseNames, "ShowEnemyAndNeutral")] = "true",
+            [(SettingSections.MapAirbaseNames, "ShowNames")] = "true",
+        };
+        SettingsMigration.MoveSavedValues(saved, (section, key) => (section, key));
+        Expect(saved.Count == 1 && saved.ContainsKey((SettingSections.MapAirbaseNames, "ShowNames")), "expected only ShowNames left");
     }
 
     private static void MovesAreDistinct()
