@@ -43,6 +43,10 @@ When the screen leaves no room outside the map, the rail or the strip moves insi
 
 Click the map to add a waypoint to the end of your route. Waypoints are numbered in order and joined by one line. Click on or beside a unit's icon to put the waypoint on that unit, and it moves with the unit.
 
+![A seven-waypoint route with numbered markers, and a line from the aircraft to the next waypoint](images/waypoint-route.jpg)
+
+![The same route on the heading-up minimap](images/minimap-route.jpg)
+
 While you fly, a line runs from your aircraft to the next waypoint. A waypoint counts as reached when you fly within 2.5 km of it, or when you pass it with it still within 10 km behind you. The route then moves on to the next one. Taxiing doesn't count.
 
 - **Skip** moves on to the following waypoint without flying the next one.
@@ -57,11 +61,15 @@ With NOAutopilot installed, both routes work side by side. Plan the autopilot's 
 
 Press and drag to draw a line. The map doesn't pan while you draw. A click without dragging leaves a dot.
 
+![A pen line marking a sortie path, with a note being typed beside it](images/pen.jpg)
+
 Pen lines share a budget of points, set by **Most pen points**. A line that uses up the budget stops where it is, and the strip turns amber. Erase or undo a line to draw more.
 
 ## Text
 
 Click where the note should go, type it, and press Enter. Escape drops it. Clicking somewhere else places what you've typed and starts a new note there.
+
+![A note reading HIGH PRI!!! tagging an enemy contact](images/unit-note.jpg)
 
 Click on or beside a unit's icon to put the note on that unit, such as `BOMBERS` on a contact. The note sits beside the unit's icon and follows the unit, and in the 3D view it shows on the unit at its altitude. When your side loses track of the unit, the note stops where the unit was last known and reads `lost`, and it follows again once the unit is spotted. When the unit is destroyed, its note goes with its map icon, and Undo can't bring it back.
 
@@ -70,6 +78,10 @@ While you type, your keys go to the note, not to the aircraft. Close the chat bo
 ## Bearing and range
 
 Click where to measure from, then where to. An arrow joins the two points, and the label at its head reads the bearing in degrees true and the distance, such as `045° 4.2nm`. Before your second click, the arrow follows the cursor, so you can read a measurement without placing it.
+
+![A bearing and range arrow ending on an enemy, labelled 189° 2.4nm 1.5k ft](images/bra.jpg)
+
+![In the 3D view, the BRA label on a contact with its note stacked under it](images/hud-bra-note.jpg)
 
 Click on or beside a unit's icon to tie that end to the unit. The arrow and its numbers then follow the unit as the map updates. Tie one end to your own aircraft and the other to a target, and the label is always your bearing and range to it. The label also shows in the 3D view.
 
@@ -80,6 +92,10 @@ The range is the straight line between the two ends, through the air: a unit's e
 ## Circle
 
 Press on the centre and drag out to the radius, or click the centre and then the edge. The radius is written on the ring.
+
+![Two 2 nm range circles with their radius labels](images/circles.jpg)
+
+![A range circle drawn as a ring on the ground in the 3D view](images/hud-ring.jpg)
 
 For a set size, pick **5**, **10**, or **20** in the strip, then click the centre. The sizes are in your distance unit. Put the centre on a unit and the circle follows it.
 
