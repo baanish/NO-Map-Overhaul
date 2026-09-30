@@ -20,7 +20,20 @@ internal sealed class WorldLabelPool : IWorldLabels
     /// <summary>How far past the screen's edge a short label's point may be and still show some of its text. A long one gets up to half its width more.</summary>
     private const float OffScreenPixels = 200f;
 
+    /// <summary>Screen points closer than this count as the same point, so their labels stack instead of overlapping.</summary>
+    private const float SamePointPixels = 4f;
+
+    /// <summary>Line height as a share of the font size, for stacking labels on one point.</summary>
+    private const float LineSpacing = 1.15f;
+
     private readonly List<TextMeshProUGUI> _labels = new();
+
+    /// <summary>
+    /// Each placed label's point this frame and the lowest edge its stack reaches. Labels on one point, such as a bearing
+    /// and a note on the same unit, stack downward in the order tools add them, so the bearing stays on top.
+    /// </summary>
+    private readonly Vector2[] _points = new Vector2[MaxLabels];
+    private readonly float[] _stackBottoms = new float[MaxLabels];
     private readonly WorldRingPool _rings;
     private TextMeshProUGUI? _source;
     private Camera? _camera;
@@ -66,8 +79,23 @@ internal sealed class WorldLabelPool : IWorldLabels
             return;
         }
 
+        var height = LineCount(text) * fontSize * LineSpacing * _source.transform.lossyScale.y;
+        var point = new Vector2(screen.x, screen.y);
+        var centerY = screen.y;
+        for (var i = 0; i < _used; i++)
+        {
+            if ((_points[i] - point).sqrMagnitude < SamePointPixels * SamePointPixels)
+            {
+                centerY = _stackBottoms[i] - 0.5f * height;
+                _stackBottoms[i] -= height;
+                break;
+            }
+        }
+
+        _points[_used] = point;
+        _stackBottoms[_used] = centerY - 0.5f * height;
         var label = Label(_used++);
-        label.transform.position = new Vector3(screen.x, screen.y, 0f);
+        label.transform.position = new Vector3(screen.x, centerY, 0f);
         label.text = text;
         label.fontSize = fontSize;
         label.color = color.ToColor32();
@@ -109,6 +137,20 @@ internal sealed class WorldLabelPool : IWorldLabels
         _source = null;
         _camera = null;
         _used = 0;
+    }
+
+    private static int LineCount(string text)
+    {
+        var lines = 1;
+        foreach (var character in text)
+        {
+            if (character == '\n')
+            {
+                lines++;
+            }
+        }
+
+        return lines;
     }
 
     private TextMeshProUGUI Label(int index)
