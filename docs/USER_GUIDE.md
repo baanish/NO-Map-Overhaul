@@ -147,23 +147,26 @@ Compare the **mod on** lines with the **mod off** lines, skipping any line that 
 
 ### The perf test
 
-The perf test does the comparison for you, including a heavy load of map drawings. It takes about 75 seconds.
+The perf test does the comparison for you, including a typical and a heavy load of map drawings. It takes about 85 seconds.
 
 1. Load the preset Escalation mission and spawn in an aircraft.
 2. Fly straight and level, or sit still on the runway, in the cockpit view. The game shows the minimap only in the cockpit view.
 3. Open F1 and press **Diagnostics → Run perf test**. Close F1 within 5 seconds, since its window costs frames too.
 4. Don't touch the camera or the map until the result appears. The test opens and closes the full map itself.
 
-It measures six conditions: the minimap with the mod off, with it on, and with it on plus heavy drawings, then the same three on the full map. Within each map the three take turns in slices of 2.5 seconds, each after half a second for the switch to settle, four times over, reversing the order every other round. So each condition gets 10 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly lands on all three alike. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 99-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units it found, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
+It measures eight conditions: the minimap with the mod off, with it on, with it on plus typical drawings, and with it on plus heavy drawings, then the same four on the full map. Within each map the four take turns in slices of 2 seconds, each after half a second for the switch to settle, four times over, reversing the order every other round. So each condition gets 8 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly lands on all four alike.
+
+The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, the first one starts on another, and one circle sits on the nearest, so its 3D ring moves with it. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 99-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units each set rode on, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
 
 When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
 
 ```text
-[Info   :Baanish UI Improvements] Perf test: each condition measured in 4 slices of 2.5 s, taking turns with the others in its view, 0.5 s to settle after each switch. Heavy drawings: 71 shapes, anchored to 10 live units (at most 10). Changes are against the same view with the mod off.
+[Info   :Baanish UI Improvements] Perf test: each condition measured in 4 slices of 2.0 s, taking turns with the others in its view, 0.5 s to settle after each switch. Drawings: typical 11 shapes on 3 live units, heavy 71 shapes on 10 live units (at most 10). Changes are against the same view with the mod off.
 Phase                                 Avg fps   1% low Mod ms avg/max   Refresh ms avg/max   Avg fps change    1% low change
-Minimap, mod off                        140.7    118.2    0.001/0.004     0.001/0.003 100x         baseline         baseline
-Minimap, mod on                         138.8    116.9    0.080/0.312     0.300/0.910 100x     -1.9 (-1.4%)     -1.3 (-1.1%)
-Minimap, mod on, heavy drawings         129.6    104.0    0.210/0.655     1.200/2.410 100x    -11.1 (-7.9%)    -14.2 (-12.0%)
+Minimap, mod off                        140.7    118.2    0.001/0.004      0.001/0.003 80x         baseline         baseline
+Minimap, mod on                         138.8    116.9    0.080/0.312      0.300/0.910 80x     -1.9 (-1.4%)     -1.3 (-1.1%)
+Minimap, mod on, typical drawings       136.4    114.3    0.120/0.418      0.540/1.320 80x     -4.3 (-3.1%)     -3.9 (-3.3%)
+Minimap, mod on, heavy drawings         129.6    104.0    0.210/0.655      1.200/2.410 80x    -11.1 (-7.9%)    -14.2 (-12.0%)
 ...
 Rendering per frame. Canvas ms is every canvas's rebuild and batching, the game's too. n/a is a stat this build doesn't record.
 Phase                                 Canvas ms  BuildBatch ms  WillRender ms  Batches  SetPass Draw calls   Vertices  Mod graphics/TMP
@@ -179,7 +182,7 @@ The second table is for finding where a cost comes from. **Canvas ms** is the ti
 
 The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools menu and input, **Missiles** the missile arrows, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
 
-Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first heavy-drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
+Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
 
 ## Airbase abbreviations
 

@@ -80,12 +80,12 @@ public static class PerfReport
     private static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Missiles", "Runways", "Meshes", "Other" };
 
     /// <param name="method">How the phases were measured, for the header.</param>
-    /// <param name="drawings">What the heavy phases drew, for the header.</param>
+    /// <param name="drawings">What the typical and heavy phases drew, for the header.</param>
     public static string Table(IReadOnlyList<PerfPhase> phases, string method, string drawings)
     {
         var text = new StringBuilder();
         text.AppendFormat(CultureInfo.InvariantCulture,
-            "Perf test: {0}. Heavy drawings: {1}. Changes are against the same view with the mod off.", method, drawings).AppendLine();
+            "Perf test: {0}. Drawings: {1}. Changes are against the same view with the mod off.", method, drawings).AppendLine();
         text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36} {1,8} {2,8} {3,14} {4,20} {5,16} {6,16}",
             "Phase", "Avg fps", "1% low", "Mod ms avg/max", "Refresh ms avg/max", "Avg fps change", "1% low change").AppendLine();
         foreach (var phase in phases)

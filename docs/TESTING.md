@@ -20,7 +20,7 @@ dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 - the pen: point spacing, simplifying, the point budget, and undo and erase; text notes: typing, Escape, Backspace, the length cap, and placing;
 - bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, and the 3D labels and rings;
 - label placement: each kind's candidate slots, priority order, keeping a slot, leaders, a label drawn twice, and the minimap's upright and relayout steps;
-- the perf test's frame statistics, report, slice order, per-part timings, and heavy drawings;
+- the perf test's frame statistics, report, slice order, per-part timings, and typical and heavy drawings;
 - 3D ring projection: near-plane and screen-edge clipping, heading, and the chord count;
 - tracked positions: live, stale, first seen stale, and never known;
 - settings migration from a real 0.4.0 file, a new value winning, and dropping a removed setting.

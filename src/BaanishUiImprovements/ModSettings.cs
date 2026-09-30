@@ -71,7 +71,7 @@ internal sealed class ModSettings
         MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 200, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000), advanced: true);
         MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 5000, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500), advanced: true);
 
-        PerfTest = Bind(SettingSections.Diagnostics, "PerfTest", false, "Perf test", "In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a heavy set of drawings, on the minimap and the full map, then puts everything back. About 75 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", display: PerfTestButton);
+        PerfTest = Bind(SettingSections.Diagnostics, "PerfTest", false, "Perf test", "In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a typical and a heavy set of drawings, on the minimap and the full map, then puts everything back. About 85 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", display: PerfTestButton);
         LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", false, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
     }
 

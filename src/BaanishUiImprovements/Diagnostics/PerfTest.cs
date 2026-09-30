@@ -9,9 +9,10 @@ using FlatVector = System.Numerics.Vector2;
 namespace BaanishUiImprovements.Diagnostics;
 
 /// <summary>
-/// The Run perf test button in F1. One press measures the whole game's frame rate in six conditions: the minimap with
-/// the mod off, on, and on with <see cref="StressDrawings"/>, then the same on the full map. Within each view the three
-/// conditions take turns in short slices (<see cref="PerfSchedule"/>), so drift while flying spreads over all three,
+/// The Run perf test button in F1. One press measures the whole game's frame rate in eight conditions: the minimap with
+/// the mod off, on, on with typical drawings, and on with heavy drawings (both from <see cref="StressDrawings"/>), then
+/// the same on the full map. Within each view the four conditions take turns in short slices
+/// (<see cref="PerfSchedule"/>), so drift while flying spreads over all four,
 /// and each slice waits <see cref="SliceSettleSeconds"/> after a switch so the switch (graphics rebuilt, the map
 /// opened) stays out of the numbers. The mod-off conditions override General.Enabled through <see cref="ModOn"/>, and
 /// the drawings show through <see cref="ModSettings.PerfTestShowsDrawings"/>, instead of writing the settings, so a
@@ -28,7 +29,7 @@ internal sealed class PerfTest
     private const float ViewSettleSeconds = 2f;
 
     private const float SliceSettleSeconds = 0.5f;
-    private const float SliceSeconds = 2.5f;
+    private const float SliceSeconds = 2f;
 
     /// <summary>How far ahead of the aircraft <c>DynamicMap.CenterMinimizedMap</c> centres the minimap.</summary>
     private const float MinimapLead = 4000f;
@@ -36,17 +37,19 @@ internal sealed class PerfTest
     /// <summary>For a minimap whose size can't be read.</summary>
     private const float FallbackRadius = 8000f;
 
-    /// <summary>The most live units the heavy drawings ride on, so runs in busy and quiet places redraw about the same amount.</summary>
+    /// <summary>The most live units the drawings ride on, so runs in busy and quiet places redraw about the same amount.</summary>
     private const int MaxAnchors = 10;
 
-    private static readonly (string Name, bool FullMap, bool ModOn, bool Stress)[] Conditions =
+    private static readonly (string Name, bool FullMap, bool ModOn, DrawingSet Drawings)[] Conditions =
     {
-        ("Minimap, mod off", false, false, false),
-        ("Minimap, mod on", false, true, false),
-        ("Minimap, mod on, heavy drawings", false, true, true),
-        ("Full map, mod off", true, false, false),
-        ("Full map, mod on", true, true, false),
-        ("Full map, mod on, heavy drawings", true, true, true),
+        ("Minimap, mod off", false, false, DrawingSet.None),
+        ("Minimap, mod on", false, true, DrawingSet.None),
+        ("Minimap, mod on, typical drawings", false, true, DrawingSet.Typical),
+        ("Minimap, mod on, heavy drawings", false, true, DrawingSet.Heavy),
+        ("Full map, mod off", true, false, DrawingSet.None),
+        ("Full map, mod on", true, true, DrawingSet.None),
+        ("Full map, mod on, typical drawings", true, true, DrawingSet.Typical),
+        ("Full map, mod on, heavy drawings", true, true, DrawingSet.Heavy),
     };
 
     private readonly ModSettings _settings;
@@ -58,10 +61,15 @@ internal sealed class PerfTest
     private readonly double[][] _sectionMs = new double[Conditions.Length][];
     private readonly double[] _settlingMs = new double[ModTimings.Count];
     private readonly RenderCounters _render = new(Conditions.Length);
-    private List<MapShape>? _stress;
-    private int _stressUnits;
-    private int _stressShown;
-    private bool? _showingStress;
+
+    /// <summary>How many of each <see cref="DrawingSet"/>'s shapes the store took, by its value.</summary>
+    private readonly int[] _shown = new int[3];
+
+    /// <summary>Each <see cref="DrawingSet"/>'s shapes, by its value, built at the first slice that shows drawings.</summary>
+    private List<MapShape>[]? _drawings;
+
+    private int _units;
+    private DrawingSet? _showing;
     private ShapeStore.Saved? _savedShapes;
     private DynamicMap? _map;
     private bool _mapWasOpen;
@@ -203,8 +211,8 @@ internal sealed class PerfTest
         _settings.PerfTestShowsDrawings = true;
         _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
-        _stress = null;
-        _showingStress = null;
+        _drawings = null;
+        _showing = null;
         foreach (var stats in _stats)
         {
             stats.Clear();
@@ -218,7 +226,7 @@ internal sealed class PerfTest
         _render.Start();
         ModTimings.On = true;
         _log.LogInfo("Perf test started.");
-        Tell("Perf test running for about 75 seconds. Close F1, and hold the view still.");
+        Tell("Perf test running for about 85 seconds. Close F1, and hold the view still.");
         StartSlice(0);
     }
 
@@ -263,19 +271,19 @@ internal sealed class PerfTest
             return;
         }
 
-        if (condition.Stress != _showingStress)
+        if (condition.Drawings != _showing)
         {
-            _showingStress = condition.Stress;
+            _showing = condition.Drawings;
             _context.Shapes.Reset();
-            if (condition.Stress)
+            if (condition.Drawings != DrawingSet.None)
             {
-                _stress ??= BuildStress(_map!);
-                foreach (var shape in _stress)
+                _drawings ??= BuildDrawings(_map!);
+                foreach (var shape in _drawings[(int)condition.Drawings])
                 {
                     _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
                 }
 
-                _stressShown = _context.Shapes.Shapes.Count;
+                _shown[(int)condition.Drawings] = _context.Shapes.Shapes.Count;
             }
         }
     }
@@ -299,8 +307,9 @@ internal sealed class PerfTest
         var method = string.Format(CultureInfo.InvariantCulture,
             "each condition measured in {0} slices of {1:0.0} s, taking turns with the others in its view, {2:0.0} s to settle after each switch",
             PerfSchedule.Cycles, SliceSeconds, SliceSettleSeconds);
-        var drawings = string.Format(CultureInfo.InvariantCulture, "{0} shapes, anchored to {1} live units (at most {2})",
-            _stressShown, _stressUnits, MaxAnchors);
+        var drawings = string.Format(CultureInfo.InvariantCulture,
+            "typical {0} shapes on {1} live units, heavy {2} shapes on {3} live units (at most {4})",
+            _shown[(int)DrawingSet.Typical], System.Math.Min(_units, StressDrawings.TypicalAnchors), _shown[(int)DrawingSet.Heavy], _units, MaxAnchors);
         var table = PerfReport.Table(results, method, drawings);
         _log.LogInfo(note == null ? table : table + "\n" + note);
         Restore(moveMap: true);
@@ -346,11 +355,14 @@ internal sealed class PerfTest
 
         _map = null;
         _savedShapes = null;
-        _stress = null;
+        _drawings = null;
     }
 
-    /// <summary>Centred where the minimap is, and sized to fit it, so every drawing is on screen on both maps.</summary>
-    private List<MapShape> BuildStress(DynamicMap map)
+    /// <summary>
+    /// Both sets, centred where the minimap is and sized to fit it, so every drawing is on screen on both maps, and
+    /// anchored to the same nearby units.
+    /// </summary>
+    private List<MapShape>[] BuildDrawings(DynamicMap map)
     {
         var aircraft = PlayerAircraft()!;
         var global = aircraft.GlobalPosition();
@@ -360,12 +372,21 @@ internal sealed class PerfTest
                      (forward.LengthSquared() > 0f ? FlatVector.Normalize(forward) * MinimapLead : FlatVector.Zero);
         var radius = MinimapRadius(map);
         var units = NearbyUnits(center, radius, aircraft.persistentID.Id);
-        _stressUnits = units.Count;
-        var shapes = StressDrawings.Build(center, radius, units, _settings.MapToolMaxPenPoints.Value, _context.GroundElevation);
+        _units = units.Count;
+        var typical = StressDrawings.BuildTypical(center, radius, units, _context.GroundElevation);
+        var heavy = StressDrawings.BuildHeavy(center, radius, units, _settings.MapToolMaxPenPoints.Value, _context.GroundElevation);
         _log.LogInfo(string.Format(CultureInfo.InvariantCulture,
-            "Perf test drawings: {0} shapes in {1:0.0} km around the minimap's centre, {2} live units anchored.",
-            shapes.Count, radius / 1000f, units.Count));
-        return shapes;
+            "Perf test drawings in {0:0.0} km around the minimap's centre: typical {1} shapes on {2} live units, heavy {3} shapes on {4}.",
+            radius / 1000f, typical.Count, System.Math.Min(units.Count, StressDrawings.TypicalAnchors), heavy.Count, units.Count));
+        return new[] { new List<MapShape>(), typical, heavy };
+    }
+
+    /// <summary>What a condition draws, and the index of its shapes in <see cref="_drawings"/>.</summary>
+    private enum DrawingSet
+    {
+        None,
+        Typical,
+        Heavy,
     }
 
     /// <summary>Four fifths of half the minimap's width, in meters: its rect in world units over one map meter in world units.</summary>
