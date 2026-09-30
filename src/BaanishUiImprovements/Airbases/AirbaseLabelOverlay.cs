@@ -87,6 +87,7 @@ internal sealed class AirbaseLabelOverlay
             Reset();
             _layer = new GameObject("BaanishAirbaseLabelLayer", typeof(RectTransform)).GetComponent<RectTransform>();
             _layer.SetParent(map.iconLayer.transform, false);
+            _layer.gameObject.AddComponent<Canvas>(); // so the game's icons moving every frame don't re-batch the names
         }
 
         var first = _layer.parent.GetChild(0);

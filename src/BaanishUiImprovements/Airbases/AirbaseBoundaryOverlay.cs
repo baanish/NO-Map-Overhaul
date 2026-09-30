@@ -94,6 +94,7 @@ internal sealed class AirbaseBoundaryOverlay
             Reset();
             _layer = new GameObject(LayerName, typeof(RectTransform)).GetComponent<RectTransform>();
             _layer.SetParent(map.iconLayer.transform, false);
+            _layer.gameObject.AddComponent<Canvas>(); // so the game's icons moving every frame don't re-batch the circles
         }
 
         if (_layer.GetSiblingIndex() != 0)
