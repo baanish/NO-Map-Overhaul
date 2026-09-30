@@ -20,6 +20,7 @@ namespace BaanishUiImprovements.MapTools;
 /// Typing: the keyboard maps and the Escape menu are off while the tool captures the keyboard, the way the game's chat
 /// box does it, and the chat's cursor flag is raised, which is what other mods (NOAutopilot) check before reading their
 /// hotkeys. All of it comes back once Enter and Escape are up, since Rewired would read a key still held as a fresh press.
+/// Typing doesn't start while the chat box is open: it reads the same keys, and Enter would send the text as chat.
 /// </para>
 /// </summary>
 internal sealed class MapToolInput
@@ -38,7 +39,6 @@ internal sealed class MapToolInput
     private Vector2 _pressAt;
     private Vector2 _lastAt;
     private bool _pauseKeybind;
-    private bool _chatFlag;
 
     /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
     public bool Typing => _keyboard.IsSuspended;
@@ -146,10 +146,15 @@ internal sealed class MapToolInput
 
         if (!_keyboard.IsSuspended)
         {
+            if (CursorManager.GetFlag(CursorFlags.Chat))
+            {
+                tool.OnTextInput('\u001b');
+                return true;
+            }
+
             _keyboard.Suspend();
             _pauseKeybind = GameplayUI.AllowPauseKeybind;
             GameplayUI.AllowPauseKeybind = false;
-            _chatFlag = CursorManager.GetFlag(CursorFlags.Chat);
             CursorManager.SetFlag(CursorFlags.Chat, true);
         }
 
@@ -177,9 +182,14 @@ internal sealed class MapToolInput
             return;
         }
 
+        // Only undoes what was changed: a dialogue or menu that turned the pause key off since owns it now.
         _keyboard.Resume();
-        GameplayUI.AllowPauseKeybind = _pauseKeybind;
-        CursorManager.SetFlag(CursorFlags.Chat, _chatFlag);
+        if (_pauseKeybind)
+        {
+            GameplayUI.AllowPauseKeybind = true;
+        }
+
+        CursorManager.SetFlag(CursorFlags.Chat, false);
     }
 
     private void EndPress()

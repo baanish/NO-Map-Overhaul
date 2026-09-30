@@ -20,6 +20,11 @@
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\RouteProgress.cs" Link="MapTools\Waypoint\RouteProgress.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\WaypointCallout.cs" Link="MapTools\Waypoint\WaypointCallout.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\WaypointRoute.cs" Link="MapTools\Waypoint\WaypointRoute.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Pen\PenStroke.cs" Link="MapTools\Pen\PenStroke.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Pen\PenTool.cs" Link="MapTools\Pen\PenTool.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Pen\StrokeSimplifier.cs" Link="MapTools\Pen\StrokeSimplifier.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Text\TextNote.cs" Link="MapTools\Text\TextNote.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Text\TextTool.cs" Link="MapTools\Text\TextTool.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
