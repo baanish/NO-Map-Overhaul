@@ -8,6 +8,8 @@ internal sealed class ModSettings
 {
     public ModSettings(ConfigFile config)
     {
+        Enabled = config.Bind("General", "Enabled", true, "Off hides everything this mod draws, as if it were not installed. Useful for checking whether a problem comes from the mod or the game.");
+
         MapRunways = config.Bind("Map", "ShowRunways", true, "Draw friendly runways and their numbers on the minimap and full map.");
         RunwayColor = config.Bind("Map", "RunwayColor", new Color(0f, 0.85f, 0f, 0.85f), "Fill colour of runway strips.");
         RunwayLabelColor = config.Bind("Map", "RunwayLabelColor", new Color(0.6f, 1f, 0.6f, 1f), "Colour of the runway numbers on the map.");
@@ -34,6 +36,8 @@ internal sealed class ModSettings
         HudAirbaseName = config.Bind("HUD", "IncludeAirbaseName", false, "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
         HudColor = config.Bind("HUD", "CalloutColor", new Color(0.2f, 1f, 0.2f, 1f), "Colour of the HUD runway callout.");
     }
+
+    public ConfigEntry<bool> Enabled { get; }
 
     public ConfigEntry<bool> MapRunways { get; }
     public ConfigEntry<Color> RunwayColor { get; }

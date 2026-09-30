@@ -65,6 +65,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 
 | Section | Setting | Default | What it does |
 | --- | --- | --- | --- |
+| General | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
 | Map | ShowRunways | `true` | Draw runways and their numbers. |
 | Map | RunwayColor | `00D900D9` | Strip fill. |
 | Map | RunwayLabelColor | `99FF99FF` | Runway number colour. |
