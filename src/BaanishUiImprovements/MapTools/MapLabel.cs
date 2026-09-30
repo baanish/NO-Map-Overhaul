@@ -54,9 +54,9 @@ internal sealed class MapLabel
     public void Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
     {
         var plated = anchor.Kind != LabelKind.Note;
+        Rect.localScale = Vector3.one * inverseScale;
         _text.Rimmed = !plated;
         _text.Set(text, size, color, rim, hudStyle);
-        Rect.localScale = Vector3.one * inverseScale;
         var font = hudStyle != null ? hudStyle.font : null;
         if (!ReferenceEquals(text, _measuredText) || size != _measuredSize || !ReferenceEquals(font, _measuredFont))
         {

@@ -47,14 +47,12 @@ internal sealed class LabelObstacles
             child.GetComponentsInChildren(false, _modTexts);
             foreach (var text in _modTexts)
             {
-                // An OutlinedText is nine copies of one text; the face, its last child, stands for all of them.
-                var transform = text.transform;
-                if (transform.GetSiblingIndex() == transform.parent.childCount - 1 && text.enabled)
+                if (text.enabled)
                 {
                     var bounds = text.textBounds;
                     if (bounds.size.x > 0f)
                     {
-                        into.Add(Box(transform, bounds.min, bounds.max, layer, inverseScale));
+                        into.Add(Box(text.transform, bounds.min, bounds.max, layer, inverseScale));
                     }
                 }
             }
