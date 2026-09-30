@@ -1,4 +1,5 @@
 using System.Numerics;
+using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
 
 namespace BaanishUiImprovements.Tests;
@@ -26,6 +27,11 @@ internal static class Program
             ("painted number overrides the heading number", PaintedNumberOverridesHeading),
             ("callout uses the squadron table", CalloutUsesTable),
             ("unknown airbase is abbreviated", UnknownAirbaseAbbreviated),
+            ("a missile on screen gets no arrow", MissileOnScreenGetsNoArrow),
+            ("a missile off the right gets the right edge", MissileOffRightGetsRightEdge),
+            ("a missile behind on the left points left", MissileBehindLeftPointsLeft),
+            ("a missile behind and above points up", MissileBehindAbovePointsUp),
+            ("a missile dead astern points down", MissileDeadAsternPointsDown),
         };
 
         var failed = 0;
@@ -101,6 +107,29 @@ internal static class Program
         ExpectText(RunwayNames.AbbreviateAirbase("Opal Airport"), "OPL");
         ExpectText(RunwayNames.AbbreviateAirbase("Maris Heliport"), "MRS HELI");
     }
+
+    private static void MissileOnScreenGetsNoArrow() =>
+        Expect(Pin(new Vector3(100, 0, 1000)) is null, "expected no arrow for a missile inside the view");
+
+    private static void MissileOffRightGetsRightEdge() =>
+        ExpectPin(Pin(new Vector3(2000, 0, 1000)), new Vector2(960, 0));
+
+    /// <summary>Camera.WorldToScreenPoint mirrors a point behind the camera, which would put this arrow on the right.</summary>
+    private static void MissileBehindLeftPointsLeft() =>
+        ExpectPin(Pin(new Vector3(-500, 0, -1000)), new Vector2(-960, 0));
+
+    private static void MissileBehindAbovePointsUp() =>
+        ExpectPin(Pin(new Vector3(0, 300, -1000)), new Vector2(0, 540));
+
+    private static void MissileDeadAsternPointsDown() =>
+        ExpectPin(Pin(new Vector3(0, 0, -1000)), new Vector2(0, -540));
+
+    /// <summary>A 1920x1080 screen with a 60 degree vertical field of view.</summary>
+    private static Vector2? Pin(Vector3 cameraSpace) =>
+        ScreenEdge.Pin(cameraSpace, new Vector2(960, 540), 540f / MathF.Tan(MathF.PI / 6f));
+
+    private static void ExpectPin(Vector2? actual, Vector2 expected) =>
+        Expect(actual is { } pin && Vector2.Distance(pin, expected) < 0.01f, $"expected an arrow at {expected}, got {actual?.ToString() ?? "none"}");
 
     private static void ExpectEnd(ApproachChoice? choice, bool reverse) =>
         Expect(choice is { } c && c.Reverse == reverse, $"expected {(reverse ? "27" : "09")}, got {Describe(choice)}");

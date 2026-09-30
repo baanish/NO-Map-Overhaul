@@ -55,6 +55,12 @@ The circle is the game's own rule. An aircraft that counts as landed inside it (
 
 Turn on **Airbase Names → ShowNames** to label every airbase on the full map, friendly, enemy, and neutral, just under where the game draws a friendly airbase's icon. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
 
+### Missile arrows
+
+When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. Each missile gets its own arrow. A missile behind you gets an arrow on the side it's on, so a missile behind and to your left gets an arrow on the left edge. Once the missile is on screen, its arrow goes away.
+
+Only missiles the game's missile warning already knows about get an arrow, so the arrows show nothing the game hasn't told you. The arrow is a copy of the game's own off-screen target arrow in a different colour.
+
 ## How the runway end is chosen
 
 Within range, the mod picks the runway nearest to you, measured to the runway strip itself, and then whichever of its two ends is closer. Heading plays no part. The map line and the HUD label always show the same end.
@@ -90,6 +96,8 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | HUD | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
 | HUD | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
 | HUD | CalloutColor | `33FF33FF` | Label colour. |
+| Missile Arrows | ShowArrows | `true` | Point an arrow at each incoming missile outside the view. |
+| Missile Arrows | Color | `FF4033FF` | Arrow colour. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 
