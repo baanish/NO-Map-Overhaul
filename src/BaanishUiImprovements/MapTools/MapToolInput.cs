@@ -111,6 +111,11 @@ internal sealed class MapToolInput
             _panned |= (mouse - _pressAt).sqrMagnitude > ClickSlop * ClickSlop;
             if (Input.GetMouseButton(0))
             {
+                if (_dragging)
+                {
+                    _mouse.KeepSuspended();
+                }
+
                 if (!_dragging || mouse == _lastAt)
                 {
                     return;
@@ -223,6 +228,7 @@ internal sealed class MapToolInput
     {
         while (Input.GetMouseButton(0))
         {
+            mouse.KeepSuspended();
             yield return null;
         }
 

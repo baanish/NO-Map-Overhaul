@@ -40,6 +40,21 @@ internal sealed class ControllerMapSuspension
         _maps.Clear();
     }
 
+    /// <summary>
+    /// Switches off again any map this suspended that something else switched back on meanwhile: the chat box turns
+    /// every map on as it closes (<c>ChatBox.WaitToReEnableKeyboard</c>).
+    /// </summary>
+    public void KeepSuspended()
+    {
+        foreach (var map in _suspended)
+        {
+            if (map.enabled)
+            {
+                map.enabled = false;
+            }
+        }
+    }
+
     /// <summary>Nothing to restore once Rewired itself has shut down, as the game quits.</summary>
     public void Resume()
     {
