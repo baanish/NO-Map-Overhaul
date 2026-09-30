@@ -2,13 +2,13 @@
 
 My Nuclear Option mod for map and HUD navigation aids. The first release adds runway markers. Every friendly runway shows on the minimap and the full map with its number at each end, plus an approach line off the nearest runway end.
 
-It only draws on your screen. It installs no patches into the game's code and sends nothing over the network. I've tested it in free flight and in a multiplayer session.
+It only draws on your screen. It installs no patches into the game's code and sends nothing over the network. I've tested it in free flight and in a multiplayer session. To turn it off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
 - **Runways on the map.** Each friendly runway is a green strip with a thin dark rim, so it stays readable over the map's own bright linework. Its number sits past each end, so the west end of an east-west runway reads 09 and the east end 27. The numbers come from the runway heading, the same way the game numbers its landing clearance, except where the paint on the tarmac says otherwise.
 - **Approach line.** Within 5 km, a dashed 5 km centerline extends off the nearest end of the nearest runway, so you can judge the turn onto final. Each dash plus its gap is 500 m, so the dashes double as distance ticks.
-- **HUD callout.** The same runway end gets a `RWY 27` label pinned over its threshold in the 3D view, ready for an ATC call. An optional prefix adds the airbase: `NBSCLI RWY 27`.
+- **HUD callout.** The same runway end gets a `RWY 27` label pinned over its threshold in the 3D view, ready for an ATC call. An optional prefix adds the airbase (`NBSCLI RWY 27`), and another option hides the label until your gear is down.
 - **Airbase boundary**, off by default. A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
 - **Airbase names**, off by default. Every airbase, friendly, enemy, and neutral, gets a faint name label on the full map, so you can find the one someone just called out.
 

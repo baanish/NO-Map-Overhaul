@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-09-30
+
+### Added
+
+- An option, off by default, to show the HUD runway callout only while the landing gear is down.
+- A master switch, `General → Enabled`, that hides everything the mod draws without uninstalling it.
+
 ## 0.2.0 - 2026-09-26
 
 ### Added

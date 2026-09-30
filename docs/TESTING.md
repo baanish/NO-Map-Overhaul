@@ -17,9 +17,9 @@ dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, or game-version compatibility.
 
-## In-game status for v0.2.0
+## In-game status for v0.3.0
 
-Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight, with other client mods loaded. Status recorded on 2026-09-26. Everything below was confirmed in game by the author.
+Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight, with other client mods loaded. Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout and the master switch. Everything below was confirmed in game by the author.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |

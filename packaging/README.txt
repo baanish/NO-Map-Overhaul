@@ -7,7 +7,8 @@ markers:
 - A dashed approach line off the nearest runway end, within 5 km.
   Each dash plus gap is 500 m.
 - A "RWY 27" label over that runway's threshold in the 3D view, with an
-  optional airbase prefix for ATC calls, such as "NBSCLI RWY 27".
+  optional airbase prefix for ATC calls, such as "NBSCLI RWY 27". Another
+  option hides it until the landing gear is down.
 
 An optional airbase boundary, off by default, shades each friendly airbase's
 landing zone: stop inside it after landing and the sortie counts as returned.
@@ -17,6 +18,7 @@ friendly, enemy, and neutral, so a base called out on comms is easy to find.
 
 Helicopters see only the airbase boundary and names, and carriers are left out. The mod
 only draws. It patches no game code and sends nothing over the network.
+Switch off General > Enabled to hide everything it draws without uninstalling.
 
 Coming soon: map markers and drawing, waypoints with HUD markers, and an
 incoming-missile direction arrow.
