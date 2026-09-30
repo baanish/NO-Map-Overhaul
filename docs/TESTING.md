@@ -8,18 +8,24 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-30 tests pass. They cover:
+115 tests pass. They cover:
 
-- nothing beyond range, and the closer end from either side, including over the runway;
-- a base leg flown side-on to the runway showing the approach end;
-- the nearest runway winning between parallel and crossing runways;
+- the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
 - missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you;
-- the map tools' drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, and the 100-step history;
+- the drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, save and restore, and the 100-step history;
 - bearing and distance text in each unit, and which unit the game's setting picks;
-- the eraser: hit testing lines, rings, and labels, the topmost shape winning, reach, and undoing an erase.
+- the eraser and right-click: hit testing lines, rings, and labels (where the map placed them), the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
+- the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, the numbered drawing, and the 3D label text;
+- the pen: point spacing, simplifying, the point budget, and undo and erase; text notes: typing, Escape, Backspace, the length cap, and placing;
+- bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, and the 3D labels and rings;
+- label placement: each kind's candidate slots, priority order, keeping a slot, leaders, and a label drawn twice;
+- the perf test's frame statistics, report, and heavy drawings;
+- 3D ring projection: near-plane and screen-edge clipping, heading, and the chord count;
+- tracked positions: live, stale, first seen stale, and never known;
+- settings migration from a real 0.4.0 file, a new value winning, and dropping a removed setting.
 
-The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, or game-version compatibility.
+The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, the perf test's phases, or game-version compatibility.
 
 ## In-game status for v0.4.0
 
