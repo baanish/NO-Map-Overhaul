@@ -115,8 +115,15 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Drawing | Text size, *advanced* | TextSize | `10` | Size of text the tools draw on the map. |
 | Map Tools / Waypoints | Reached within (km), *advanced* | WaypointReachKm | `2.5` | How close to a waypoint counts as reaching it. |
 | Map Tools / Waypoints | Passed within (km), *advanced* | WaypointPassedKm | `10` | How far behind you a waypoint still counts as reached. `0` turns it off. |
+| Map Tools / Keys and Limits | Tools key | ToolsKey | `H` | Open or close the tools rail while the full map is open, like clicking Tools. |
 | Map Tools / Keys and Limits | Undo key | UndoKey | `Z` | Undo while the full map is open. |
 | Map Tools / Keys and Limits | Redo key | RedoKey | `Y` | Redo while the full map is open. |
+| Map Tools / Keys and Limits | Waypoint key, *advanced* | WaypointKey | `Alpha1` | Pick Waypoint while the full map is open, opening the rail if it's closed. |
+| Map Tools / Keys and Limits | Pen key, *advanced* | PenKey | `Alpha2` | Pick Pen, the same way. |
+| Map Tools / Keys and Limits | Text key, *advanced* | TextKey | `Alpha3` | Pick Text, the same way. |
+| Map Tools / Keys and Limits | Bearing/range key, *advanced* | BearingRangeKey | `Alpha4` | Pick Bearing/range, the same way. |
+| Map Tools / Keys and Limits | Circle key, *advanced* | CircleKey | `Alpha5` | Pick Circle, the same way. |
+| Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
 | Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `200` | Most drawings kept at once. |
 | Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `5000` | Most freehand points kept across all pen strokes, so the map stays fast. At most `7500`. |
 | Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |

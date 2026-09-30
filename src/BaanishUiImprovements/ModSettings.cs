@@ -66,8 +66,15 @@ internal sealed class ModSettings
         MapToolWaypointReachKm = Bind(SettingSections.MapToolsWaypoints, "WaypointReachKm", 2.5f, "Reached within (km)", "A waypoint counts as reached once you fly within this distance of it, and the route moves on to the next. NOAutopilot's default.", new AcceptableValueRange<float>(0.1f, 20f), advanced: true);
         MapToolWaypointPassedKm = Bind(SettingSections.MapToolsWaypoints, "WaypointPassedKm", 10f, "Passed within (km)", "A waypoint behind you also counts as reached while it's within this distance, so a wide miss still moves the route on. NOAutopilot's default. 0 turns it off.", new AcceptableValueRange<float>(0f, 50f), advanced: true);
 
+        MapToolsKey = Bind(SettingSections.MapToolsKeysAndLimits, "ToolsKey", new KeyboardShortcut(KeyCode.H), "Tools key", "Open or close the tools rail while the full map is open, like clicking Tools. H isn't bound in the game's default controls.");
         MapToolUndoKey = Bind(SettingSections.MapToolsKeysAndLimits, "UndoKey", new KeyboardShortcut(KeyCode.Z), "Undo key", "Undo the last drawing change while the full map is open. Z isn't bound in the game's default controls.");
         MapToolRedoKey = Bind(SettingSections.MapToolsKeysAndLimits, "RedoKey", new KeyboardShortcut(KeyCode.Y), "Redo key", "Redo while the full map is open. Y isn't bound in the game's default controls.");
+        MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha1);
+        MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha2);
+        MapToolTextKey = BindToolKey("TextKey", "Text", KeyCode.Alpha3);
+        MapToolBearingRangeKey = BindToolKey("BearingRangeKey", "Bearing/range", KeyCode.Alpha4);
+        MapToolCircleKey = BindToolKey("CircleKey", "Circle", KeyCode.Alpha5);
+        MapToolEraserKey = BindToolKey("EraserKey", "Eraser", KeyCode.Alpha6);
         MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 200, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000), advanced: true);
         MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 5000, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500), advanced: true);
 
@@ -129,8 +136,15 @@ internal sealed class ModSettings
     public ConfigEntry<UnitsSetting> MapToolUnits { get; }
     public ConfigEntry<int> MapToolMaxShapes { get; }
     public ConfigEntry<int> MapToolMaxPenPoints { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolsKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolUndoKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolRedoKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolWaypointKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolPenKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolTextKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolBearingRangeKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolCircleKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolEraserKey { get; }
 
     public ConfigEntry<float> MapToolWaypointReachKm { get; }
     public ConfigEntry<float> MapToolWaypointPassedKm { get; }
@@ -147,4 +161,9 @@ internal sealed class ModSettings
         display.IsAdvanced = advanced;
         return _config.Bind(section, key, defaultValue, new ConfigDescription(description, values, display));
     }
+
+    /// <summary>A key that picks one map tool. The number row, where they start, isn't bound in the game's default controls.</summary>
+    private ConfigEntry<KeyboardShortcut> BindToolKey(string key, string tool, KeyCode defaultKey) =>
+        Bind(SettingSections.MapToolsKeysAndLimits, key, new KeyboardShortcut(defaultKey), tool + " key",
+            $"Pick the {tool} tool while the full map is open, opening the tools rail if it's closed.", advanced: true);
 }

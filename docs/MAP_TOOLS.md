@@ -14,18 +14,20 @@ Every setting mentioned here is listed in the [user guide's settings table](USER
 
 ## Mouse and keys
 
-These work while the tools rail is open on the full map.
+These work on the full map. The mouse, undo, and redo work while the tools rail is open; the Tools key and the tool keys work with it open or closed.
 
 | Do this | To |
 | --- | --- |
 | Left click or drag | Use the picked tool. |
 | Right click while drawing | Cancel what you're halfway through. |
 | Right click a drawing | Delete it. Undo brings it back. |
+| `H` | Open or close the rail, like clicking **Tools**. |
+| `1` to `6` | Pick Waypoint, Pen, Text, Bearing/range, Circle, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes. Change them with **Undo key** and **Redo key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Waypoint key** to **Eraser key**. Hover over a rail icon to see its key.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 

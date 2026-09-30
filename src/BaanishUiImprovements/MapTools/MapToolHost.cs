@@ -5,6 +5,7 @@ using BaanishUiImprovements.MapTools.Eraser;
 using BaanishUiImprovements.MapTools.Pen;
 using BaanishUiImprovements.MapTools.Text;
 using BaanishUiImprovements.MapTools.Waypoint;
+using BepInEx.Configuration;
 using TMPro;
 
 namespace BaanishUiImprovements.MapTools;
@@ -22,6 +23,7 @@ internal sealed class MapToolHost
     private readonly MapToolContext _context;
     private readonly MapTool[] _tools;
     private readonly RailIcon[] _icons;
+    private readonly ConfigEntry<KeyboardShortcut>[] _keys;
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
@@ -37,18 +39,19 @@ internal sealed class MapToolHost
         _context = new MapToolContext(settings, _store);
         _layer = new MapShapeLayer(settings, _context);
         _hitTest = new ShapeHitTest(_context, _layer);
-        // Rail order, each with its icon; the rail opens on the first. Each tool lives in its own folder under MapTools.
-        var tools = new (MapTool Tool, RailIcon Icon)[]
+        // Rail order, each with its icon and the key that picks it; the rail opens on the first. Each tool lives in its own folder under MapTools.
+        var tools = new (MapTool Tool, RailIcon Icon, ConfigEntry<KeyboardShortcut> Key)[]
         {
-            (new WaypointTool(_context, settings), RailIcon.Waypoint),
-            (new PenTool(_context), RailIcon.Pen),
-            (new TextTool(_context), RailIcon.Text),
-            (new BearingRangeTool(_context), RailIcon.BearingRange),
-            (new CircleTool(_context), RailIcon.Circle),
-            (new EraserTool(_context, _layer), RailIcon.Eraser),
+            (new WaypointTool(_context, settings), RailIcon.Waypoint, settings.MapToolWaypointKey),
+            (new PenTool(_context), RailIcon.Pen, settings.MapToolPenKey),
+            (new TextTool(_context), RailIcon.Text, settings.MapToolTextKey),
+            (new BearingRangeTool(_context), RailIcon.BearingRange, settings.MapToolBearingRangeKey),
+            (new CircleTool(_context), RailIcon.Circle, settings.MapToolCircleKey),
+            (new EraserTool(_context, _layer), RailIcon.Eraser, settings.MapToolEraserKey),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
         _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
+        _keys = System.Array.ConvertAll(tools, entry => entry.Key);
         _menu = new MapToolMenu(settings);
         _worldLabels = new WorldLabelPool(settings);
     }
@@ -82,7 +85,7 @@ internal sealed class MapToolHost
         if (open)
         {
             Apply(_menu.TakeCommand());
-            _menu.Render(map, _tools, _icons, _active, _store, _context.Color, hudStyle);
+            _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, hudStyle);
         }
         else
         {
@@ -106,6 +109,21 @@ internal sealed class MapToolHost
             else if (_settings.MapToolRedoKey.Value.IsDown())
             {
                 _store.Redo();
+            }
+            else if (_settings.MapToolsKey.Value.IsDown())
+            {
+                Apply((MenuCommand.Toggle, 0));
+            }
+            else
+            {
+                for (var i = 0; i < _keys.Length; i++)
+                {
+                    if (_keys[i].Value.IsDown())
+                    {
+                        Apply((MenuCommand.Tool, i)); // opens the rail on that tool if it's closed
+                        break;
+                    }
+                }
             }
         }
 

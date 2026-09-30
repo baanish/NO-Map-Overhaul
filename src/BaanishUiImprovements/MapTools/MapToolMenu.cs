@@ -26,7 +26,7 @@ internal enum MenuCommand
 /// The map tools' menu on the full map: a slim rail of line icons, and a one-line strip that names the picked tool, says
 /// what a click does, and holds the tool's option buttons, in the game's MFD green on dark. The rail holds the Tools head,
 /// which opens and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it,
-/// with the key for Undo and Redo. A warning turns the strip amber and badges the tool that raised it.
+/// with its key. A warning turns the strip amber and badges the tool that raised it.
 /// Where there's room, the rail stands left of the map in columns and the strip above it, so the map stays clear; each
 /// falls back to the map's top-left corner, where together they frame the corner as an L (<see cref="MenuLayout"/>).
 /// Sizes are the design's pixels at 2560x1440 (see docs/DESIGN.md), turned into map canvas units by <see cref="Px"/>, so
@@ -168,10 +168,10 @@ internal sealed class MapToolMenu
     }
 
     /// <summary>Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the rail is closed.</summary>
-    public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons, int activeTool, ShapeStore store,
-        ShapeColor color, TextMeshProUGUI? hudStyle)
+    public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons,
+        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys, int activeTool, ShapeStore store, ShapeColor color, TextMeshProUGUI? hudStyle)
     {
-        EnsureBuilt(map, tools, icons);
+        EnsureBuilt(map, tools, icons, keys);
         Place(map, tools.Count);
         var open = activeTool >= 0;
         SetActive(_root!.gameObject, true);
@@ -212,9 +212,11 @@ internal sealed class MapToolMenu
 
         _head.Show(picked: false, interactable: true, bright: open || _head.Hover.Hovered);
         _headLabel.color = Fade(Green, open || _head.Hover.Hovered ? 1f : RestOpacity);
+        // Right of the head, joined to it, is the open strip, which its tag would cover.
+        var hovered = _head.Hover.Hovered && !(open && !_railPlace.Outside && !_stripPlace.Outside) ? _head : null;
         if (!open)
         {
-            ShowTag(null);
+            ShowTag(hovered);
             return;
         }
 
@@ -230,7 +232,6 @@ internal sealed class MapToolMenu
         _clear.Show(false, store.Shapes.Count > 0, _clear.Hover.Hovered);
         ShowSwatch(IndexOf(color));
 
-        RailCell? hovered = null;
         foreach (var cell in _cells)
         {
             if (cell.Hover.Hovered && cell.Button.interactable)
@@ -553,7 +554,7 @@ internal sealed class MapToolMenu
     }
 
     /// <summary>
-    /// The name tag beside a hovered cell: its name, plus its key in a box for Undo and Redo. It points into free space:
+    /// The name tag beside a hovered cell: its name, plus its key in a box. It points into free space:
     /// left of a rail outside the map while the screen has room there, else right, over the map.
     /// </summary>
     private void ShowTag(RailCell? cell)
@@ -572,7 +573,7 @@ internal sealed class MapToolMenu
 
         _tagName.text = cell.Name;
         var nameWidth = Measure(_tagName);
-        var key = cell == _undo ? KeyText(_settings.MapToolUndoKey.Value) : cell == _redo ? KeyText(_settings.MapToolRedoKey.Value) : string.Empty;
+        var key = cell.Key == null ? string.Empty : KeyText(cell.Key.Value);
         SetActive(_tagKey.gameObject, key.Length > 0);
         SetActive(_tagKeyBox.gameObject, key.Length > 0);
         var width = nameWidth + 2f * TagPad;
@@ -710,7 +711,8 @@ internal sealed class MapToolMenu
     /// A scene change destroys the map and the menu with it; a missing root means everything here is gone. The game
     /// parents the map anew each time it opens, which puts it last, so the outside part moves back after it.
     /// </summary>
-    private void EnsureBuilt(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons)
+    private void EnsureBuilt(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons,
+        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys)
     {
         if (_root != null && _root.parent == map.transform && _outside != null)
         {
@@ -744,7 +746,8 @@ internal sealed class MapToolMenu
         _railFill.color = Ground;
         _frameRim = NewGraphic<StrokeGraphic>("Rim", _rail, raycast: false);
 
-        _head = NewCell(_rail, "Tools", RailIcon.Tools, HeadHeight, iconY: 18f, iconScale: 0.8f, insetY: 3f, () => Record(MenuCommand.Toggle, 0));
+        _head = NewCell(_rail, "Tools", RailIcon.Tools, _settings.MapToolsKey, HeadHeight, iconY: 18f, iconScale: 0.8f, insetY: 3f,
+            () => Record(MenuCommand.Toggle, 0));
         _headLabel = NewText(_head.Rect, "Tools", HeadLabelSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Center);
         _headLabel.characterSpacing = HeadTracking;
         Box(_headLabel.rectTransform, 0f, 31f, RailWidth, 14f);
@@ -756,7 +759,7 @@ internal sealed class MapToolMenu
         for (var i = 0; i < tools.Count; i++)
         {
             var index = i;
-            var cell = NewCell(open, tools[i].Name, icons[i], ToolHeight, ToolHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Tool, index));
+            var cell = NewCell(open, tools[i].Name, icons[i], keys[i], ToolHeight, ToolHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Tool, index));
             var badge = NewGraphic<FeatheredRect>("Badge", cell.Rect, raycast: false);
             badge.color = WarnColor;
             badge.SetEdges(0.75f * Px, Ground, Feather);
@@ -765,9 +768,11 @@ internal sealed class MapToolMenu
             _cells.Add(cell);
         }
 
-        _undo = NewCell(open, "Undo", RailIcon.Undo, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Undo, 0));
-        _redo = NewCell(open, "Redo", RailIcon.Redo, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Redo, 0));
-        _clear = NewCell(open, "Clear", RailIcon.Clear, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Clear, 0));
+        _undo = NewCell(open, "Undo", RailIcon.Undo, _settings.MapToolUndoKey, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
+            () => Record(MenuCommand.Undo, 0));
+        _redo = NewCell(open, "Redo", RailIcon.Redo, _settings.MapToolRedoKey, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
+            () => Record(MenuCommand.Redo, 0));
+        _clear = NewCell(open, "Clear", RailIcon.Clear, null, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Clear, 0));
         _cells.Add(_undo);
         _cells.Add(_redo);
         _cells.Add(_clear);
@@ -849,8 +854,8 @@ internal sealed class MapToolMenu
     /// A rail cell: a hit area the full size of the cell, a fill inset from its edges that the button tints, and a line
     /// icon. <paramref name="iconY"/> is the icon's centre from the cell's top, in design pixels. The layout places it.
     /// </summary>
-    private RailCell NewCell(Transform parent, string name, RailIcon icon, float height, float iconY, float iconScale, float insetY,
-        UnityEngine.Events.UnityAction onClick)
+    private RailCell NewCell(Transform parent, string name, RailIcon icon, ConfigEntry<KeyboardShortcut>? key, float height, float iconY,
+        float iconScale, float insetY, UnityEngine.Events.UnityAction onClick)
     {
         var hit = NewGraphic<PolygonGraphic>(name, parent, raycast: true);
         var rect = hit.rectTransform;
@@ -863,7 +868,7 @@ internal sealed class MapToolMenu
         button.onClick.AddListener(onClick);
         var strokes = NewGraphic<StrokeGraphic>("Icon", rect, raycast: false);
         var hover = rect.gameObject.AddComponent<MenuHover>();
-        return new RailCell(rect, button, hover, strokes, icon, P(RailWidth * 0.5f, iconY), iconScale * Px, name, height);
+        return new RailCell(rect, button, hover, strokes, icon, P(RailWidth * 0.5f, iconY), iconScale * Px, name, key, height);
     }
 
     private TextMeshProUGUI NewText(Transform parent, string text, float size, FontStyles extra, TextAlignmentOptions alignment)
@@ -902,8 +907,9 @@ internal sealed class MapToolMenu
     /// <summary>The text's natural width in design pixels. TextMeshProUGUI caches it until the text or style changes.</summary>
     private static float Measure(TextMeshProUGUI text) => text.preferredWidth / Px;
 
-    /// <summary>"Z", or empty for an unbound key.</summary>
-    private static string KeyText(KeyboardShortcut shortcut) => shortcut.MainKey == KeyCode.None ? string.Empty : shortcut.ToString();
+    /// <summary>"Z", "1" for the number row's Alpha1, or empty for an unbound key.</summary>
+    private static string KeyText(KeyboardShortcut shortcut) =>
+        shortcut.MainKey == KeyCode.None ? string.Empty : shortcut.ToString().Replace("Alpha", string.Empty);
 
     /// <summary>A point in design pixels from the rail's top-left corner, Y down, as local units from a top-left pivot.</summary>
     private static Vector2 P(float x, float y) => new(x * Px, -y * Px);
@@ -997,7 +1003,7 @@ internal sealed class MapToolMenu
         private int _look = -1;
 
         public RailCell(RectTransform rect, Button button, MenuHover hover, StrokeGraphic icon, RailIcon kind, Vector2 iconCenter,
-            float iconScale, string name, float height)
+            float iconScale, string name, ConfigEntry<KeyboardShortcut>? key, float height)
         {
             Rect = rect;
             Button = button;
@@ -1007,6 +1013,7 @@ internal sealed class MapToolMenu
             _iconCenter = iconCenter;
             _iconScale = iconScale;
             Name = name;
+            Key = key;
             Height = height;
         }
 
@@ -1017,6 +1024,9 @@ internal sealed class MapToolMenu
         public MenuHover Hover { get; }
 
         public string Name { get; }
+
+        /// <summary>The key its hover tag shows, if it has one.</summary>
+        public ConfigEntry<KeyboardShortcut>? Key { get; }
 
         /// <summary>Design pixels from the rail's top.</summary>
         public float Y { get; private set; }
