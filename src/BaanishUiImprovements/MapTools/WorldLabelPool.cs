@@ -16,6 +16,9 @@ internal sealed class WorldLabelPool : IWorldLabels
     /// <summary>Enough for every tool's labels at once; requests past it are dropped rather than growing the HUD.</summary>
     private const int MaxLabels = 32;
 
+    /// <summary>How far past the screen's edge a label's point may be and still show some of its text.</summary>
+    private const float OffScreenPixels = 200f;
+
     private readonly List<TextMeshProUGUI> _labels = new();
     private readonly WorldRingPool _rings;
     private TextMeshProUGUI? _source;
@@ -49,8 +52,10 @@ internal sealed class WorldLabelPool : IWorldLabels
             return;
         }
 
+        // Behind the camera, or far enough off screen that none of the text shows.
         var screen = _camera.WorldToScreenPoint(new GlobalPosition(position.X, position.Y, position.Z).ToLocalPosition());
-        if (screen.z <= 0f)
+        if (screen.z <= 0f || screen.x < -OffScreenPixels || screen.x > Screen.width + OffScreenPixels ||
+            screen.y < -OffScreenPixels || screen.y > Screen.height + OffScreenPixels)
         {
             return;
         }
