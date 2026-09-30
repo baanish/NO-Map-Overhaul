@@ -12,8 +12,8 @@ public sealed class MeasureLabel
     /// <summary>Added when an anchored unit is destroyed or no longer tracked, and the drawing stays where it was last seen.</summary>
     public const string LostLine = "\nlost";
 
-    /// <summary>Set in radius keys only. A rounded bearing is at most 359, so it never reaches this bit.</summary>
-    private const long RadiusFlag = 1L << 9;
+    /// <summary>Set in radius keys only. A rounded bearing is at most 359, so shifted left by one it stays below this bit.</summary>
+    private const long RadiusFlag = 1L << 10;
 
     private long _key = -1;
     private string _text = string.Empty;
@@ -23,7 +23,7 @@ public sealed class MeasureLabel
     {
         var meters = Vector2.Distance(from, to);
         var bearing = NavFormat.RoundBearing(NavFormat.BearingDegrees(from, to));
-        var key = (NavFormat.DistanceKey(meters, unit) << 10) | ((long)bearing << 1) | (lost ? 1L : 0L);
+        var key = (NavFormat.DistanceKey(meters, unit) << 11) | ((long)bearing << 1) | (lost ? 1L : 0L);
         if (key != _key)
         {
             _key = key;
@@ -36,7 +36,7 @@ public sealed class MeasureLabel
     /// <summary>"10nm": a circle's radius.</summary>
     public string Radius(float meters, DistanceUnit unit, bool lost)
     {
-        var key = (NavFormat.DistanceKey(meters, unit) << 10) | RadiusFlag | (lost ? 1L : 0L);
+        var key = (NavFormat.DistanceKey(meters, unit) << 11) | RadiusFlag | (lost ? 1L : 0L);
         if (key != _key)
         {
             _key = key;

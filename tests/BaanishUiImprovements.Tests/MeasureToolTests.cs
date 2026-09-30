@@ -117,6 +117,10 @@ internal static class MeasureToolTests
         var ring = radius.Radius(5 * Nm, DistanceUnit.NauticalMiles, lost: false);
         Expect(ReferenceEquals(ring, radius.Radius(5.01f * Nm, DistanceUnit.NauticalMiles, lost: false)), "expected the same radius text to be reused");
         ExpectText(ring, "5.0nm");
+
+        var westSouthwest = new Vector2(MathF.Sin(256f * MathF.PI / 180f), MathF.Cos(256f * MathF.PI / 180f)) * 5 * Nm;
+        ExpectText(radius.BearingRange(Vector2.Zero, westSouthwest, DistanceUnit.NauticalMiles, lost: false), "256° 5.0nm");
+        ExpectText(radius.Radius(5 * Nm, DistanceUnit.NauticalMiles, lost: false), "5.0nm");
     }
 
     private static void DraggingDrawsCircle()
