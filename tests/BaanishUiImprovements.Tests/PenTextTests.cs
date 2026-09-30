@@ -3,6 +3,7 @@ using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.MapTools.Eraser;
 using BaanishUiImprovements.MapTools.Pen;
 using BaanishUiImprovements.MapTools.Text;
+using BaanishUiImprovements.Tracking;
 using static BaanishUiImprovements.Tests.Program;
 
 namespace BaanishUiImprovements.Tests;
@@ -33,7 +34,15 @@ internal static class PenTextTests
         ("a note labels the 3D view at ground height", NoteLabelsThreeDView),
         ("a text note undoes and erases", TextNoteUndoesAndErases),
         ("a held stroke and typed text are in progress until dropped", StrokeAndTextAreInProgress),
+        ("a click on a unit puts the note on it, and one on the map where it lands", NoteAnchorsToClickedUnit),
+        ("a note on a unit follows it, says lost while stale, and resumes when spotted", NoteOnUnitFollowsIt),
+        ("a note on a destroyed unit goes, and undo and redo can't bring it back", NoteGoesWithDestroyedUnit),
+        ("clear then undo doesn't bring back a note on a destroyed unit", ClearAndUndoSkipDestroyedUnitNote),
+        ("the eraser takes a note on a unit", EraserTakesUnitNote),
     };
+
+    /// <summary>A unit 3000 m up, over (1000, 2000).</summary>
+    private static readonly Vector3 Bomber = new(1000, 3000, 2000);
 
     private static readonly ShapeColor Yellow = new(255, 221, 51);
 
@@ -172,7 +181,7 @@ internal static class PenTextTests
         Expect(!text.CapturesKeyboard, "expected the keyboard back after Enter");
         var note = OnlyNote(context);
         ExpectText(note.Text, "CAP 1");
-        Expect(note.Position == new Vector2(500, 700) && note.Color == Yellow, "expected the note at the click in the picked colour");
+        Expect(note.At.Position == new Vector2(500, 700) && note.Color == Yellow, "expected the note at the click in the picked colour");
     }
 
     private static void EscapeDropsText()
@@ -282,6 +291,117 @@ internal static class PenTextTests
         Expect(!text.InProgress && !text.CapturesKeyboard, "expected dropped text to give the keyboard back");
     }
 
+    private static void NoteAnchorsToClickedUnit()
+    {
+        var context = new FakeContext();
+        context.Positions[7] = Bomber;
+        var text = new TextTool(context);
+        text.OnClick(OnUnit(context, 7));
+        var preview = new RecordingCanvas(context);
+        text.DrawOverlay(preview);
+        Expect(preview.Anchor is { Kind: LabelKind.UnitNote }, "expected the preview beside the unit");
+        Type(text, "BOMBERS\n");
+        Expect(OnlyNote(context).At.UnitId == 7, "expected the note on unit 7");
+
+        text.OnClick(At(500, 700));
+        Type(text, "IP\n");
+        var note = (TextNote)context.Shapes.Shapes[1];
+        Expect(!note.At.IsAnchored && note.At.Position == new Vector2(500, 700) && note.Elevation == 120f, "expected a fixed note on the ground at the click");
+        var canvas = new RecordingCanvas(context);
+        note.Draw(canvas);
+        Expect(canvas.Anchor is { Kind: LabelKind.Note } anchor && anchor.Point == new Vector2(500, 700), "expected the fixed note centred on its point");
+    }
+
+    private static void NoteOnUnitFollowsIt()
+    {
+        var context = new FakeContext();
+        context.Positions[7] = Bomber;
+        var text = new TextTool(context);
+        text.OnClick(OnUnit(context, 7));
+        Type(text, "BOMBERS\n");
+        ExpectNoteAt(context, text, new Vector2(1000, 2000), Bomber, "BOMBERS");
+
+        context.Positions[7] = new Vector3(1500, 3200, 2000);
+        ExpectNoteAt(context, text, new Vector2(1500, 2000), new Vector3(1500, 3200, 2000), "BOMBERS");
+
+        context.States[7] = TrackState.Stale;
+        context.Positions[7] = new Vector3(4000, 5000, 0);
+        ExpectNoteAt(context, text, new Vector2(1500, 2000), new Vector3(1500, 3200, 2000), "BOMBERS\nlost");
+
+        context.States.Remove(7);
+        ExpectNoteAt(context, text, new Vector2(4000, 0), new Vector3(4000, 5000, 0), "BOMBERS");
+    }
+
+    /// <summary>The destroyed unit's note goes as if it had never been placed, and the step that added it with it.</summary>
+    private static void NoteGoesWithDestroyedUnit()
+    {
+        var context = TwoNotes(out var text);
+        context.Gone.Add(7);
+        var labels = new RecordingLabels();
+        text.OnFrame(labels);
+        Expect(labels.Count == 1 && labels.Text == "IP", $"expected only the fixed note's 3D label, got {labels.Count}");
+        ExpectText(OnlyNote(context).Text, "IP");
+        Expect(context.Shapes.Undo() && context.Shapes.Shapes.Count == 0 && !context.Shapes.CanUndo, "expected one undo to take the fixed note, and no more");
+        Expect(context.Shapes.Redo() && !context.Shapes.CanRedo, "expected one redo to bring back the fixed note, and no more");
+        ExpectText(OnlyNote(context).Text, "IP");
+    }
+
+    /// <summary>The unit goes before the Clear, then after it, when an undo brings its note back until the next frame.</summary>
+    private static void ClearAndUndoSkipDestroyedUnitNote()
+    {
+        var context = TwoNotes(out var text);
+        context.Gone.Add(7);
+        text.OnFrame(new RecordingLabels());
+        context.Shapes.Clear();
+        Expect(context.Shapes.Undo(), "expected Clear to undo");
+        ExpectText(OnlyNote(context).Text, "IP");
+
+        context = TwoNotes(out text);
+        context.Shapes.Clear();
+        context.Gone.Add(7);
+        context.Shapes.Undo();
+        text.OnFrame(new RecordingLabels());
+        ExpectText(OnlyNote(context).Text, "IP");
+        Expect(context.Shapes.Redo() && context.Shapes.Shapes.Count == 0, "expected redo to clear again");
+    }
+
+    private static void EraserTakesUnitNote()
+    {
+        var context = new FakeContext();
+        context.Positions[7] = Bomber;
+        var text = new TextTool(context);
+        text.OnClick(OnUnit(context, 7));
+        Type(text, "BOMBERS\n");
+        new EraserTool(context).OnClick(At(1300, 2000));
+        Expect(context.Shapes.Shapes.Count == 0, "expected the eraser to take the note beside the unit");
+    }
+
+    /// <summary>A fixed note "IP", then "BOMBERS" on unit 7.</summary>
+    private static FakeContext TwoNotes(out TextTool text)
+    {
+        var context = new FakeContext();
+        context.Positions[7] = Bomber;
+        text = new TextTool(context);
+        text.OnClick(At(0, 0));
+        Type(text, "IP\n");
+        text.OnClick(OnUnit(context, 7));
+        Type(text, "BOMBERS\n");
+        return context;
+    }
+
+    /// <summary>The only note's map label beside the unit at <paramref name="unit"/>, and its 3D label at <paramref name="world"/>.</summary>
+    private static void ExpectNoteAt(FakeContext context, TextTool text, Vector2 unit, Vector3 world, string expected)
+    {
+        var canvas = new RecordingCanvas(context);
+        OnlyNote(context).Draw(canvas);
+        Expect(canvas.Anchor is { Kind: LabelKind.UnitNote } anchor && anchor.Point == unit, $"expected the label beside the unit at {unit}, got {canvas.Anchor?.Point}");
+        ExpectText(canvas.Label ?? "none", expected);
+        var labels = new RecordingLabels();
+        text.OnFrame(labels);
+        Expect(labels.Count == 1 && labels.Position == world, $"expected the 3D label at {world}, got {labels.Position}");
+        ExpectText(labels.Text ?? "none", expected);
+    }
+
     private static void DrawZigzag(PenTool pen, float y)
     {
         pen.OnPointerDown(At(0, y));
@@ -303,6 +423,12 @@ internal static class PenTextTests
 
     private static MapPointer At(float x, float y) => new(new Vector2(x, y), null);
 
+    private static MapPointer OnUnit(FakeContext context, uint id)
+    {
+        var at = new Vector2(context.Positions[id].X, context.Positions[id].Z);
+        return new MapPointer(at, new MapPoint(at, id));
+    }
+
     private static PenStroke OnlyStroke(FakeContext context)
     {
         Expect(context.Shapes.Shapes.Count == 1 && context.Shapes.Shapes[0] is PenStroke, $"expected one stroke, got {context.Shapes.Shapes.Count} shapes");
@@ -318,8 +444,18 @@ internal static class PenTextTests
     private static void ExpectPoints(IReadOnlyList<Vector2> actual, params Vector2[] expected) =>
         Expect(actual.SequenceEqual(expected), $"expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
 
+    /// <summary>
+    /// Units sit at the global positions their side reports (X east, Y altitude, Z north), live unless
+    /// <see cref="States"/> says otherwise, until they're <see cref="Gone"/>. Resolved through <see cref="KnownPositions"/>,
+    /// as the game side does.
+    /// </summary>
     private sealed class FakeContext : IMapToolContext
     {
+        private readonly KnownPositions _known = new();
+
+        public Dictionary<uint, Vector3> Positions { get; } = new();
+        public Dictionary<uint, TrackState> States { get; } = new();
+        public HashSet<uint> Gone { get; } = new();
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => Yellow;
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
@@ -329,24 +465,46 @@ internal static class PenTextTests
 
         public bool TryResolve(MapPoint point, out Vector2 position)
         {
-            position = point.Position;
-            return true;
+            var found = TryResolveWorld(point, out var world);
+            position = new Vector2(world.X, world.Z);
+            return found;
         }
 
         public bool TryResolveWorld(MapPoint point, out Vector3 position)
         {
-            position = new Vector3(point.Position.X, 0f, point.Position.Y);
-            return true;
+            if (!point.IsAnchored)
+            {
+                position = new Vector3(point.Position.X, 0f, point.Position.Y);
+                return true;
+            }
+
+            var state = !Positions.TryGetValue(point.UnitId, out var reported) ? TrackState.Unknown
+                : States.TryGetValue(point.UnitId, out var set) ? set
+                : TrackState.Live;
+            if (!_known.TryResolve(point.UnitId, state, reported, out position))
+            {
+                position = new Vector3(point.Position.X, 0f, point.Position.Y);
+            }
+
+            return state == TrackState.Live;
         }
 
         public float GroundElevation(Vector2 position) => 120f;
+
+        public bool IsUnitGone(uint unitId) => Gone.Contains(unitId);
     }
 
-    /// <summary>Keeps the last label's text and counts polyline points; the tools here draw nothing else.</summary>
+    /// <summary>Keeps the last label's anchor and text and counts polyline points; the tools here draw nothing else.</summary>
     private sealed class RecordingCanvas : IMapCanvas
     {
+        private readonly IMapView? _view;
+
+        /// <param name="view">Resolves points on units; without it every point is where it was placed.</param>
+        public RecordingCanvas(IMapView? view = null) => _view = view;
+
         public int PolylinePoints { get; private set; }
         public string? Label { get; private set; }
+        public LabelAnchor? Anchor { get; private set; }
 
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;
@@ -355,12 +513,22 @@ internal static class PenTextTests
 
         public bool TryResolve(MapPoint point, out Vector2 position)
         {
+            if (_view != null)
+            {
+                return _view.TryResolve(point, out position);
+            }
+
             position = point.Position;
             return true;
         }
 
         public bool TryResolveWorld(MapPoint point, out Vector3 position)
         {
+            if (_view != null)
+            {
+                return _view.TryResolveWorld(point, out position);
+            }
+
             position = new Vector3(point.Position.X, 0f, point.Position.Y);
             return true;
         }
@@ -383,7 +551,11 @@ internal static class PenTextTests
         {
         }
 
-        void IMapCanvas.Label(LabelAnchor anchor, string text, ShapeColor color) => Label = text;
+        void IMapCanvas.Label(LabelAnchor anchor, string text, ShapeColor color)
+        {
+            Anchor = anchor;
+            Label = text;
+        }
     }
 
     private sealed class RecordingLabels : IWorldLabels

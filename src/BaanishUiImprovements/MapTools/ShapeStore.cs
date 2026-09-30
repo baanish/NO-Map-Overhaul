@@ -97,10 +97,48 @@ public sealed class ShapeStore
             return false;
         }
 
-        var next = new MapShape[shapes.Length - 1];
-        Array.Copy(shapes, 0, next, 0, index);
-        Array.Copy(shapes, index + 1, next, index, shapes.Length - index - 1);
-        Commit(next);
+        Commit(Without(shapes, index));
+        return true;
+    }
+
+    /// <summary>
+    /// Takes a drawing out of the current shapes and out of every undo and redo step, so nothing brings it back: for a
+    /// drawing whose subject is gone, such as a note on a destroyed unit. A step left the same as the one before it
+    /// merges into it, so no undo or redo is left doing nothing. Adds no step. False if no step holds it.
+    /// </summary>
+    public bool Forget(MapShape shape)
+    {
+        if (!InHistory(shape.Id))
+        {
+            return false;
+        }
+
+        var history = new List<MapShape[]>(_history.Count);
+        var current = 0;
+        for (var i = 0; i < _history.Count; i++)
+        {
+            var shapes = _history[i];
+            var index = Array.FindIndex(shapes, kept => kept.Id == shape.Id);
+            if (index >= 0)
+            {
+                shapes = Without(shapes, index);
+            }
+
+            if (history.Count == 0 || !SameShapes(history[history.Count - 1], shapes))
+            {
+                history.Add(shapes);
+            }
+
+            if (i == _current)
+            {
+                current = history.Count - 1;
+            }
+        }
+
+        _history.Clear();
+        _history.AddRange(history);
+        _current = current;
+        Version++;
         return true;
     }
 
@@ -174,6 +212,32 @@ public sealed class ShapeStore
         _history.AddRange(saved.History);
         _current = saved.Current;
         Version++;
+    }
+
+    private static MapShape[] Without(MapShape[] shapes, int index)
+    {
+        var next = new MapShape[shapes.Length - 1];
+        Array.Copy(shapes, 0, next, 0, index);
+        Array.Copy(shapes, index + 1, next, index, shapes.Length - index - 1);
+        return next;
+    }
+
+    private static bool SameShapes(MapShape[] a, MapShape[] b)
+    {
+        if (a.Length != b.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < a.Length; i++)
+        {
+            if (!ReferenceEquals(a[i], b[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void Commit(MapShape[] next)

@@ -19,6 +19,7 @@ internal static class LabelLayoutTests
         ("with no clear slot a label keeps its first", NoClearSlotKeepsFirst),
         ("a radius tries 12, 2, then 10 o'clock on its ring", RadiusTriesClockPositions),
         ("a waypoint number tries upper right, then upper left", WaypointTriesCorners),
+        ("a note on a unit sits beside its icon, then round it, then further out", UnitNoteSitsBesideIcon),
         ("notes come first, then newer bearings, then radii", PriorityOrder),
         ("a label keeps its slot while it stays clear", LabelKeepsClearSlot),
         ("without obstacles labels keep their slots", NoObstaclesKeepsSlots),
@@ -108,6 +109,21 @@ internal static class LabelLayoutTests
         Expect(free.Center == new Vector2(27.5f, 15.5f), $"expected upper right, got {free.Center}");
         var blocked = Place(Label(marker), Box(10, 10, 50, 30));
         Expect(blocked.Center == new Vector2(-27.5f, 15.5f), $"expected upper left, got {blocked.Center}");
+    }
+
+    /// <summary>The icons are the obstacles the full map collects: 15 and 30 units across, grown by 4.5.</summary>
+    private static void UnitNoteSitsBesideIcon()
+    {
+        var unit = LabelAnchor.UnitNote(Vector2.Zero);
+        var icon = Box(-12, -12, 12, 12);
+        var right = Place(Label(unit), icon);
+        Expect(right.Slot == 0 && right.Center == new Vector2(36, 0) && !right.Box.Overlaps(icon), $"expected right of the icon, got {right.Center}");
+        var left = Place(Label(unit), icon, Box(12, -40, 100, 40));
+        Expect(left.Slot == 1 && left.Center == new Vector2(-36, 0), $"expected left of the icon, got {left.Center}");
+        var above = Place(Label(unit), icon, Box(-100, -40, 100, 0));
+        Expect(above.Slot == 2 && above.Center == new Vector2(0, 24), $"expected above the icon, got {above.Center}");
+        var big = Place(Label(unit), Box(-19.5f, -19.5f, 19.5f, 19.5f));
+        Expect(big.Slot == 4 && big.Center == new Vector2(46, 0), $"expected right of a big icon, further out, got {big.Center}");
     }
 
     private static void PriorityOrder()

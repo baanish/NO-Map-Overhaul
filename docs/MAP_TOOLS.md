@@ -63,7 +63,9 @@ Pen lines share a budget of points, set by **Most pen points**. A line that uses
 
 Click where the note should go, type it, and press Enter. Escape drops it. Clicking somewhere else places what you've typed and starts a new note there.
 
-While you type, your keys go to the note, not to the aircraft. Close the chat box before you place a note, since both read the same keys. A note is one line of up to 64 characters, and it also shows in the 3D view at that spot on the ground.
+Click on or beside a unit's icon to put the note on that unit, such as `BOMBERS` on a contact. The note sits beside the unit's icon and follows the unit, and in the 3D view it shows on the unit at its altitude. When your side loses track of the unit, the note stops where the unit was last known and reads `lost`, and it follows again once the unit is spotted. When the unit is destroyed, its note goes with its map icon, and Undo can't bring it back.
+
+While you type, your keys go to the note, not to the aircraft. Close the chat box before you place a note, since both read the same keys. A note is one line of up to 64 characters, and it also shows in the 3D view: on its unit, or on the ground at that spot.
 
 ## Bearing and range
 
@@ -93,10 +95,11 @@ With the Eraser, the drawing under the cursor turns red, and a click deletes it.
 - **Time on target from two sides.** Each pilot puts a circle of the same size around the target and picks an entry point on it, on opposite sides. Measure from each entry point to the target, and call "in" together so both arrive at once. Drawings aren't shared, so each pilot draws their own.
 - **Keep a target's bearing handy.** Measure from your aircraft to a moving target, with both ends on units. The label keeps updating as you both move, while your side tracks the target.
 - **Brief a route.** Drop waypoints over the ingress, add notes such as `IP` or `EGRESS`, and fly it with the 3D labels.
+- **Tag contacts for a flight.** As ATC or AWACS, put notes such as `BOMBERS` or `CAP 2` on contacts' icons. Each tag follows its contact, reads `lost` when your side loses it, and goes when it's destroyed, so the picture you call out stays current. Drawings aren't shared, so the tags are for your own calls.
 
 ## What drawings know
 
-Drawings only use what your side knows. A drawing on a unit follows it only where the game shows that unit to you, at the altitude your side knows, and you can only tie a drawing to a unit whose icon is on your map. When nothing on your side has spotted the unit for 4 seconds, or it's destroyed, the unit is lost: the drawing stops where the unit was last known, its label reads `lost`, and its bearing and range stop changing except as you move. If your side spots the unit again, the drawing follows it again. The missile arrows work the same way: each points where the game's HUD marks that missile.
+Drawings only use what your side knows. A drawing on a unit follows it only where the game shows that unit to you, at the altitude your side knows, and you can only tie a drawing to a unit whose icon is on your map. When nothing on your side has spotted the unit for 4 seconds, or it's destroyed, the unit is lost: the drawing stops where the unit was last known, its label reads `lost`, and its bearing and range stop changing except as you move. If your side spots the unit again, the drawing follows it again. A note on a unit goes when the unit is destroyed, at the moment the game takes the unit's icon off your map. The missile arrows work the same way: each points where the game's HUD marks that missile.
 
 ## Where drawings show
 

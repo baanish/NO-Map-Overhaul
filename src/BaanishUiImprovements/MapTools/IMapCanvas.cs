@@ -44,6 +44,9 @@ public enum LabelKind
     /// <summary>Typed text, centred on its point. It never moves and has no plate.</summary>
     Note,
 
+    /// <summary>Typed text on a unit, beside its icon. Like a note, it has no plate.</summary>
+    UnitNote,
+
     /// <summary>A waypoint's number beside its marker.</summary>
     Waypoint,
 
@@ -67,7 +70,7 @@ public readonly struct LabelAnchor : IEquatable<LabelAnchor>
 
     public LabelKind Kind { get; }
 
-    /// <summary>The note's point, the marker, the arrow's head, or the circle's centre.</summary>
+    /// <summary>The note's point, the note's unit, the marker, the arrow's head, or the circle's centre.</summary>
     public Vector2 Point { get; }
 
     /// <summary>The arrow's tail, for a bearing.</summary>
@@ -77,6 +80,8 @@ public readonly struct LabelAnchor : IEquatable<LabelAnchor>
     public float Radius { get; }
 
     public static LabelAnchor Note(Vector2 point) => new(LabelKind.Note, point, point, 0f);
+
+    public static LabelAnchor UnitNote(Vector2 unit) => new(LabelKind.UnitNote, unit, unit, 0f);
 
     public static LabelAnchor Waypoint(Vector2 marker) => new(LabelKind.Waypoint, marker, marker, 0f);
 

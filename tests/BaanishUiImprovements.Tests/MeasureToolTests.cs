@@ -418,6 +418,8 @@ internal static class MeasureToolTests
         }
 
         public float GroundElevation(Vector2 position) => 120f;
+
+        public bool IsUnitGone(uint unitId) => false;
     }
 
     private sealed class RecordingCanvas : IMapCanvas

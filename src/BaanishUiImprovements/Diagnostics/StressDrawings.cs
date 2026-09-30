@@ -66,7 +66,7 @@ public static class StressDrawings
         {
             var at = OnRing(center, radius * 0.7f, i, Notes);
             var text = "Perf test note " + (i + 1).ToString(CultureInfo.InvariantCulture);
-            shapes.Add(new TextNote(at, elevation(at), text, Color(i)));
+            shapes.Add(new TextNote(new MapPoint(at), elevation(at), text, Color(i)));
         }
 
         return shapes;
@@ -113,7 +113,7 @@ public static class StressDrawings
         {
             var at = OnRing(center, radius * 0.7f, 2 * i + 1, 2 * TypicalNotes);
             var text = "Perf test note " + (i + 1).ToString(CultureInfo.InvariantCulture);
-            shapes.Add(new TextNote(at, elevation(at), text, Color(i)));
+            shapes.Add(new TextNote(new MapPoint(at), elevation(at), text, Color(i)));
         }
 
         return shapes;

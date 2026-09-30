@@ -97,6 +97,8 @@ internal sealed class MapToolContext : IMapToolContext
         return float.IsNegativeInfinity(top) ? 0f : top - Datum.LocalSeaY;
     }
 
+    public bool IsUnitGone(uint unitId) => !TryGetUnit(unitId, out _);
+
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>
     public void ForgetUnits() => _known.Forget();
 
@@ -109,8 +111,7 @@ internal sealed class MapToolContext : IMapToolContext
     private static TrackState Locate(uint unitId, out GlobalPosition position)
     {
         position = default;
-        var id = new PersistentID { Id = unitId };
-        if (!UnitRegistry.TryGetUnit(id, out var unit) || unit == null || unit.disabled)
+        if (!TryGetUnit(unitId, out var unit))
         {
             return TrackState.Unknown;
         }
@@ -130,4 +131,13 @@ internal sealed class MapToolContext : IMapToolContext
 
         return hq.IsTargetBeingTracked(unit) ? TrackState.Live : TrackState.Stale;
     }
+
+    /// <summary>
+    /// The unit while it's in the game: registered, not destroyed, and not disabled. A unit leaves as the game sets
+    /// <c>Unit.disabled</c> (on the host and, through its sync, on every client) or destroys it, and either way raises
+    /// <c>Unit.onDisableUnit</c>, which takes its map icon away (<c>UnitMapIcon_OnUnitDisabled</c>) and its track
+    /// (<c>FactionHQ.DeregisterTrackedUnit</c>).
+    /// </summary>
+    private static bool TryGetUnit(uint unitId, out Unit unit) =>
+        UnitRegistry.TryGetUnit(new PersistentID { Id = unitId }, out unit) && unit != null && !unit.disabled;
 }

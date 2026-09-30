@@ -1,13 +1,13 @@
 using System.Globalization;
-using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools.Text;
 
 /// <summary>
 /// Typed notes: click the map, type, and Enter places the text there in the picked colour; Escape drops it. While
 /// typing, the keyboard belongs to the tool (see <see cref="MapTool.CapturesKeyboard"/>), so keys don't fly the plane.
-/// Clicking elsewhere mid-note places it and starts the next. Each note also shows in the 3D view, pinned to the ground
-/// under it.
+/// Clicking elsewhere mid-note places it and starts the next. A click on or just beside a unit's icon puts the note on
+/// that unit, beside its icon, and it follows the unit. Each note also shows in the 3D view, on its unit or pinned to
+/// the ground under it.
 /// </summary>
 public sealed class TextTool : MapTool
 {
@@ -15,12 +15,12 @@ public sealed class TextTool : MapTool
     public const int MaxLength = 64;
 
     private const string Caret = "_";
-    private const string IdleStatus = "Click the map to place text.";
+    private const string IdleStatus = "Click the map or a unit to place text.";
     private const string TypingStatus = "Type, then Enter to place or Esc to cancel.";
 
     private static readonly string MaxLengthText = MaxLength.ToString(CultureInfo.InvariantCulture);
 
-    private Vector2 _at;
+    private MapPoint _at;
     private string _text = string.Empty;
     private string _preview = Caret;
     private string _counter = string.Empty;
@@ -56,7 +56,7 @@ public sealed class TextTool : MapTool
             return;
         }
 
-        _at = pointer.Position;
+        _at = pointer.Point;
         _typing = true;
         SetText(string.Empty);
     }
@@ -98,20 +98,33 @@ public sealed class TextTool : MapTool
     {
         if (_typing)
         {
-            canvas.Label(LabelAnchor.Note(_at), _preview, Context.Color);
+            TextNote.DrawLabel(canvas, _at, _preview, _preview, Context.Color);
         }
     }
 
-    /// <summary>Reads the store each frame, so a note undone or erased loses its 3D label at once.</summary>
+    /// <summary>
+    /// Reads the store each frame, so a note undone or erased loses its 3D label at once. A note on a unit that's gone
+    /// goes with the unit's map icon, and out of the undo history too, so nothing brings it back onto a dead unit
+    /// (<see cref="ShapeStore.Forget"/>). A note an undo or redo brings back onto a unit that went meanwhile goes the
+    /// same frame, before the map draws it.
+    /// </summary>
     public override void OnFrame(IWorldLabels labels)
     {
-        var shapes = Context.Shapes.Shapes;
+        var shapes = Context.Shapes.Shapes; // Forget replaces the store's lists and leaves this one as it was
         for (var i = 0; i < shapes.Count; i++)
         {
-            if (shapes[i] is TextNote note)
+            if (shapes[i] is not TextNote note)
             {
-                labels.Add(note.WorldPosition, note.Text, note.Color);
+                continue;
             }
+
+            if (note.At.IsAnchored && Context.IsUnitGone(note.At.UnitId))
+            {
+                Context.Shapes.Forget(note);
+                continue;
+            }
+
+            note.AddWorldLabel(Context, labels);
         }
     }
 
@@ -121,7 +134,7 @@ public sealed class TextTool : MapTool
         var text = _text.Trim();
         if (_typing && text.Length > 0)
         {
-            Context.Shapes.Add(new TextNote(_at, Context.GroundElevation(_at), text, Context.Color));
+            Context.Shapes.Add(new TextNote(_at, _at.IsAnchored ? 0f : Context.GroundElevation(_at.Position), text, Context.Color));
         }
 
         Cancel();

@@ -38,6 +38,12 @@ public interface IMapToolContext : IMapView
     /// call it as a point is picked or previewed, not per frame. 0 where nothing is under the point.
     /// </summary>
     float GroundElevation(Vector2 position);
+
+    /// <summary>
+    /// True once the unit is destroyed or has left the game. That is when the game takes the unit's icon off every
+    /// player's map, so a drawing that goes then shows nothing the map didn't.
+    /// </summary>
+    bool IsUnitGone(uint unitId);
 }
 
 /// <summary>Labels and rings in the 3D view. Requested every frame from <see cref="MapTool.OnFrame"/>, each shows for that frame only.</summary>

@@ -273,5 +273,7 @@ internal static class WaypointTests
         }
 
         public float GroundElevation(Vector2 position) => 0f;
+
+        public bool IsUnitGone(uint unitId) => false;
     }
 }

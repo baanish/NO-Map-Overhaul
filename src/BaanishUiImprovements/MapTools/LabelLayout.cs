@@ -128,7 +128,8 @@ public sealed class PlacedLabel
 /// keeping the slot it had while that stays clear, so nothing jumps while the map pans; with no clear slot it takes its
 /// first. A bearing tries past its arrowhead, beside the head, then slid back along its shaft, and last the nearest
 /// free slot within <see cref="LeaderReach"/>, joined to the head by a leader. A radius tries its ring at 12, 2, 10, 6,
-/// 4, and 8 o'clock; a waypoint number tries upper right, upper left, lower right, lower left. Notes never move.
+/// 4, and 8 o'clock; a waypoint number tries upper right, upper left, lower right, lower left. A note on a unit tries
+/// right, left, above, and below the unit's icon, then the same further out for a bigger icon. Other notes never move.
 /// Unity-free and allocation-free once its lists have grown. Sizes are icon units: about a screen pixel at 1080p, three
 /// quarters of one at 1440p, where the design's sizes are measured.
 /// </summary>
@@ -155,6 +156,9 @@ public sealed class LabelLayout
     private const int FirstSlide = 3;
     private const int FirstLeader = FirstSlide + 2 * SlideSteps;
 
+    /// <summary>A note on a unit's sides of the icon: right, left, above, below.</summary>
+    private static readonly Vector2[] UnitNoteSides = { Vector2.UnitX, -Vector2.UnitX, Vector2.UnitY, -Vector2.UnitY };
+
     /// <summary>Clock positions of a radius on its ring, in degrees clockwise from north: 12, 2, 10, 6, 4, 8.</summary>
     private static readonly float[] RingDegrees = { 0f, 60f, -60f, 180f, 120f, -120f };
 
@@ -173,10 +177,14 @@ public sealed class LabelLayout
         LabelKind.Waypoint => 4,
         LabelKind.Bearing => FirstLeader + LeaderRings * LeaderDirections,
         LabelKind.Radius => RingDegrees.Length,
+        LabelKind.UnitNote => 2 * UnitNoteSides.Length,
         _ => 1,
     };
 
     public static bool IsLeaderSlot(LabelKind kind, int slot) => kind == LabelKind.Bearing && slot >= FirstLeader;
+
+    /// <summary>Typed text, fixed or on a unit, drawn with a dark rim rather than on a plate.</summary>
+    public static bool IsNote(LabelKind kind) => kind is LabelKind.Note or LabelKind.UnitNote;
 
     /// <summary>
     /// A text plate's half size for text of <paramref name="textSize"/>, measured or estimated, at <paramref name="fontSize"/>:
@@ -184,7 +192,7 @@ public sealed class LabelLayout
     /// A note has no plate, so it gets its rim's width.
     /// </summary>
     public static Vector2 HalfSize(LabelKind kind, Vector2 textSize, float fontSize) =>
-        kind == LabelKind.Note ? textSize * 0.5f + Vector2.One : textSize * 0.5f + new Vector2(0.5f, 0.15f) * fontSize;
+        IsNote(kind) ? textSize * 0.5f + Vector2.One : textSize * 0.5f + new Vector2(0.5f, 0.15f) * fontSize;
 
     /// <summary>
     /// Where a label of <paramref name="halfSize"/> sits in a candidate slot: <paramref name="origin"/> is the point it
@@ -208,6 +216,11 @@ public sealed class LabelLayout
                 break;
             case LabelKind.Bearing:
                 center = BearingCandidate(anchor, halfSize, slot);
+                break;
+            case LabelKind.UnitNote:
+                // Clear of an icon the size of the game's waypoint marker, or of one twice that.
+                var clearance = (slot < UnitNoteSides.Length ? 1f : 2f) * MapCanvasMetrics.MarkerRadius + Gap;
+                center = Beside(origin, UnitNoteSides[slot % UnitNoteSides.Length], halfSize, clearance);
                 break;
             default:
                 center = origin;
@@ -457,7 +470,7 @@ public sealed class LabelLayout
         return false;
     }
 
-    /// <summary>Notes and waypoint numbers in drawing order, then labels being drawn now, then bearings and radii newest first.</summary>
+    /// <summary>Notes, fixed or on units, and waypoint numbers in drawing order, then labels being drawn now, then bearings and radii newest first.</summary>
     private sealed class PriorityOrder : IComparer<PlacedLabel>
     {
         public static readonly PriorityOrder Instance = new();
@@ -475,7 +488,7 @@ public sealed class LabelLayout
 
         private static int Tier(PlacedLabel label) => label.Anchor.Kind switch
         {
-            LabelKind.Note or LabelKind.Waypoint => 0,
+            LabelKind.Note or LabelKind.UnitNote or LabelKind.Waypoint => 0,
             _ when label.Overlay => 1,
             LabelKind.Bearing => 2,
             _ => 3,

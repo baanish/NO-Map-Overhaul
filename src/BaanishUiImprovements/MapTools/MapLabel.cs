@@ -78,7 +78,7 @@ internal sealed class MapLabel
     /// </summary>
     public bool Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
     {
-        _plated = anchor.Kind != LabelKind.Note;
+        _plated = !LabelLayout.IsNote(anchor.Kind);
         var font = hudStyle != null ? hudStyle.font : null;
         var changed = !ReferenceEquals(text, _measuredText) || size != _measuredSize || !ReferenceEquals(font, _measuredFont) ||
                       _plated != _measuredPlated;
