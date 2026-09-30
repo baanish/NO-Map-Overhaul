@@ -56,6 +56,9 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | 3D labels on one unit | Observed | A bearing label and a note on the same unit stack in the 3D view instead of overlapping, with the bearing on top. |
 | Bearing, circle, and 3D rings | Observed | Arrows, circles, and labels draw flat and thin in the default green; a circle's radius stays at the cursor when dragged over a unit; circles show as rings in the 3D view. |
 | BRA labels | Observed | An arrow ending on a unit adds the unit's altitude to its label, and the range is the straight line through the air to it. |
+| Bearing from your aircraft | Observed | Double-tapping the Bearing/range key starts the arrow on your aircraft, and it follows you as you fly. |
+| Rail reopens on the last tool | Observed | Closing and reopening the rail, or the map, brings back the last tool picked. |
+| Tools under a moving map | Observed | With the cursor still while the full map follows the aircraft, the eraser's highlight stays on what a click would delete. |
 | Right click | Observed | With the rail open, right click cancels a drawing in progress or deletes a drawing, and NOAutopilot places no waypoint; with a friendly unit selected, the game's move order wins; with the rail closed, NOAutopilot's right click works. |
 | Map labels on the turning minimap | Observed | Bearings, radii, and close waypoint numbers stay upright, clear of each other and of their arrowheads while the minimap turns; plated text renders sharp. |
 | Fair play | Observed | An arrow tied to an enemy freezes and reads `lost` about 4 s after the radar track breaks, and resumes on reacquiring it. |

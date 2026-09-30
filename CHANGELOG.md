@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 - 2026-09-30
+
+The mod is renamed NO Map Overhaul, from Baanish UI Improvements, and is now a map mod.
+
+### Added
+
+- Map tools on the full map (`H`, keys `1` to `6`): bearing and range arrows with the contact's altitude and straight-line range, range circles that also show as rings in the 3D view, text notes that can tag a contact and follow it, a pen, waypoint routes labelled in the 3D view, an eraser, undo, redo, and clear. Right click deletes a drawing or cancels one in progress. Double-tapping the Bearing/range key measures from your own aircraft.
+- Drawings on other units use only what your side knows, and freeze and read `lost` when the track goes stale.
+- A one-button perf test and an optional performance log.
+- An install guide, while the Nuclear Option Mod Manager listing is pending.
+
+### Changed
+
+- Renamed to NO Map Overhaul: new plugin ID, DLL, and settings file. Saved settings carry over from Baanish UI Improvements, and a leftover install of it is switched off with a log line naming the folder to delete.
+- F1 settings are grouped into ordered sections, with tuning knobs marked advanced.
+- Airbase names show your own side's airbases only, including captured and mission-added ones.
+
+### Removed
+
+- Missile arrows. They are now their own mod, NO Missile Indicators.
+
 ## 0.4.0 - 2026-09-30
 
 ### Added
