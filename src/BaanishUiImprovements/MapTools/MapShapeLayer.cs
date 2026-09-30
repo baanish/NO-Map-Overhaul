@@ -48,11 +48,14 @@ internal sealed class MapShapeLayer : IMapCanvas
     private readonly List<MapLabel> _placing = new();
     private RectTransform? _layer;
 
-    /// <summary>Every marker, then every label, after every drawing's lines, in a canvas of their own.</summary>
+    /// <summary>Every marker, then the plates, then every label, after every drawing's lines, in a canvas of their own.</summary>
     private RectTransform? _labelRoot;
 
     /// <summary>The first child of <see cref="_labelRoot"/>, so markers draw under every label.</summary>
     private RectTransform? _markerRoot;
+
+    /// <summary>Every label's plate and leader as one mesh, after the markers and under every label's text.</summary>
+    private FeatheredRectBatch? _plates;
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
     private int _storeVersion = -1;
@@ -220,6 +223,22 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             label.Apply(_inverseScale);
         }
+
+        DrawPlates();
+    }
+
+    /// <summary>The placed labels' plates and leaders, turned as the labels are: upright against the layer's rotation.</summary>
+    private void DrawPlates()
+    {
+        var plates = _plates!;
+        var upright = Quaternion.Inverse(_labelRoot!.rotation);
+        plates.Clear();
+        foreach (var label in _placing)
+        {
+            label.AddPlate(plates, upright, _inverseScale);
+        }
+
+        plates.Apply();
     }
 
     /// <summary>
@@ -249,6 +268,8 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             overlay?.KeepUpright();
         }
+
+        DrawPlates();
     }
 
     public void Reset()
@@ -261,6 +282,8 @@ internal sealed class MapShapeLayer : IMapCanvas
         _layer = null;
         _labelRoot = null;
         _markerRoot = null;
+        _plates = null;
+        _placing.Clear();
         _graphics.Clear();
         System.Array.Clear(_overlays, 0, _overlays.Length);
         _storeVersion = -1;
@@ -376,6 +399,8 @@ internal sealed class MapShapeLayer : IMapCanvas
         _labelRoot = NewRect("Labels", _layer);
         _labelRoot.gameObject.AddComponent<Canvas>();
         _markerRoot = NewRect("Markers", _labelRoot);
+        _plates = NewRect("Plates", _labelRoot).gameObject.AddComponent<FeatheredRectBatch>();
+        _plates.raycastTarget = false;
         for (var i = 0; i < _overlays.Length; i++)
         {
             _overlays[i] = new ShapeGraphics(_layer, _markerRoot, _labelRoot, "ToolOverlay");
