@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using BaanishUiImprovements.Tracking;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,8 +11,9 @@ namespace BaanishUiImprovements.Missiles;
 
 /// <summary>
 /// One arrow on the screen edge per incoming missile outside the view, so it can be found and shot down.
-/// Only missiles the game already warns you about count (<see cref="MissileWarning.knownMissiles"/>), so the arrows
-/// reveal nothing the missile warning hasn't. Each arrow is a copy of the game's own off-screen target arrow from
+/// Only missiles the game already warns you about count (<see cref="MissileWarning.knownMissiles"/>), and each arrow
+/// points where the game's own flashing HUD marker for that missile sits (<see cref="MissileTrack"/>), so the arrows
+/// reveal nothing the HUD doesn't. Each arrow is a copy of the game's own off-screen target arrow from
 /// <see cref="CombatHUD"/>, so it shares the HUD canvas, sprite, and visibility.
 /// </summary>
 internal sealed class IncomingMissileArrows
@@ -20,6 +22,7 @@ internal sealed class IncomingMissileArrows
 
     private readonly ModSettings _settings;
     private readonly List<Image> _arrows = new();
+    private readonly KnownPositions _known = new();
     private CombatHUD? _hud;
     private Image? _source;
 
@@ -53,7 +56,13 @@ internal sealed class IncomingMissileArrows
                     continue;
                 }
 
-                var local = camera.transform.InverseTransformPoint(missile.transform.position);
+                var state = MissileTrack(hud, missile, out var global);
+                if (!_known.TryResolve(missile.persistentID.Id, state, new NumericsVector3(global.x, global.y, global.z), out var known))
+                {
+                    continue;
+                }
+
+                var local = camera.transform.InverseTransformPoint(new GlobalPosition(known.X, known.Y, known.Z).ToLocalPosition());
                 if (ScreenEdge.Pin(new NumericsVector3(local.x, local.y, local.z), halfScreen, focalPixels) is not { } pin)
                 {
                     continue;
@@ -62,7 +71,13 @@ internal sealed class IncomingMissileArrows
                 var arrow = Arrow(shown++);
                 arrow.transform.position = new Vector3(halfScreen.X + pin.X, halfScreen.Y + pin.Y, 0f);
                 arrow.transform.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(pin.Y, pin.X) * Mathf.Rad2Deg - 90f);
-                arrow.color = _settings.MissileArrowColor.Value;
+                var color = _settings.MissileArrowColor.Value;
+                if (state != TrackState.Live)
+                {
+                    color.a *= 0.5f; // the game fades an outdated HUD marker to half, too
+                }
+
+                arrow.color = color;
                 arrow.enabled = true;
             }
         }
@@ -84,8 +99,33 @@ internal sealed class IncomingMissileArrows
         }
 
         _arrows.Clear();
+        _known.Forget();
         _hud = null;
         _source = null;
+    }
+
+    /// <summary>
+    /// The position the game's HUD marker for the missile shows (<c>HUDUnitMarker.UpdatePosition</c>): the missile
+    /// itself while the marker is current, the faction's last known position once the game marks it outdated. A
+    /// warning always makes that marker (<c>ThreatList</c> through <c>CombatHUD.FlashMarker</c>), so a missile without
+    /// one is unknown.
+    /// </summary>
+    private static TrackState MissileTrack(CombatHUD hud, Missile missile, out GlobalPosition position)
+    {
+        position = default;
+        if (!hud.TryGetMarker(missile, out var marker))
+        {
+            return TrackState.Unknown;
+        }
+
+        if (!marker.outdated)
+        {
+            position = missile.GlobalPosition();
+            return TrackState.Live;
+        }
+
+        var hq = hud.aircraft.NetworkHQ;
+        return hq != null && hq.TryGetKnownPosition(missile, out position) ? TrackState.Stale : TrackState.Unknown;
     }
 
     /// <summary>

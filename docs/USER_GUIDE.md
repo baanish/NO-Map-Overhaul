@@ -59,7 +59,7 @@ Turn on **Airbase Names → ShowNames** to label your faction's airbases on the 
 
 When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. Each missile gets its own arrow. A missile behind you gets an arrow on the side it's on, so a missile behind and to your left gets an arrow on the left edge. Once the missile is on screen, its arrow goes away.
 
-Only missiles the game's missile warning already knows about get an arrow, so the arrows show nothing the game hasn't told you. The arrow is a copy of the game's own off-screen target arrow in a different colour.
+Only missiles the game's missile warning already knows about get an arrow, and each arrow points where the game's flashing HUD marker for that missile is, so the arrows show nothing the game hasn't told you. When the game marks a missile's position as outdated, its arrow stays pointing at the last known position and fades to half, as the game's marker does. The arrow is a copy of the game's own off-screen target arrow in a different colour.
 
 ### Map tools
 
