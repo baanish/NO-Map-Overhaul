@@ -40,7 +40,7 @@ internal sealed class RunwayHudCallout
         }
 
         var camera = SceneSingleton<CameraStateManager>.i?.mainCamera;
-        if (!_settings.HudCallout.Value || approach is not { } usage || camera == null)
+        if (!_settings.HudCallout.Value || approach is not { } usage || camera == null || !GearAllowsCallout())
         {
             _label!.enabled = false;
             return;
@@ -87,6 +87,18 @@ internal sealed class RunwayHudCallout
         _overlay = null;
         _label = null;
         _textRunway = null;
+    }
+
+    /// <summary><c>gearDeployed</c> follows the gear lever, so the callout shows as the gear starts extending, not once it locks.</summary>
+    private bool GearAllowsCallout()
+    {
+        if (!_settings.HudGearDownOnly.Value)
+        {
+            return true;
+        }
+
+        var hud = SceneSingleton<CombatHUD>.i;
+        return hud != null && hud.aircraft != null && hud.aircraft.gearDeployed;
     }
 
     private bool EnsureLabel()

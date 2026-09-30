@@ -43,6 +43,8 @@ The same runway end gets a label pinned just below its threshold in the 3D view,
 
 With **IncludeAirbaseName** on, the label adds the airbase: `NBSCLI RWY 27`.
 
+With **OnlyWithGearDown** on, the label shows only while your gear is down. It appears as soon as you lower the gear lever.
+
 ### The airbase boundary
 
 Turn on **Airbase Boundary → ShowBoundary** to shade each friendly airbase's landing zone with a faint circle and a thin edge line, in the game's friendly map colour.
@@ -84,6 +86,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Approach | LineColor | `00D90066` | Approach line colour. |
 | Approach | LineWidth | `1` | Approach line width. |
 | HUD | ShowRunwayCallout | `true` | Show the `RWY 27` label. |
+| HUD | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
 | HUD | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
 | HUD | CalloutColor | `33FF33FF` | Label colour. |
 
