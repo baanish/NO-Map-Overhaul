@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools.Text;
@@ -17,9 +18,12 @@ public sealed class TextTool : MapTool
     private const string IdleStatus = "Click the map to place text.";
     private const string TypingStatus = "Type, then Enter to place or Esc to cancel.";
 
+    private static readonly string MaxLengthText = MaxLength.ToString(CultureInfo.InvariantCulture);
+
     private Vector2 _at;
     private string _text = string.Empty;
     private string _preview = Caret;
+    private string _counter = string.Empty;
     private bool _typing;
 
     public TextTool(IMapToolContext context)
@@ -33,6 +37,9 @@ public sealed class TextTool : MapTool
 
     /// <summary>Empty at the shape cap, so the menu shows its own limit message.</summary>
     public override string Status => _typing ? TypingStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
+
+    /// <summary>"8/64" while typing: characters typed out of <see cref="MaxLength"/>.</summary>
+    public override string Counter => _typing ? _counter : string.Empty;
 
     public override void OnDeactivate() => Cancel();
 
@@ -124,10 +131,11 @@ public sealed class TextTool : MapTool
         SetText(string.Empty);
     }
 
-    /// <summary>Builds the preview string once per keystroke, since the overlay may redraw ten times a second.</summary>
+    /// <summary>Builds the preview and counter strings once per keystroke, since the overlay may redraw ten times a second.</summary>
     private void SetText(string text)
     {
         _text = text;
         _preview = text + Caret;
+        _counter = text.Length.ToString(CultureInfo.InvariantCulture) + "/" + MaxLengthText;
     }
 }

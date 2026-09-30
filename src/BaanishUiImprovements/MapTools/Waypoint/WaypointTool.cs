@@ -76,6 +76,16 @@ public sealed class WaypointTool : MapTool
         }
     }
 
+    /// <summary>A full route takes no more clicks.</summary>
+    public override bool Warning
+    {
+        get
+        {
+            _progress.Refresh(Context.Shapes);
+            return _noAutopilot.Queue == null && _progress.Route is { IsFull: true };
+        }
+    }
+
     public override IReadOnlyList<string> Options => _noAutopilot.Queue != null ? Array.Empty<string>() : RouteOptions;
 
     public override void OnMissionStart()

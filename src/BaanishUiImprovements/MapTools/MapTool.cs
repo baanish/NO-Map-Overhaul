@@ -81,11 +81,23 @@ public abstract class MapTool
     /// </summary>
     public virtual bool CapturesKeyboard => false;
 
-    /// <summary>A line under the menu while active, such as the next step or why nothing happened. Return a cached string: the menu reads it every frame.</summary>
+    /// <summary>The hint in the menu's strip while active, such as the next step or why nothing happened. Return a cached string: the menu reads it every frame.</summary>
     public virtual string Status => string.Empty;
+
+    /// <summary>True while <see cref="Status"/> says why the tool can't do what was asked, such as a limit reached. The strip turns amber and badges the tool.</summary>
+    public virtual bool Warning => false;
 
     /// <summary>Extra buttons in the menu while active, such as preset radii. Return the same list until a label changes: the menu reads it every frame.</summary>
     public virtual IReadOnlyList<string> Options => Array.Empty<string>();
+
+    /// <summary>The option shown as picked, such as an armed preset radius, or -1.</summary>
+    public virtual int PickedOption => -1;
+
+    /// <summary>A unit written after the option buttons, such as "nm" after preset radii. Return a cached string.</summary>
+    public virtual string OptionSuffix => string.Empty;
+
+    /// <summary>A short count at the end of the strip, such as characters typed out of the most allowed. Return a cached string.</summary>
+    public virtual string Counter => string.Empty;
 
     /// <summary>Set by <see cref="InvalidateOverlay"/>; the map layer clears it once it has redrawn the overlay.</summary>
     internal bool OverlayInvalid { get; set; }

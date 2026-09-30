@@ -25,6 +25,8 @@ public sealed class EraserTool : MapTool
 
     public override string Name => "Eraser";
 
+    public override string Status => "Click a drawing to delete it.";
+
     public override void OnDeactivate() => _hovered = null;
 
     public override void OnClick(MapPointer pointer)

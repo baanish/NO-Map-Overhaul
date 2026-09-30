@@ -42,8 +42,9 @@ public sealed class PenTool : MapTool
     /// Empty at the shape cap, so the menu shows its own limit message. The pen's own limit message lasts until the
     /// drawings change, since an erase or undo may have made room.
     /// </summary>
-    public override string Status =>
-        _stopped || _limitedAt == Context.Shapes.Version ? LimitStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
+    public override string Status => Warning ? LimitStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
+
+    public override bool Warning => _stopped || _limitedAt == Context.Shapes.Version;
 
     public override void OnDeactivate() => Drop();
 

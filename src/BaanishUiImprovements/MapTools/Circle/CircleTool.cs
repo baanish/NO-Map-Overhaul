@@ -25,7 +25,10 @@ public sealed class CircleTool : MapTool
     /// <summary>Preset radii in whichever unit distances show in.</summary>
     private static readonly int[] PresetValues = { 5, 10, 20 };
 
-    private static readonly string[][] PresetLabels = BuildPresetTexts("{0}{1}");
+    /// <summary>Unit suffixes in <see cref="DistanceUnit"/> order.</summary>
+    private static readonly string[] Suffixes = { "nm", "km", "mi" };
+
+    private static readonly string[] PresetLabels = System.Array.ConvertAll(PresetValues, value => value.ToString(CultureInfo.InvariantCulture));
     private static readonly string[][] PresetStatus = BuildPresetTexts("Click the centre of a {0}{1} circle.");
 
     private readonly MeasureLabel _previewLabel = new();
@@ -44,7 +47,12 @@ public sealed class CircleTool : MapTool
 
     public override bool CapturesDrag => true;
 
-    public override IReadOnlyList<string> Options => PresetLabels[(int)Context.Units];
+    public override IReadOnlyList<string> Options => PresetLabels;
+
+    /// <summary>The preset armed for the next click, shown picked in the menu.</summary>
+    public override int PickedOption => _center is null ? _preset : -1;
+
+    public override string OptionSuffix => Suffixes[(int)Context.Units];
 
     /// <summary>Empty at the shape cap, so the menu says why nothing is added.</summary>
     public override string Status =>
@@ -180,14 +188,13 @@ public sealed class CircleTool : MapTool
     /// <summary>One text per unit and preset, built once so the menu reads the same strings every frame.</summary>
     private static string[][] BuildPresetTexts(string format)
     {
-        var suffixes = new[] { "nm", "km", "mi" }; // DistanceUnit order
-        var texts = new string[suffixes.Length][];
-        for (var unit = 0; unit < suffixes.Length; unit++)
+        var texts = new string[Suffixes.Length][];
+        for (var unit = 0; unit < Suffixes.Length; unit++)
         {
             texts[unit] = new string[PresetValues.Length];
             for (var i = 0; i < PresetValues.Length; i++)
             {
-                texts[unit][i] = string.Format(CultureInfo.InvariantCulture, format, PresetValues[i], suffixes[unit]);
+                texts[unit][i] = string.Format(CultureInfo.InvariantCulture, format, PresetValues[i], Suffixes[unit]);
             }
         }
 

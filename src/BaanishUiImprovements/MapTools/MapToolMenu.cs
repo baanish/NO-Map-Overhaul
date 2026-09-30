@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using BaanishUiImprovements.Drawing;
+using BepInEx.Configuration;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,52 +21,133 @@ internal enum MenuCommand
 }
 
 /// <summary>
-/// The Tools button in the full map's top-left corner and the menu it opens: a row per tool, the active tool's option
-/// buttons and status line, colour swatches, and Undo, Redo, and Clear. Text is in the HUD label's font, as the runway
-/// numbers are. It is built on the map's own canvas, after the map, so it takes clicks before the map under it, and it
-/// hides whenever the map isn't the full map. Under the menu lies the <see cref="MapPointerCatcher"/> that covers the
-/// map while a tool is active.
-/// Clicks only record a <see cref="MenuCommand"/>; the host applies it in the plugin's guarded update, so nothing the
-/// menu starts can throw inside Unity's event system.
+/// The map tools' menu on the full map: a slim rail of line icons down the map's top-left corner, and beside the rail's
+/// head a one-line strip that names the picked tool, says what a click does, and holds the tool's option buttons.
+/// Together they frame the corner as an L in the game's MFD green on dark. The rail holds the Tools head, which opens
+/// and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it, with the
+/// key for Undo and Redo. A warning turns the strip amber and badges the tool that raised it.
+/// Sizes are the design's pixels at 2560x1440 (see docs/DESIGN.md), turned into map canvas units by <see cref="Px"/>, so
+/// the menu scales with the game's UI. Text is in the HUD label's font, as the runway numbers are.
+/// It is built on the map's own canvas, after the map, so it takes clicks before the map under it, and it hides
+/// whenever the map isn't the full map. Under the menu lies the <see cref="MapPointerCatcher"/> that covers the map
+/// while a tool is active. Clicks only record a <see cref="MenuCommand"/>; the host applies it in the plugin's guarded
+/// update, so nothing the menu starts can throw inside Unity's event system.
 /// </summary>
 internal sealed class MapToolMenu
 {
-    private const float RowHeight = 20f;
-    private const float PanelWidth = 136f;
-    private const float SwatchSize = 18f;
-    private const float FontSize = 13f;
+    /// <summary>Canvas units per design pixel: the design is drawn at 2560x1440, where the map canvas scales by 4/3.</summary>
+    private const float Px = 0.75f;
+
+    /// <summary>The rail's corner from the map's top-left corner: just clear of the grid's row letters and column numbers.</summary>
+    private const float RailX = 32f;
+
+    private const float RailY = 38f;
+    private const float RailWidth = 48f;
+    private const float HeadHeight = 48f;
+    private const float ToolHeight = 44f;
+    private const float ActionHeight = 40f;
+    private const float GroupGap = 8f;
+    private const float SwatchCell = 24f;
+    private const float SwatchChip = 14f;
+    private const float SwatchRing = 20f;
+    private const float Chamfer = 6f;
+    private const float StripPad = 14f;
+    private const float StripGap = 12f;
+    private const float StripMaxWidth = 640f;
+    private const float MinHintWidth = 160f;
+    private const float ButtonHeight = 28f;
+    private const float ButtonMinWidth = 32f;
+    private const float TagGap = 6f;
+    private const float TagHeight = 28f;
+    private const float TagPad = 12f;
+    private const float WarnIconWidth = 24f;
+
+    private const float NameSize = 13f;
+    private const float HintSize = 15f;
+    private const float HeadLabelSize = 10f;
+
+    /// <summary>Letter spacing in TextMeshPro's hundredths of an em: 1.5 px on 13 px caps, 1 px on buttons, 0.5 px on the head label.</summary>
+    private const float NameTracking = 1.5f / NameSize * 100f;
+
+    private const float ButtonTracking = 1f / NameSize * 100f;
+    private const float HeadTracking = 0.5f / HeadLabelSize * 100f;
+
+    /// <summary>Edges fade over one design pixel.</summary>
+    private const float Feather = Px;
+
+    private const float RestOpacity = 0.72f;
+    private const float DisabledOpacity = 0.22f;
     private const int MaxOptions = 6;
     private const string FullStatus = "Drawing limit reached: erase or undo to draw more.";
 
-    private static readonly Color PanelColor = new(0f, 0f, 0f, 0.7f);
-    private static readonly Color TextColor = new(0.92f, 0.92f, 0.92f, 1f);
-    private static readonly Color DimTextColor = new(0.92f, 0.92f, 0.92f, 0.35f);
-    private static readonly ColorBlock RowLook = Look(new Color(1f, 1f, 1f, 0f));
-    private static readonly ColorBlock ActiveRowLook = Look(new Color(1f, 1f, 1f, 0.22f));
+    private static readonly Color Ground = Rgb(0x050E07, 0.78f);
+    private static readonly Color Rim = Rgb(0x2BE127, 0.32f);
+    private static readonly Color Green = Rgb(0x41FF52, 1f);
+    private static readonly Color HudGreen = Rgb(0x2BE127, 1f);
+    private static readonly Color Ink = Rgb(0x03140A, 1f);
+    private static readonly Color HintColor = Rgb(0xC8F5CD, 1f);
+    private static readonly Color WarnColor = Rgb(0xFFB23E, 1f);
+    private static readonly Color RingColor = Rgb(0xE8FFE8, 1f);
 
-    /// <summary>The Tools button stands alone on the map, so it keeps the panel's dark backing to stay readable.</summary>
-    private static readonly ColorBlock ToggleLook = Look(PanelColor);
-    private static readonly ColorBlock OpenToggleLook = Look(new Color(0.22f, 0.22f, 0.22f, 0.85f));
+    /// <summary>Cell and button fills: the HUD green at 0% at rest, 16% under the cursor, 32% pressed.</summary>
+    private static readonly ColorBlock CellLook = Look(0f, 0.16f, 0.32f);
 
-    private readonly List<MenuButton> _toolRows = new();
-    private readonly List<MenuButton> _options = new();
-    private readonly List<Image> _swatchFrames = new();
-    private readonly List<TextMeshProUGUI> _texts = new();
+    /// <summary>The picked tool or option: a solid fill, with its icon or text in <see cref="Ink"/>.</summary>
+    private static readonly ColorBlock PickedLook = Look(0.9f, 0.9f, 0.9f);
+
+    private readonly ModSettings _settings;
+    private readonly List<RailCell> _cells = new();
+    private readonly List<StripButton> _options = new();
+    private readonly List<(TextMeshProUGUI Text, FontStyles Extra)> _texts = new();
+    private readonly RectTransform[] _areas = new RectTransform[2];
     private RectTransform? _root;
-    private GameObject? _panel;
-    private GameObject? _optionRow;
-    private MenuButton? _toggle;
-    private MenuButton? _undo;
-    private MenuButton? _redo;
-    private MenuButton? _clear;
-    private TextMeshProUGUI? _status;
+    private RectTransform _rail = null!;
+    private GameObject _open = null!;
+    private PolygonGraphic _railFill = null!;
+    private PolygonGraphic _stripFill = null!;
+    private StrokeGraphic _frameRim = null!;
+    private RailCell _head = null!;
+    private TextMeshProUGUI _headLabel = null!;
+    private RailCell _undo = null!;
+    private RailCell _redo = null!;
+    private RailCell _clear = null!;
+    private TextMeshProUGUI _name = null!;
+    private StrokeGraphic _nameDivider = null!;
+    private Image _warnBar = null!;
+    private StrokeGraphic _warnIcon = null!;
+    private TextMeshProUGUI _hint = null!;
+    private TextMeshProUGUI _suffix = null!;
+    private TextMeshProUGUI _counter = null!;
+    private StrokeGraphic _swatchRing = null!;
+    private RectTransform _tag = null!;
+    private TextMeshProUGUI _tagName = null!;
+    private TextMeshProUGUI _tagKey = null!;
+    private StrokeGraphic _tagKeyBox = null!;
     private TextMeshProUGUI? _fontSource;
     private (MenuCommand Command, int Index) _command;
+    private float _swatchTop;
+    private float _railHeight;
     private int _shownTool = -2;
-    private IReadOnlyList<string>? _shownOptions;
-    private int _shownOptionCount = -1;
+    private int _shownSwatch = -2;
+    private RailCell? _shownTag;
+    private bool _stripDirty;
+    private string _status = string.Empty;
+    private bool _warning;
+    private IReadOnlyList<string>? _optionLabels;
+    private int _optionCount;
+    private int _pickedOption;
+    private string _optionSuffix = string.Empty;
+    private string _count = string.Empty;
+
+    public MapToolMenu(ModSettings settings) => _settings = settings;
 
     public MapPointerCatcher? Catcher { get; private set; }
+
+    /// <summary>The rail and the strip, for map labels to keep clear of. Inactive ones aren't showing.</summary>
+    public IReadOnlyList<RectTransform> Areas => _areas;
+
+    /// <summary>Goes up whenever <see cref="Areas"/> open, close, or change size.</summary>
+    public int LayoutVersion { get; private set; }
 
     /// <summary>The click recorded since the last call, if any.</summary>
     public (MenuCommand Command, int Index) TakeCommand()
@@ -74,58 +157,77 @@ internal sealed class MapToolMenu
         return command;
     }
 
-    /// <summary>Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the menu is closed.</summary>
-    public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, int activeTool, ShapeStore store, ShapeColor color, TextMeshProUGUI? hudStyle)
+    /// <summary>Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the rail is closed.</summary>
+    public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons, int activeTool, ShapeStore store,
+        ShapeColor color, TextMeshProUGUI? hudStyle)
     {
-        EnsureBuilt(map, tools);
+        EnsureBuilt(map, tools, icons);
         var open = activeTool >= 0;
         SetActive(_root!.gameObject, true);
         SetActive(Catcher!.gameObject, open);
-        SetActive(_panel!, open);
         if (!ReferenceEquals(hudStyle, _fontSource) && hudStyle != null)
         {
             _fontSource = hudStyle;
-            foreach (var text in _texts)
+            foreach (var (text, extra) in _texts)
             {
                 text.font = hudStyle.font;
                 text.fontSharedMaterial = hudStyle.fontSharedMaterial;
-                text.fontStyle = hudStyle.fontStyle;
+                text.fontStyle = hudStyle.fontStyle | extra;
             }
+
+            _stripDirty = true;
+            _shownTag = null; // measured in the old font
         }
 
         if (activeTool != _shownTool)
         {
             _shownTool = activeTool;
-            _toggle!.SetActiveLook(open);
-            for (var i = 0; i < _toolRows.Count; i++)
-            {
-                _toolRows[i].SetActiveLook(i == activeTool);
-            }
+            SetActive(_open, open);
+            SetActive(_stripFill.gameObject, open);
+            _stripDirty = true;
         }
 
+        if (open)
+        {
+            ReadStrip(tools[activeTool], store);
+        }
+
+        if (_stripDirty)
+        {
+            _stripDirty = false;
+            LayoutStrip(open ? tools[activeTool].Name : string.Empty, open);
+        }
+
+        _head.Show(picked: false, interactable: true, bright: open || _head.Hover.Hovered);
+        _headLabel.color = Fade(Green, open || _head.Hover.Hovered ? 1f : RestOpacity);
         if (!open)
         {
+            ShowTag(null);
             return;
         }
 
-        var tool = tools[activeTool];
-        ShowOptions(tool.Options);
-        var status = tool.Status;
-        if (string.IsNullOrEmpty(status))
+        for (var i = 0; i < tools.Count; i++)
         {
-            status = store.IsFull ? FullStatus : string.Empty;
+            var cell = _cells[i];
+            cell.Show(i == activeTool, interactable: true, cell.Hover.Hovered);
+            cell.Badge!.enabled = i == activeTool && _warning;
         }
 
-        SetActive(_status!.gameObject, status.Length > 0);
-        _status.text = status;
-        for (var i = 0; i < _swatchFrames.Count; i++)
+        _undo.Show(false, store.CanUndo, _undo.Hover.Hovered);
+        _redo.Show(false, store.CanRedo, _redo.Hover.Hovered);
+        _clear.Show(false, store.Shapes.Count > 0, _clear.Hover.Hovered);
+        ShowSwatch(IndexOf(color));
+
+        RailCell? hovered = null;
+        foreach (var cell in _cells)
         {
-            _swatchFrames[i].enabled = ShapeColor.Palette[i] == color;
+            if (cell.Hover.Hovered && cell.Button.interactable)
+            {
+                hovered = cell;
+            }
         }
 
-        _undo!.SetInteractable(store.CanUndo);
-        _redo!.SetInteractable(store.CanRedo);
-        _clear!.SetInteractable(store.Shapes.Count > 0);
+        ShowTag(hovered);
     }
 
     /// <summary>The map closed or went back to the minimap. A click from the frame it closed is dropped, not replayed on reopening.</summary>
@@ -146,27 +248,36 @@ internal sealed class MapToolMenu
         }
 
         _root = null;
-        _panel = null;
-        _optionRow = null;
-        _toggle = _undo = _redo = _clear = null;
-        _status = null;
         Catcher = null;
-        _toolRows.Clear();
+        _cells.Clear();
         _options.Clear();
-        _swatchFrames.Clear();
         _texts.Clear();
+        System.Array.Clear(_areas, 0, _areas.Length);
         _fontSource = null;
         _command = default;
         _shownTool = -2;
-        _shownOptions = null;
-        _shownOptionCount = -1;
+        _shownSwatch = -2;
+        _shownTag = null;
+        _optionLabels = null;
+        LayoutVersion++;
     }
 
-    /// <summary>Compares by reference, so a tool that keeps returning the same strings costs nothing per frame.</summary>
-    private void ShowOptions(IReadOnlyList<string> labels)
+    /// <summary>Reads what the strip shows. Compares by reference, so a tool that keeps returning the same strings costs nothing per frame.</summary>
+    private void ReadStrip(MapTool tool, ShapeStore store)
     {
-        var count = Mathf.Min(labels.Count, _options.Count);
-        var changed = !ReferenceEquals(labels, _shownOptions) || count != _shownOptionCount;
+        var status = tool.Status;
+        var warning = tool.Warning;
+        if (status.Length == 0 && store.IsFull)
+        {
+            status = FullStatus;
+            warning = true;
+        }
+
+        var labels = tool.Options;
+        var count = Mathf.Min(labels.Count, MaxOptions);
+        var changed = !ReferenceEquals(status, _status) || warning != _warning || !ReferenceEquals(labels, _optionLabels) ||
+            count != _optionCount || tool.PickedOption != _pickedOption || !ReferenceEquals(tool.OptionSuffix, _optionSuffix) ||
+            !ReferenceEquals(tool.Counter, _count);
         for (var i = 0; !changed && i < count; i++)
         {
             changed = !ReferenceEquals(labels[i], _options[i].Label.text);
@@ -177,21 +288,214 @@ internal sealed class MapToolMenu
             return;
         }
 
-        _shownOptions = labels;
-        _shownOptionCount = count;
-        SetActive(_optionRow!, count > 0);
+        _status = status;
+        _warning = warning;
+        _optionLabels = labels;
+        _optionCount = count;
+        _pickedOption = tool.PickedOption;
+        _optionSuffix = tool.OptionSuffix;
+        _count = tool.Counter;
+        for (var i = 0; i < count; i++)
+        {
+            _options[i].Label.text = labels[i];
+        }
+
+        _stripDirty = true;
+    }
+
+    /// <summary>
+    /// Lays the strip out left to right in design pixels: the tool name, a divider, the hint, then any option buttons,
+    /// their unit, and a count. A warning replaces the name with an amber sign, since the badge on the rail names the
+    /// tool. The strip grows to fit, up to <see cref="StripMaxWidth"/>, past which the hint wraps onto a second line.
+    /// </summary>
+    private void LayoutStrip(string toolName, bool open)
+    {
+        if (!open)
+        {
+            SetFrame(open: false, 0f);
+            return;
+        }
+
+        var x = RailWidth + StripPad;
+        const float middle = HeadHeight * 0.5f;
+        var hasHint = _status.Length > 0;
+        SetActive(_warnBar.gameObject, _warning);
+        SetActive(_warnIcon.gameObject, _warning);
+        SetActive(_name.gameObject, !_warning);
+        SetActive(_nameDivider.gameObject, hasHint && !_warning);
+        SetActive(_hint.gameObject, hasHint);
+        SetActive(_suffix.gameObject, _optionCount > 0 && _optionSuffix.Length > 0);
+        SetActive(_counter.gameObject, _count.Length > 0);
         for (var i = 0; i < _options.Count; i++)
         {
-            SetActive(_options[i].Button.gameObject, i < count);
-            if (i < count)
-            {
-                _options[i].Label.text = labels[i];
-            }
+            SetActive(_options[i].Rect.gameObject, i < _optionCount);
+        }
+
+        if (_warning)
+        {
+            RailIcons.DrawWarning(_warnIcon, P(x + 8f, middle - 8f), Px, Feather, WarnColor, Ground);
+            x += WarnIconWidth;
+        }
+        else
+        {
+            _name.text = toolName;
+            var width = Measure(_name);
+            Box(_name.rectTransform, x, 0f, width, HeadHeight);
+            x += width + StripGap;
+        }
+
+        if (hasHint && !_warning)
+        {
+            DrawLine(_nameDivider, P(x, middle - 11f), P(x, middle + 11f), Fade(Green, 0.3f));
+            x += StripGap;
+        }
+
+        _hint.text = _status;
+        _hint.color = _warning ? WarnColor : HintColor;
+        _hint.enableWordWrapping = false;
+        var hintWidth = hasHint ? Measure(_hint) : 0f;
+
+        var tail = StripPad;
+        for (var i = 0; i < _optionCount; i++)
+        {
+            tail += StripGap + ButtonWidth(_options[i]);
+        }
+
+        if (_suffix.gameObject.activeSelf)
+        {
+            _suffix.text = _optionSuffix;
+            tail += 8f + Measure(_suffix);
+        }
+
+        if (_counter.gameObject.activeSelf)
+        {
+            _counter.text = _count;
+            tail += 18f + Measure(_counter);
+        }
+
+        var overflow = x + hintWidth + tail - RailWidth - StripMaxWidth;
+        if (hasHint && overflow > 0f)
+        {
+            hintWidth = Mathf.Max(hintWidth - overflow, MinHintWidth);
+            _hint.enableWordWrapping = true;
+        }
+
+        Box(_hint.rectTransform, x, 0f, hintWidth, HeadHeight);
+        x += hintWidth;
+
+        for (var i = 0; i < _optionCount; i++)
+        {
+            var button = _options[i];
+            x += StripGap;
+            var width = ButtonWidth(button);
+            Box(button.Rect, x, middle - ButtonHeight * 0.5f, width, ButtonHeight);
+            button.Show(i == _pickedOption, width);
+            x += width;
+        }
+
+        if (_suffix.gameObject.activeSelf)
+        {
+            x += 8f;
+            var width = Measure(_suffix);
+            Box(_suffix.rectTransform, x, 0f, width, HeadHeight);
+            x += width;
+        }
+
+        if (_counter.gameObject.activeSelf)
+        {
+            x += 18f;
+            var width = Measure(_counter);
+            Box(_counter.rectTransform, x, 0f, width, HeadHeight);
+            x += width;
+        }
+
+        SetFrame(open: true, x + StripPad - RailWidth);
+    }
+
+    /// <summary>The L's ground and rim: the rail, with one chamfer on its outer corner, and while open the strip beside its head.</summary>
+    private void SetFrame(bool open, float stripWidth)
+    {
+        var height = open ? _railHeight : HeadHeight;
+        Box(_railFill.rectTransform, 0f, 0f, RailWidth, height);
+        _railFill.SetPoints(P(Chamfer, 0f), P(RailWidth, 0f), P(RailWidth, height), P(0f, height), P(0f, Chamfer));
+        Box(_stripFill.rectTransform, RailWidth, 0f, stripWidth, HeadHeight);
+        _stripFill.SetPoints(P(0f, 0f), P(stripWidth, 0f), P(stripWidth, HeadHeight), P(0f, HeadHeight));
+
+        _frameRim.Clear();
+        _frameRim.AddPoint(P(Chamfer, 0f));
+        if (open)
+        {
+            var right = RailWidth + stripWidth;
+            _frameRim.AddPoint(P(right, 0f));
+            _frameRim.AddPoint(P(right, HeadHeight));
+        }
+        else
+        {
+            _frameRim.AddPoint(P(RailWidth, 0f));
+        }
+
+        _frameRim.AddPoint(P(RailWidth, HeadHeight));
+        _frameRim.AddPoint(P(RailWidth, height));
+        _frameRim.AddPoint(P(0f, height));
+        _frameRim.AddPoint(P(0f, Chamfer));
+        _frameRim.EndStroke(true, 0.5f * Px, Rim, 0f, Rim, Feather);
+        _frameRim.Apply();
+        LayoutVersion++;
+    }
+
+    /// <summary>The name tag right of a hovered cell: its name, plus its key in a box for Undo and Redo.</summary>
+    private void ShowTag(RailCell? cell)
+    {
+        if (ReferenceEquals(cell, _shownTag))
+        {
+            return;
+        }
+
+        _shownTag = cell;
+        SetActive(_tag.gameObject, cell != null);
+        if (cell == null)
+        {
+            return;
+        }
+
+        _tagName.text = cell.Name;
+        var nameWidth = Measure(_tagName);
+        var key = cell == _undo ? KeyText(_settings.MapToolUndoKey.Value) : cell == _redo ? KeyText(_settings.MapToolRedoKey.Value) : string.Empty;
+        SetActive(_tagKey.gameObject, key.Length > 0);
+        SetActive(_tagKeyBox.gameObject, key.Length > 0);
+        var width = nameWidth + 2f * TagPad;
+        if (key.Length > 0)
+        {
+            _tagKey.text = key;
+            var keyWidth = Measure(_tagKey);
+            var keyX = TagPad + nameWidth + 10f;
+            Box(_tagKey.rectTransform, keyX + 2f, 0f, keyWidth, TagHeight);
+            DrawBox(_tagKeyBox, keyX - 2f, 5f, keyWidth + 8f, 18f, Fade(Green, 0.45f));
+            width += keyWidth + 16f;
+        }
+
+        Box(_tagName.rectTransform, TagPad, 0f, nameWidth, TagHeight);
+        Box(_tag, RailWidth + TagGap, cell.Top + cell.Height * 0.5f - TagHeight * 0.5f, width, TagHeight);
+    }
+
+    private void ShowSwatch(int index)
+    {
+        if (index == _shownSwatch)
+        {
+            return;
+        }
+
+        _shownSwatch = index;
+        SetActive(_swatchRing.gameObject, index >= 0);
+        if (index >= 0)
+        {
+            var (x, y) = SwatchCenter(index);
+            DrawBox(_swatchRing, x - SwatchRing * 0.5f, y - SwatchRing * 0.5f, SwatchRing, SwatchRing, RingColor, strokeWidth: 2f);
         }
     }
 
     /// <summary>A scene change destroys the map and the menu with it; a missing root means everything here is gone.</summary>
-    private void EnsureBuilt(DynamicMap map, IReadOnlyList<MapTool> tools)
+    private void EnsureBuilt(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons)
     {
         if (_root != null && _root.parent == map.transform)
         {
@@ -210,138 +514,244 @@ internal sealed class MapToolMenu
         catcher.gameObject.AddComponent<Image>().color = Color.clear;
         Catcher = catcher.gameObject.AddComponent<MapPointerCatcher>();
 
-        var menu = NewRect("Menu", _root);
-        menu.anchorMin = menu.anchorMax = menu.pivot = new Vector2(0f, 1f);
-        menu.anchoredPosition = new Vector2(6f, -6f);
-        Stack(menu.gameObject, 2f, 0);
-        var fitter = menu.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        _toggle = NewButton(menu, "Tools", 64f, () => Record(MenuCommand.Toggle, 0), ToggleLook, OpenToggleLook);
+        var actionTop = HeadHeight + 1f + tools.Count * ToolHeight + GroupGap;
+        _swatchTop = actionTop + 3f * ActionHeight + GroupGap;
+        _railHeight = _swatchTop + 3f * SwatchCell + 6f;
 
-        var panel = NewRect("Panel", menu);
-        panel.gameObject.AddComponent<Image>().color = PanelColor;
-        Stack(panel.gameObject, 1f, 4);
-        _panel = panel.gameObject;
+        _rail = NewRect("Rail", _root);
+        Box(_rail, RailX, RailY, 0f, 0f);
+        _railFill = NewGraphic<PolygonGraphic>("RailGround", _rail, raycast: true);
+        _railFill.color = Ground;
+        _stripFill = NewGraphic<PolygonGraphic>("StripGround", _rail, raycast: true);
+        _stripFill.color = Ground;
+        _frameRim = NewGraphic<StrokeGraphic>("Rim", _rail, raycast: false);
+        _areas[0] = _railFill.rectTransform;
+        _areas[1] = _stripFill.rectTransform;
+
+        _head = NewCell(_rail, "Tools", RailIcon.Tools, 0f, HeadHeight, iconY: 18f, iconScale: 0.8f, insetY: 3f,
+            () => Record(MenuCommand.Toggle, 0));
+        _headLabel = NewText(_head.Rect, "Tools", HeadLabelSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Center);
+        _headLabel.characterSpacing = HeadTracking;
+        Box(_headLabel.rectTransform, 0f, 31f, RailWidth, 14f);
+
+        var open = NewRect("Open", _rail);
+        Box(open, 0f, 0f, 0f, 0f);
+        _open = open.gameObject;
+        BuildStrip(open);
+
         for (var i = 0; i < tools.Count; i++)
         {
             var index = i;
-            _toolRows.Add(NewButton(panel, tools[i].Name, PanelWidth, () => Record(MenuCommand.Tool, index)));
+            var cell = NewCell(open, tools[i].Name, icons[i], HeadHeight + 1f + i * ToolHeight, ToolHeight, ToolHeight * 0.5f, 1f, 2f,
+                () => Record(MenuCommand.Tool, index));
+            var badge = NewGraphic<FeatheredRect>("Badge", cell.Rect, raycast: false);
+            badge.color = WarnColor;
+            badge.SetEdges(0.75f * Px, Ground, Feather);
+            Box(badge.rectTransform, RailWidth - 13f, 6f, 7f, 7f);
+            cell.Badge = badge;
+            _cells.Add(cell);
         }
 
-        var options = NewRow(panel, 2f);
-        _optionRow = options.gameObject;
-        for (var i = 0; i < MaxOptions; i++)
+        _undo = NewCell(open, "Undo", RailIcon.Undo, actionTop, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Undo, 0));
+        _redo = NewCell(open, "Redo", RailIcon.Redo, actionTop + ActionHeight, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
+            () => Record(MenuCommand.Redo, 0));
+        _clear = NewCell(open, "Clear", RailIcon.Clear, actionTop + 2f * ActionHeight, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
+            () => Record(MenuCommand.Clear, 0));
+        _cells.Add(_undo);
+        _cells.Add(_redo);
+        _cells.Add(_clear);
+
+        var dividers = NewGraphic<StrokeGraphic>("Dividers", open, raycast: false);
+        dividers.AddPoint(P(RailWidth, 8f));
+        dividers.AddPoint(P(RailWidth, HeadHeight - 8f));
+        EndLine(dividers, Fade(Green, 0.3f));
+        dividers.AddPoint(P(8f, HeadHeight));
+        dividers.AddPoint(P(RailWidth - 8f, HeadHeight));
+        EndLine(dividers, Fade(Green, 0.3f));
+        foreach (var y in new[] { actionTop - GroupGap * 0.5f, _swatchTop - GroupGap * 0.5f })
         {
-            var index = i;
-            _options.Add(NewButton(options, string.Empty, -1f, () => Record(MenuCommand.Option, index)));
+            dividers.AddPoint(P(10f, y));
+            dividers.AddPoint(P(RailWidth - 10f, y));
+            EndLine(dividers, Fade(Green, 0.25f));
         }
 
-        _status = NewText(panel, string.Empty, TextAlignmentOptions.TopLeft);
-        _status.enableWordWrapping = true;
-        _status.color = DimTextColor;
-        _status.gameObject.AddComponent<LayoutElement>().preferredWidth = PanelWidth;
+        dividers.Apply();
 
-        var swatches = NewRow(panel, 4f);
         for (var i = 0; i < ShapeColor.Palette.Count; i++)
         {
             var index = i;
-            _swatchFrames.Add(NewSwatch(swatches, ShapeColor.Palette[i], () => Record(MenuCommand.Swatch, index)));
+            var (x, y) = SwatchCenter(i);
+            var cell = NewGraphic<PolygonGraphic>("Swatch", open, raycast: true);
+            Box(cell.rectTransform, x - SwatchCell * 0.5f, y - SwatchCell * 0.5f, SwatchCell, SwatchCell);
+            var button = cell.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() => Record(MenuCommand.Swatch, index));
+            var chip = NewGraphic<Image>("Chip", cell.rectTransform, raycast: false);
+            chip.color = ShapeColor.Palette[i].ToColor32();
+            Box(chip.rectTransform, (SwatchCell - SwatchChip) * 0.5f, (SwatchCell - SwatchChip) * 0.5f, SwatchChip, SwatchChip);
         }
 
-        var actions = NewRow(panel, 2f);
-        _undo = NewButton(actions, "Undo", -1f, () => Record(MenuCommand.Undo, 0));
-        _redo = NewButton(actions, "Redo", -1f, () => Record(MenuCommand.Redo, 0));
-        _clear = NewButton(actions, "Clear", -1f, () => Record(MenuCommand.Clear, 0));
+        _swatchRing = NewGraphic<StrokeGraphic>("SwatchRing", open, raycast: false);
+        BuildTag();
+        SetFrame(open: false, 0f);
     }
 
-    private void Record(MenuCommand command, int index) => _command = (command, index);
-
-    /// <summary>A text button, a menu row unless given other looks. A negative width shares the row's width with its neighbours.</summary>
-    private MenuButton NewButton(Transform parent, string text, float width, UnityEngine.Events.UnityAction onClick,
-        ColorBlock? look = null, ColorBlock? activeLook = null)
+    private void BuildStrip(RectTransform open)
     {
-        var rect = NewRect(text.Length > 0 ? text : "Option", parent);
-        var image = rect.gameObject.AddComponent<Image>();
+        _warnBar = NewGraphic<Image>("WarnBar", open, raycast: false);
+        _warnBar.color = WarnColor;
+        Box(_warnBar.rectTransform, RailWidth, 1f, 2f, HeadHeight - 2f);
+        _warnIcon = NewGraphic<StrokeGraphic>("WarnIcon", open, raycast: false);
+        _name = NewText(open, string.Empty, NameSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Left);
+        _name.characterSpacing = NameTracking;
+        _name.color = Green;
+        _nameDivider = NewGraphic<StrokeGraphic>("Divider", open, raycast: false);
+        _hint = NewText(open, string.Empty, HintSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        for (var i = 0; i < MaxOptions; i++)
+        {
+            var index = i;
+            var rect = NewRect("Option", open);
+            var fill = rect.gameObject.AddComponent<Image>();
+            fill.color = HudGreen;
+            var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = fill;
+            button.navigation = new Navigation { mode = Navigation.Mode.None }; // a selected button would take Enter and Space
+            button.onClick.AddListener(() => Record(MenuCommand.Option, index));
+            var border = NewGraphic<StrokeGraphic>("Border", rect, raycast: false);
+            var label = NewText(rect, string.Empty, NameSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Center);
+            label.characterSpacing = ButtonTracking;
+            Stretch(label.rectTransform);
+            _options.Add(new StripButton(rect, button, border, label));
+        }
+
+        _suffix = NewText(open, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _suffix.color = Fade(Green, 0.7f);
+        _counter = NewText(open, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _counter.color = Fade(Green, 0.6f);
+    }
+
+    /// <summary>Last child of the rail, so it draws over everything; it takes no clicks, so moving onto it leaves the cell and hides it.</summary>
+    private void BuildTag()
+    {
+        _tag = NewRect("Tag", _rail);
+        var plate = NewGraphic<FeatheredRect>("Plate", _tag, raycast: false);
+        plate.color = Ground;
+        plate.SetEdges(Px, Rim, Feather);
+        Stretch(plate.rectTransform);
+        _tagName = NewText(_tag, string.Empty, NameSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Left);
+        _tagName.characterSpacing = NameTracking;
+        _tagName.color = Green;
+        _tagKeyBox = NewGraphic<StrokeGraphic>("KeyBox", _tag, raycast: false);
+        _tagKey = NewText(_tag, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _tagKey.color = Fade(Green, 0.8f);
+        SetActive(_tag.gameObject, false);
+    }
+
+    /// <summary>
+    /// A rail cell: a hit area the full size of the cell, a fill inset from its edges that the button tints, and a line
+    /// icon. <paramref name="iconY"/> is the icon's centre from the cell's top, in design pixels.
+    /// </summary>
+    private RailCell NewCell(Transform parent, string name, RailIcon icon, float top, float height, float iconY, float iconScale,
+        float insetY, UnityEngine.Events.UnityAction onClick)
+    {
+        var hit = NewGraphic<PolygonGraphic>(name, parent, raycast: true);
+        var rect = hit.rectTransform;
+        Box(rect, 0f, top, RailWidth, height);
+        var fill = NewGraphic<Image>("Fill", rect, raycast: false);
+        fill.color = HudGreen;
+        Box(fill.rectTransform, 3f, insetY, RailWidth - 6f, height - 2f * insetY);
         var button = rect.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.colors = look ?? RowLook;
+        button.targetGraphic = fill;
         button.navigation = new Navigation { mode = Navigation.Mode.None }; // a selected button would take Enter and Space
         button.onClick.AddListener(onClick);
-        var layout = rect.gameObject.AddComponent<LayoutElement>();
-        layout.preferredHeight = RowHeight;
-        if (width > 0f)
-        {
-            layout.preferredWidth = width;
-        }
-        else
-        {
-            layout.flexibleWidth = 1f;
-        }
-
-        var label = NewText(rect, text, width > PanelWidth * 0.5f ? TextAlignmentOptions.Left : TextAlignmentOptions.Center);
-        var labelRect = Stretch(label.rectTransform);
-        labelRect.offsetMin = new Vector2(6f, 0f);
-        labelRect.offsetMax = new Vector2(-6f, 0f);
-        return new MenuButton(button, label, look ?? RowLook, activeLook ?? ActiveRowLook);
+        var strokes = NewGraphic<StrokeGraphic>("Icon", rect, raycast: false);
+        var hover = rect.gameObject.AddComponent<MenuHover>();
+        return new RailCell(rect, button, hover, strokes, icon, P(RailWidth * 0.5f, iconY), iconScale * Px, name, top, height);
     }
 
-    /// <summary>A colour square inside a white frame that shows only while its colour is the picked one.</summary>
-    private Image NewSwatch(Transform parent, ShapeColor color, UnityEngine.Events.UnityAction onClick)
-    {
-        var frame = NewRect("Swatch", parent);
-        var frameImage = frame.gameObject.AddComponent<Image>();
-        frameImage.color = TextColor;
-        var layout = frame.gameObject.AddComponent<LayoutElement>();
-        layout.preferredWidth = layout.preferredHeight = SwatchSize;
-
-        var fill = Stretch(NewRect("Color", frame));
-        fill.offsetMin = new Vector2(2f, 2f);
-        fill.offsetMax = new Vector2(-2f, -2f);
-        var image = fill.gameObject.AddComponent<Image>();
-        image.color = color.ToColor32();
-        var button = fill.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.navigation = new Navigation { mode = Navigation.Mode.None };
-        button.onClick.AddListener(onClick);
-        return frameImage;
-    }
-
-    private TextMeshProUGUI NewText(Transform parent, string text, TextAlignmentOptions alignment)
+    private TextMeshProUGUI NewText(Transform parent, string text, float size, FontStyles extra, TextAlignmentOptions alignment)
     {
         var label = NewRect("Text", parent).gameObject.AddComponent<TextMeshProUGUI>();
         label.raycastTarget = false;
         label.enableWordWrapping = false;
         label.overflowMode = TextOverflowModes.Overflow;
         label.alignment = alignment;
-        label.fontSize = FontSize;
-        label.color = TextColor;
+        label.fontSize = size * Px;
+        label.fontStyle = extra;
+        label.color = HintColor;
         label.text = text;
-        _texts.Add(label);
+        _texts.Add((label, extra));
         return label;
     }
 
-    private static RectTransform NewRow(Transform parent, float spacing)
+    private void Record(MenuCommand command, int index) => _command = (command, index);
+
+    private (float X, float Y) SwatchCenter(int index) =>
+        (SwatchCell * (0.5f + index % 2), _swatchTop + SwatchCell * (0.5f + index / 2));
+
+    private static int IndexOf(ShapeColor color)
     {
-        var row = NewRect("Row", parent);
-        var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = spacing;
-        layout.childControlWidth = layout.childControlHeight = true;
-        layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-        var element = row.gameObject.AddComponent<LayoutElement>();
-        element.preferredHeight = RowHeight;
-        element.preferredWidth = PanelWidth;
-        return row;
+        for (var i = 0; i < ShapeColor.Palette.Count; i++)
+        {
+            if (ShapeColor.Palette[i] == color)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
-    /// <summary>Lays children out top to bottom, each as wide as the widest. The group reports its size to a parent group or a ContentSizeFitter.</summary>
-    private static void Stack(GameObject target, float spacing, int padding)
+    /// <summary>At least <see cref="ButtonMinWidth"/>, else the label with 10 px either side.</summary>
+    private static float ButtonWidth(StripButton button) => Mathf.Max(ButtonMinWidth, Measure(button.Label) + 20f);
+
+    /// <summary>The text's natural width in design pixels. TextMeshProUGUI caches it until the text or style changes.</summary>
+    private static float Measure(TextMeshProUGUI text) => text.preferredWidth / Px;
+
+    /// <summary>"Z", or empty for an unbound key.</summary>
+    private static string KeyText(KeyboardShortcut shortcut) => shortcut.MainKey == KeyCode.None ? string.Empty : shortcut.ToString();
+
+    /// <summary>A point in design pixels from the rail's top-left corner, Y down, as local units from a top-left pivot.</summary>
+    private static Vector2 P(float x, float y) => new(x * Px, -y * Px);
+
+    /// <summary>Places a rect by its top-left corner in design pixels within a parent whose pivot is its top-left corner.</summary>
+    private static void Box(RectTransform rect, float x, float y, float width, float height)
     {
-        var layout = target.AddComponent<VerticalLayoutGroup>();
-        layout.spacing = spacing;
-        layout.padding = new RectOffset(padding, padding, padding, padding);
-        layout.childControlWidth = layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = P(x, y);
+        rect.sizeDelta = new Vector2(width * Px, height * Px);
+    }
+
+    private static void DrawLine(StrokeGraphic graphic, Vector2 from, Vector2 to, Color color)
+    {
+        graphic.Clear();
+        graphic.AddPoint(from);
+        graphic.AddPoint(to);
+        EndLine(graphic, color);
+        graphic.Apply();
+    }
+
+    /// <summary>A rectangle outline, centred on its edges like an SVG stroke. Design pixels from the parent's top-left.</summary>
+    private static void DrawBox(StrokeGraphic graphic, float x, float y, float width, float height, Color color, float strokeWidth = 1f)
+    {
+        graphic.Clear();
+        graphic.AddPoint(P(x, y));
+        graphic.AddPoint(P(x + width, y));
+        graphic.AddPoint(P(x + width, y + height));
+        graphic.AddPoint(P(x, y + height));
+        graphic.EndStroke(true, strokeWidth * 0.5f * Px, color, 0f, color, Feather);
+        graphic.Apply();
+    }
+
+    private static void EndLine(StrokeGraphic graphic, Color color) => graphic.EndStroke(false, 0.5f * Px, color, 0f, color, Feather);
+
+    private static T NewGraphic<T>(string name, Transform parent, bool raycast)
+        where T : Graphic
+    {
+        var graphic = NewRect(name, parent).gameObject.AddComponent<T>();
+        graphic.raycastTarget = raycast;
+        return graphic;
     }
 
     private static RectTransform NewRect(string name, Transform parent)
@@ -367,46 +777,115 @@ internal sealed class MapToolMenu
         }
     }
 
-    /// <summary>A button's background: <paramref name="normal"/> at rest, lighter under the cursor and lighter still while pressed.</summary>
-    private static ColorBlock Look(Color normal) => new()
+    private static Color Rgb(int hex, float alpha) =>
+        new(((hex >> 16) & 255) / 255f, ((hex >> 8) & 255) / 255f, (hex & 255) / 255f, alpha);
+
+    private static Color Fade(Color color, float alpha) => new(color.r, color.g, color.b, alpha);
+
+    /// <summary>Tints a white-based fill: the HUD green at these opacities at rest, under the cursor, and pressed. Disabled hides it.</summary>
+    private static ColorBlock Look(float normal, float highlighted, float pressed) => new()
     {
-        normalColor = normal,
-        highlightedColor = Lighter(normal, 0.12f),
-        pressedColor = Lighter(normal, 0.25f),
-        selectedColor = normal,
+        normalColor = new Color(1f, 1f, 1f, normal),
+        highlightedColor = new Color(1f, 1f, 1f, highlighted),
+        pressedColor = new Color(1f, 1f, 1f, pressed),
+        selectedColor = new Color(1f, 1f, 1f, normal),
         disabledColor = Color.clear,
         colorMultiplier = 1f,
         fadeDuration = 0.05f,
     };
 
-    private static Color Lighter(Color color, float amount) => new(color.r + amount, color.g + amount, color.b + amount, color.a + amount);
-
-    private sealed class MenuButton
+    /// <summary>One cell of the rail. Its icon is redrawn only when its look changes.</summary>
+    private sealed class RailCell
     {
-        private readonly ColorBlock _look;
-        private readonly ColorBlock _activeLook;
+        private readonly StrokeGraphic _icon;
+        private readonly RailIcon _kind;
+        private readonly Vector2 _iconCenter;
+        private readonly float _iconScale;
+        private int _look = -1;
 
-        public MenuButton(Button button, TextMeshProUGUI label, ColorBlock look, ColorBlock activeLook)
+        public RailCell(RectTransform rect, Button button, MenuHover hover, StrokeGraphic icon, RailIcon kind, Vector2 iconCenter,
+            float iconScale, string name, float top, float height)
         {
+            Rect = rect;
             Button = button;
-            Label = label;
-            _look = look;
-            _activeLook = activeLook;
+            Hover = hover;
+            _icon = icon;
+            _kind = kind;
+            _iconCenter = iconCenter;
+            _iconScale = iconScale;
+            Name = name;
+            Top = top;
+            Height = height;
         }
+
+        public RectTransform Rect { get; }
+
+        public Button Button { get; }
+
+        public MenuHover Hover { get; }
+
+        public string Name { get; }
+
+        /// <summary>Design pixels from the rail's top.</summary>
+        public float Top { get; }
+
+        public float Height { get; }
+
+        /// <summary>The amber square a tool's cell shows while its status is a warning.</summary>
+        public FeatheredRect? Badge { get; set; }
+
+        /// <summary>
+        /// Picked: a solid fill with a dark icon. Otherwise the icon is green at 72%, full while <paramref name="bright"/>
+        /// (hovered), and 22% while not interactable, when the cell ignores hover.
+        /// </summary>
+        public void Show(bool picked, bool interactable, bool bright)
+        {
+            var look = picked ? 0 : !interactable ? 1 : bright ? 2 : 3;
+            if (look == _look)
+            {
+                return;
+            }
+
+            if (Button.interactable != interactable)
+            {
+                Button.interactable = interactable;
+            }
+
+            if (picked != (_look == 0) || _look < 0)
+            {
+                Button.colors = picked ? PickedLook : CellLook;
+            }
+
+            _look = look;
+            var color = picked ? Ink : Fade(Green, look == 1 ? DisabledOpacity : look == 2 ? 1f : RestOpacity);
+            RailIcons.Draw(_icon, _kind, _iconCenter, _iconScale, Feather, color);
+        }
+    }
+
+    /// <summary>An option button in the strip: a 1 px border, a fill the button tints, and a caps label.</summary>
+    private sealed class StripButton
+    {
+        private readonly StrokeGraphic _border;
+
+        public StripButton(RectTransform rect, Button button, StrokeGraphic border, TextMeshProUGUI label)
+        {
+            Rect = rect;
+            Button = button;
+            _border = border;
+            Label = label;
+        }
+
+        public RectTransform Rect { get; }
 
         public Button Button { get; }
 
         public TextMeshProUGUI Label { get; }
 
-        public void SetActiveLook(bool active) => Button.colors = active ? _activeLook : _look;
-
-        public void SetInteractable(bool interactable)
+        public void Show(bool picked, float width)
         {
-            if (Button.interactable != interactable)
-            {
-                Button.interactable = interactable;
-                Label.color = interactable ? TextColor : DimTextColor;
-            }
+            Button.colors = picked ? PickedLook : CellLook;
+            Label.color = picked ? Ink : Green;
+            DrawBox(_border, 0f, 0f, width, ButtonHeight, Fade(Green, picked ? 0.9f : 0.45f));
         }
     }
 }

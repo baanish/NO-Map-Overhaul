@@ -20,8 +20,9 @@ internal sealed class MapToolHost
     private readonly ShapeStore _store = new();
     private readonly MapToolContext _context;
     private readonly MapTool[] _tools;
+    private readonly RailIcon[] _icons;
     private readonly MapShapeLayer _layer;
-    private readonly MapToolMenu _menu = new();
+    private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
     private readonly WorldLabelPool _worldLabels = new();
     private DynamicMap? _map;
@@ -32,16 +33,19 @@ internal sealed class MapToolHost
     {
         _settings = settings;
         _context = new MapToolContext(settings, _store);
-        // Menu order; the menu opens on the first. Each tool lives in its own folder under MapTools.
-        _tools = new MapTool[]
+        // Rail order, each with its icon; the rail opens on the first. Each tool lives in its own folder under MapTools.
+        var tools = new (MapTool Tool, RailIcon Icon)[]
         {
-            new WaypointTool(_context, settings),
-            new PenTool(_context),
-            new TextTool(_context),
-            new BearingRangeTool(_context),
-            new CircleTool(_context),
-            new EraserTool(_context),
+            (new WaypointTool(_context, settings), RailIcon.Waypoint),
+            (new PenTool(_context), RailIcon.Pen),
+            (new TextTool(_context), RailIcon.Text),
+            (new BearingRangeTool(_context), RailIcon.BearingRange),
+            (new CircleTool(_context), RailIcon.Circle),
+            (new EraserTool(_context), RailIcon.Eraser),
         };
+        _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
+        _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
+        _menu = new MapToolMenu(settings);
         _layer = new MapShapeLayer(settings, _context, _tools.Length);
     }
 
@@ -63,7 +67,7 @@ internal sealed class MapToolHost
         if (open)
         {
             Apply(_menu.TakeCommand());
-            _menu.Render(map, _tools, _active, _store, _context.Color, hudStyle);
+            _menu.Render(map, _tools, _icons, _active, _store, _context.Color, hudStyle);
         }
         else
         {

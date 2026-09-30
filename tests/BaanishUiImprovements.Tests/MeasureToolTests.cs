@@ -164,11 +164,12 @@ internal static class MeasureToolTests
     {
         var map = new FakeMap { Units = DistanceUnit.Kilometres };
         var tool = new CircleTool(map);
-        Expect(tool.Options.Count == 3 && tool.Options[1] == "10km", "expected presets in kilometres");
+        Expect(tool.Options.Count == 3 && tool.Options[1] == "10" && tool.OptionSuffix == "km", "expected presets in kilometres");
 
         Click(tool, At(0, 0));
         tool.OnOption(1);
         tool.OnOption(2);
+        Expect(tool.PickedOption == 2, "expected the preset armed for the next click to show picked");
         Click(tool, At(500, 500));
         Click(tool, At(9000, 500));
         var canvas = Draw(map);
