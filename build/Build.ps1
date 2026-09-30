@@ -23,7 +23,9 @@ if ($Install) {
     # NOMM toggles a mod by moving its folder between plugins and disabledPlugins; reinstall wherever it is now.
     $target = Join-Path $game 'BepInEx\plugins\NoMapOverhaul'
     $disabled = Join-Path $game 'BepInEx\disabledPlugins\NoMapOverhaul'
-    if (-not (Test-Path $target) -and (Test-Path $disabled)) { $target = $disabled }
+    # A first install over a disabled Baanish UI Improvements keeps the mod disabled.
+    $oldDisabled = Join-Path $game 'BepInEx\disabledPlugins\BaanishUiImprovements'
+    if (-not (Test-Path $target) -and ((Test-Path $disabled) -or (Test-Path $oldDisabled))) { $target = $disabled }
     New-Item -ItemType Directory -Force $target | Out-Null
     $installed = Join-Path $target 'NoMapOverhaul.dll'
     # This mod was Baanish UI Improvements up to 0.4.0; left installed, that plugin would load beside this one.
