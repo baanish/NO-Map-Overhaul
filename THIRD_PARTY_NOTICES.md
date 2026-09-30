@@ -2,9 +2,9 @@
 
 ## NOAutopilot
 
-The only code adapted from NOAutopilot is the Waypoint tool's rule for when a waypoint counts as reached or passed, and its two default distances, 2.5 km and 10 km (`RouteProgress.IsReached` in `src/BaanishUiImprovements/MapTools/Waypoint/RouteProgress.cs`).
+The only code adapted from NOAutopilot is the Waypoint tool's rule for when a waypoint counts as reached or passed, and its two default distances, 2.5 km and 10 km (`RouteProgress.IsReached` in `src/NoMapOverhaul/MapTools/Waypoint/RouteProgress.cs`).
 
-Separately, when NOAutopilot is installed, the mod patches NOAutopilot's right-click handler at runtime so that it skips right clicks while the map tools rail is open (`src/BaanishUiImprovements/MapTools/AutopilotRightClickPatch.cs`). The patch finds the handler by name. NOAutopilot isn't bundled, and none of its code is copied for the patch.
+Separately, when NOAutopilot is installed, the mod patches NOAutopilot's right-click handler at runtime so that it skips right clicks while the map tools rail is open (`src/NoMapOverhaul/MapTools/AutopilotRightClickPatch.cs`). The patch finds the handler by name. NOAutopilot isn't bundled, and none of its code is copied for the patch.
 
 ```text
 MIT License

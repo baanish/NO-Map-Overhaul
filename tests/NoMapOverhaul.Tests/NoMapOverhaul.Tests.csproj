@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Game-free tests: only the pure logic files are linked in, so this runs without Nuclear Option installed. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\FrameStats.cs" Link="Diagnostics\FrameStats.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\ModTimings.cs" Link="Diagnostics\ModTimings.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\PerfReport.cs" Link="Diagnostics\PerfReport.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\PerfSchedule.cs" Link="Diagnostics\PerfSchedule.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\StressDrawings.cs" Link="Diagnostics\StressDrawings.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\BearingRange\BearingRangeShape.cs" Link="MapTools\BearingRange\BearingRangeShape.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\BearingRange\BearingRangeTool.cs" Link="MapTools\BearingRange\BearingRangeTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\BearingRange\MeasureLabel.cs" Link="MapTools\BearingRange\MeasureLabel.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Circle\CircleShape.cs" Link="MapTools\Circle\CircleShape.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Circle\CircleTool.cs" Link="MapTools\Circle\CircleTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Circle\RingProjection.cs" Link="MapTools\Circle\RingProjection.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Eraser\EraserTool.cs" Link="MapTools\Eraser\EraserTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\IMapCanvas.cs" Link="MapTools\IMapCanvas.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\LabelLayout.cs" Link="MapTools\LabelLayout.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\MapShape.cs" Link="MapTools\MapShape.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\MapTool.cs" Link="MapTools\MapTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\MenuLayout.cs" Link="MapTools\MenuLayout.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\MinimapHeading.cs" Link="MapTools\MinimapHeading.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\NavFormat.cs" Link="MapTools\NavFormat.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\RightClickRule.cs" Link="MapTools\RightClickRule.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\ShapeColor.cs" Link="MapTools\ShapeColor.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\ShapeHitTest.cs" Link="MapTools\ShapeHitTest.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\ShapeStore.cs" Link="MapTools\ShapeStore.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Waypoint\RouteProgress.cs" Link="MapTools\Waypoint\RouteProgress.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Waypoint\WaypointCallout.cs" Link="MapTools\Waypoint\WaypointCallout.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Waypoint\WaypointRoute.cs" Link="MapTools\Waypoint\WaypointRoute.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Pen\PenStroke.cs" Link="MapTools\Pen\PenStroke.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Pen\PenTool.cs" Link="MapTools\Pen\PenTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Pen\StrokeSimplifier.cs" Link="MapTools\Pen\StrokeSimplifier.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Text\TextNote.cs" Link="MapTools\Text\TextNote.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Text\TextTool.cs" Link="MapTools\Text\TextTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Tracking\KnownPositions.cs" Link="Tracking\KnownPositions.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\SettingSections.cs" Link="SettingSections.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\SettingsMigration.cs" Link="SettingsMigration.cs" />
+    <None Include="Fixtures\*.cfg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

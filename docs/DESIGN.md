@@ -84,7 +84,7 @@ Everything under `Diagnostics/` is off unless the player asks for it. `Performan
 
 ## Map tools
 
-A Tools button beside the full map, or the Tools key, opens a menu of drawing tools: a rail of icons and a strip of hints and options. What they draw shows on both maps and, for some shapes, in the 3D view. Everything lives under `src/BaanishUiImprovements/MapTools/`, and `MapToolHost` ties it together:
+A Tools button beside the full map, or the Tools key, opens a menu of drawing tools: a rail of icons and a strip of hints and options. What they draw shows on both maps and, for some shapes, in the 3D view. Everything lives under `src/NoMapOverhaul/MapTools/`, and `MapToolHost` ties it together:
 
 ```text
 Plugin.LateUpdate → MapToolHost.Update   (every frame)

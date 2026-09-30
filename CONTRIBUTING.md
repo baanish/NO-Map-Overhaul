@@ -13,12 +13,12 @@ pwsh ./build/Build.ps1 -Install   # also installs into BepInEx/plugins
 
 The script finds the game through Steam. If it can't, pass `-GameDir 'D:\SteamLibrary\steamapps\common\Nuclear Option'` or set `NUCLEAR_OPTION_DIR`.
 
-`-Install` copies the DLL into `BepInEx/plugins/BaanishUiImprovements`. If Nuclear Option Mod Manager has disabled the mod, it copies into `BepInEx/disabledPlugins` instead. It also writes a local `meta.json`, so NOMM lists the mod and can toggle it. If the game is running and the DLL changed, the script waits for the game to close before copying.
+`-Install` copies the DLL into `BepInEx/plugins/NoMapOverhaul`. If Nuclear Option Mod Manager has disabled the mod, it copies into `BepInEx/disabledPlugins` instead. It also writes a local `meta.json`, so NOMM lists the mod and can toggle it. If the game is running and the DLL changed, the script waits for the game to close before copying.
 
 ## Test
 
 ```powershell
-dotnet run --project tests/BaanishUiImprovements.Tests -c Release
+dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
 The tests cover the logic that doesn't need Unity: the runway-end choice and naming, missile arrow placement, the map tools' drawings, undo history, formatting, label and menu layout, 3D ring projection, the perf test's statistics, and settings migration. [Testing](docs/TESTING.md) lists them in full. They don't need the game, and GitHub runs them on every push and pull request. Everything drawn on screen needs an in-game check. Include a screenshot and the map and airbase you tested in your pull request.

@@ -4,22 +4,22 @@
 
 You need BepInEx 5 installed in Nuclear Option. Each release has two ZIPs:
 
-- `BaanishUiImprovements-v<version>-plugin-only.zip` already contains the `BepInEx/plugins/BaanishUiImprovements/` folder. Extract it beside `NuclearOption.exe`.
-- `BaanishUiImprovements-v<version>-nomm.zip` is flat. For a manual install, copy `BaanishUiImprovements.dll` to `BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll`.
+- `NoMapOverhaul-v<version>-plugin-only.zip` already contains the `BepInEx/plugins/NoMapOverhaul/` folder. Extract it beside `NuclearOption.exe`.
+- `NoMapOverhaul-v<version>-nomm.zip` is flat. For a manual install, copy `NoMapOverhaul.dll` to `BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll`.
 
 Start the game once. BepInEx then creates the settings file:
 
 ```text
-BepInEx/config/com.baanish.nuclearoption.uiimprovements.cfg
+BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg
 ```
 
 To confirm the mod loaded, look for this line in `BepInEx/LogOutput.log`:
 
 ```text
-[Info   :Baanish UI Improvements] Baanish UI Improvements 0.5.0 loaded.
+[Info   :NO Map Overhaul] NO Map Overhaul 0.5.0 loaded.
 ```
 
-To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` file.
+To uninstall, delete the `NoMapOverhaul` plugin folder and the `.cfg` file.
 
 ## What you see
 
@@ -136,7 +136,7 @@ Widths and sizes use the same units as the game's own map icons, so they look th
 Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 seconds the mod writes one line to `BepInEx/LogOutput.log`:
 
 ```text
-[Info   :Baanish UI Improvements] Perf 5.0 s, mod on: 612 frames, 122.4 fps avg (8.17 ms), 1% low 88.1 fps, worst frame 21.3 ms. Mod per frame 0.084 ms avg, 0.412 ms worst. Map refresh 50x, 0.310 ms avg, 1.204 ms worst.
+[Info   :NO Map Overhaul] Perf 5.0 s, mod on: 612 frames, 122.4 fps avg (8.17 ms), 1% low 88.1 fps, worst frame 21.3 ms. Mod per frame 0.084 ms avg, 0.412 ms worst. Map refresh 50x, 0.310 ms avg, 1.204 ms worst.
 ```
 
 - **mod on** or **mod off** is whether Enabled was on for those 5 seconds, or **on and off** if you flipped it partway.
@@ -168,7 +168,7 @@ The typical drawings are about what you'd keep up in a mission: a 7-waypoint rou
 When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
 
 ```text
-[Info   :Baanish UI Improvements] Perf test: each condition measured in 4 slices of 2.0 s, taking turns with the others in its view, 0.5 s to settle after each switch. Drawings: typical 11 shapes on 3 live units, heavy 71 shapes on 10 live units (at most 10). Changes are against the same view with the mod off.
+[Info   :NO Map Overhaul] Perf test: each condition measured in 4 slices of 2.0 s, taking turns with the others in its view, 0.5 s to settle after each switch. Drawings: typical 11 shapes on 3 live units, heavy 71 shapes on 10 live units (at most 10). Changes are against the same view with the mod off.
 Phase                                 Avg fps   1% low Mod ms avg/max   Refresh ms avg/max   Avg fps change    1% low change
 Minimap, mod off                        140.7    118.2    0.001/0.004      0.001/0.003 80x         baseline         baseline
 Minimap, mod on                         138.8    116.9    0.080/0.312      0.300/0.910 80x     -1.9 (-1.4%)     -1.3 (-1.1%)

@@ -1,4 +1,4 @@
-Baanish UI Improvements v@VERSION@
+NO Map Overhaul v@VERSION@
 
 Map and HUD navigation aids for Nuclear Option.
 
@@ -49,22 +49,22 @@ The plugin-only archive contains the BepInEx folder tree. Extract it beside
 NuclearOption.exe.
 
 For a manual install from the flat NOMM archive, copy
-BaanishUiImprovements.dll to:
+NoMapOverhaul.dll to:
 
-  BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll
+  BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
 
 Start the game once. BepInEx creates the settings file:
 
-  BepInEx/config/com.baanish.nuclearoption.uiimprovements.cfg
+  BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg
 
 Every setting and the airbase abbreviations are documented here:
-https://github.com/baanish/baanish-ui-improvements/blob/main/docs/USER_GUIDE.md
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/USER_GUIDE.md
 
 How to use the map tools:
-https://github.com/baanish/baanish-ui-improvements/blob/main/docs/MAP_TOOLS.md
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/MAP_TOOLS.md
 
 Source and full documentation:
-https://github.com/baanish/baanish-ui-improvements
+https://github.com/baanish/NO-Map-Overhaul
 
 MIT license. See LICENSE.txt, and THIRD_PARTY_NOTICES.txt for code adapted
 from NOAutopilot.

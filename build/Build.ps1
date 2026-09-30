@@ -11,21 +11,21 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $game = & (Join-Path $PSScriptRoot 'Find-NuclearOption.ps1') -GameDir $GameDir
 
-dotnet run --project (Join-Path $root 'tests\BaanishUiImprovements.Tests') -c Release
+dotnet run --project (Join-Path $root 'tests\NoMapOverhaul.Tests') -c Release
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 
-$project = Join-Path $root 'src\BaanishUiImprovements\BaanishUiImprovements.csproj'
+$project = Join-Path $root 'src\NoMapOverhaul\NoMapOverhaul.csproj'
 dotnet build $project -c Release "-p:GameDir=$game"
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
-$dll = Join-Path $root 'src\BaanishUiImprovements\bin\Release\netstandard2.1\BaanishUiImprovements.dll'
+$dll = Join-Path $root 'src\NoMapOverhaul\bin\Release\netstandard2.1\NoMapOverhaul.dll'
 if ($Install) {
     # NOMM toggles a mod by moving its folder between plugins and disabledPlugins; reinstall wherever it is now.
-    $target = Join-Path $game 'BepInEx\plugins\BaanishUiImprovements'
-    $disabled = Join-Path $game 'BepInEx\disabledPlugins\BaanishUiImprovements'
+    $target = Join-Path $game 'BepInEx\plugins\NoMapOverhaul'
+    $disabled = Join-Path $game 'BepInEx\disabledPlugins\NoMapOverhaul'
     if (-not (Test-Path $target) -and (Test-Path $disabled)) { $target = $disabled }
     New-Item -ItemType Directory -Force $target | Out-Null
-    $installed = Join-Path $target 'BaanishUiImprovements.dll'
+    $installed = Join-Path $target 'NoMapOverhaul.dll'
     # The running game locks the DLL; an identical build needs no copy, so metadata can still refresh mid-session.
     if (-not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $dll).Hash) {
         $gameProcess = Get-Process -Name NuclearOption -ErrorAction SilentlyContinue
@@ -40,9 +40,9 @@ if ($Install) {
     $version = ([xml](Get-Content $project)).Project.PropertyGroup.Version | Select-Object -First 1
     $hash = (Get-FileHash $installed -Algorithm SHA256).Hash.ToLowerInvariant()
     [ordered]@{
-        id       = 'BaanishUiImprovements' # matches the planned NOMNOM catalog id
+        id       = 'NoMapOverhaul' # matches the planned NOMNOM catalog id
         artifact = [ordered]@{
-            fileName          = 'BaanishUiImprovements.dll'
+            fileName          = 'NoMapOverhaul.dll'
             version           = $version
             category          = 'preRelease'
             type              = 'plugin'

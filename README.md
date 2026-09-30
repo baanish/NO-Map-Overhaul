@@ -1,4 +1,4 @@
-# baanish-ui-improvements
+# NO Map Overhaul
 
 My Nuclear Option mod for map and HUD navigation aids: numbered runways with an approach line, arrows toward incoming missiles, planning tools on the full map, and airbase names.
 
@@ -46,7 +46,7 @@ Off by default. Your side's airbases get a faint name label on the full map, so 
 
 ## Install
 
-Download a ZIP from [releases](https://github.com/baanish/baanish-ui-improvements/releases), then follow the [user guide](docs/USER_GUIDE.md#install). The mod isn't in the Nuclear Option Mod Manager catalog yet.
+Download a ZIP from [releases](https://github.com/baanish/NO-Map-Overhaul/releases), then follow the [user guide](docs/USER_GUIDE.md#install). The mod isn't in the Nuclear Option Mod Manager catalog yet.
 
 The [user guide](docs/USER_GUIDE.md) also covers every setting, how the runway end is chosen, the airbase abbreviations, and how to measure the mod's cost on your machine.
 
