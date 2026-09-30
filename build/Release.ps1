@@ -55,6 +55,7 @@ function Copy-PackageFiles([string]$Destination, [string]$PluginDll) {
     if ($readme -notlike '*@VERSION@*') { throw 'packaging/README.txt does not contain its @VERSION@ token.' }
     [IO.File]::WriteAllText((Join-Path $Destination 'README.txt'), $readme.Replace('@VERSION@', $version), [Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $Destination 'LICENSE.txt')
+    Copy-Item -LiteralPath (Join-Path $root 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $Destination 'THIRD_PARTY_NOTICES.txt')
 }
 
 # Fixed entry order and timestamps, so the same inputs always produce the same archive bytes.
@@ -117,11 +118,12 @@ New-DeterministicZip $nommStage $nommZip
 New-DeterministicZip $pluginStage $pluginZip
 Remove-Item -LiteralPath $staging -Recurse -Force
 
-Assert-Package $nommZip @('BaanishUiImprovements.dll', 'LICENSE.txt', 'README.txt')
+Assert-Package $nommZip @('BaanishUiImprovements.dll', 'LICENSE.txt', 'README.txt', 'THIRD_PARTY_NOTICES.txt')
 Assert-Package $pluginZip @(
     'BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll',
     'BepInEx/plugins/BaanishUiImprovements/LICENSE.txt',
-    'BepInEx/plugins/BaanishUiImprovements/README.txt')
+    'BepInEx/plugins/BaanishUiImprovements/README.txt',
+    'BepInEx/plugins/BaanishUiImprovements/THIRD_PARTY_NOTICES.txt')
 
 $checksums = @($nommZip, $pluginZip | ForEach-Object { "$((Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path -Leaf $_)" })
 [IO.File]::WriteAllLines((Join-Path $artifacts 'SHA256SUMS.txt'), [string[]]$checksums, [Text.Encoding]::ASCII)

@@ -35,6 +35,7 @@ The NOMM archive is flat:
 BaanishUiImprovements.dll
 LICENSE.txt
 README.txt
+THIRD_PARTY_NOTICES.txt
 ```
 
 The plugin-only archive extracts beside `NuclearOption.exe`:
@@ -43,6 +44,7 @@ The plugin-only archive extracts beside `NuclearOption.exe`:
 BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll
 BepInEx/plugins/BaanishUiImprovements/LICENSE.txt
 BepInEx/plugins/BaanishUiImprovements/README.txt
+BepInEx/plugins/BaanishUiImprovements/THIRD_PARTY_NOTICES.txt
 ```
 
 The same inputs always produce the same archive bytes, because entries have fixed order and timestamps.

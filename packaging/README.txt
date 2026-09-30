@@ -53,4 +53,5 @@ https://github.com/baanish/baanish-ui-improvements/blob/main/docs/USER_GUIDE.md
 Source and full documentation:
 https://github.com/baanish/baanish-ui-improvements
 
-MIT license. See LICENSE.txt.
+MIT license. See LICENSE.txt, and THIRD_PARTY_NOTICES.txt for code adapted
+from NOAutopilot.
