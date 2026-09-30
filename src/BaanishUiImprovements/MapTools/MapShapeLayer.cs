@@ -637,6 +637,12 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             }
 
             Strokes.Apply();
+            // A note or an idle tool draws no lines, and an enabled graphic is still culled against the map's mask every frame.
+            var drawn = !Strokes.IsEmpty;
+            if (Strokes.enabled != drawn)
+            {
+                Strokes.enabled = drawn;
+            }
         }
 
         public MapLabel NextLabel()

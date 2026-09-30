@@ -34,6 +34,9 @@ internal sealed class StrokeGraphic : ModGraphic
     private float _reach;
     private bool _wasEmpty = true;
 
+    /// <summary>No line since the last <see cref="Clear"/>.</summary>
+    public bool IsEmpty => _strokes.Count == 0;
+
     public void Clear()
     {
         _points.Clear();
