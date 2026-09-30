@@ -6,6 +6,7 @@ using NoMapOverhaul.Diagnostics;
 using NoMapOverhaul.MapTools;
 using NoMapOverhaul.Runways;
 using BepInEx;
+using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using FlatVector = System.Numerics.Vector2;
 
@@ -21,13 +22,14 @@ namespace NoMapOverhaul;
 /// </summary>
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 [BepInDependency(AutopilotRightClickPatch.AutopilotGuid, BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency(OldPluginGuid, BepInDependency.DependencyFlags.SoftDependency)]
 public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.baanish.nuclearoption.mapoverhaul";
     public const string PluginName = "NO Map Overhaul";
     public const string PluginVersion = "0.5.0";
 
-    /// <summary>This plugin's GUID up to 0.4.0, as Baanish UI Improvements.</summary>
+    /// <summary>This plugin's GUID up to 0.4.0, as Baanish UI Improvements: its settings carry over, and a leftover install is switched off.</summary>
     private const string OldPluginGuid = "com.baanish.nuclearoption.uiimprovements";
 
     private const string OldConfigFile = OldPluginGuid + ".cfg";
@@ -54,6 +56,7 @@ public sealed class Plugin : BaseUnityPlugin
 
     private void Awake()
     {
+        StopOldPlugin();
         MoveSavedSettings();
         _settings = new ModSettings(Config);
         _mapOverlay = new RunwayMapOverlay(_settings);
@@ -72,6 +75,27 @@ public sealed class Plugin : BaseUnityPlugin
         AutopilotRightClickPatch.Apply(_mapTools, Logger);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
+    }
+
+    /// <summary>
+    /// A Baanish UI Improvements install left beside this one would draw the runways, names, and any map tools a second
+    /// time. The soft dependency has BepInEx load it first, so it's found here and destroyed rather than this plugin
+    /// standing down: this is the one the player just installed. Every release of it takes its overlays down and
+    /// unhooks from the map in OnDestroy, and its Harmony patch, in builds that have one, is under its own GUID.
+    /// </summary>
+    private void StopOldPlugin()
+    {
+        if (!Chainloader.PluginInfos.TryGetValue(OldPluginGuid, out var old))
+        {
+            return;
+        }
+
+        Logger.LogWarning($"Baanish UI Improvements {old.Metadata.Version} is still installed. NO Map Overhaul replaces it, so it's switched off " +
+                          "for this session. Close the game and delete the BepInEx/plugins/BaanishUiImprovements folder. Its missile arrows are now a mod of their own, NO Missile Indicators.");
+        if (old.Instance != null)
+        {
+            Destroy(old.Instance);
+        }
     }
 
     /// <summary>

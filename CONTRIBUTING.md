@@ -13,7 +13,7 @@ pwsh ./build/Build.ps1 -Install   # also installs into BepInEx/plugins
 
 The script finds the game through Steam. If it can't, pass `-GameDir 'D:\SteamLibrary\steamapps\common\Nuclear Option'` or set `NUCLEAR_OPTION_DIR`.
 
-`-Install` copies the DLL into `BepInEx/plugins/NoMapOverhaul`. If Nuclear Option Mod Manager has disabled the mod, it copies into `BepInEx/disabledPlugins` instead. It also writes a local `meta.json`, so NOMM lists the mod and can toggle it. If the game is running and the DLL changed, the script waits for the game to close before copying.
+`-Install` copies the DLL into `BepInEx/plugins/NoMapOverhaul`. If Nuclear Option Mod Manager has disabled the mod, it copies into `BepInEx/disabledPlugins` instead. It also writes a local `meta.json`, so NOMM lists the mod and can toggle it, and deletes any `BaanishUiImprovements` folder left in either, the mod's install before it was renamed. If the game is running and the DLL changed, the script waits for the game to close before copying.
 
 ## Test
 

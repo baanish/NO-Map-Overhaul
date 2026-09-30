@@ -26,14 +26,21 @@ if ($Install) {
     if (-not (Test-Path $target) -and (Test-Path $disabled)) { $target = $disabled }
     New-Item -ItemType Directory -Force $target | Out-Null
     $installed = Join-Path $target 'NoMapOverhaul.dll'
+    # This mod was Baanish UI Improvements up to 0.4.0; left installed, that plugin would load beside this one.
+    $oldInstalls = @('plugins', 'disabledPlugins' | ForEach-Object { Join-Path $game "BepInEx\$_\BaanishUiImprovements" } | Where-Object { Test-Path $_ })
     # The running game locks the DLL; an identical build needs no copy, so metadata can still refresh mid-session.
-    if (-not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $dll).Hash) {
+    $copy = -not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $dll).Hash
+    if ($copy -or $oldInstalls) {
         $gameProcess = Get-Process -Name NuclearOption -ErrorAction SilentlyContinue
         if ($gameProcess) {
             Write-Output 'Waiting for Nuclear Option to close before installing...'
             $gameProcess | Wait-Process
         }
-        Copy-Item $dll $target -Force
+    }
+    if ($copy) { Copy-Item $dll $target -Force }
+    foreach ($old in $oldInstalls) {
+        Remove-Item -LiteralPath $old -Recurse -Force
+        Write-Output "Removed the old Baanish UI Improvements install at $old"
     }
 
     # Local-only NOMM listing (no download URL), so the mod can be toggled in NOMM like the other personal mods.
