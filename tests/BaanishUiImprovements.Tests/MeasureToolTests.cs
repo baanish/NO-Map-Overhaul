@@ -21,6 +21,7 @@ internal static class MeasureToolTests
         ("a measured end follows its unit, freezes while its track is stale, and resumes when spotted", MeasuredEndFollowsUnit),
         ("clicking the start again cancels a measurement", ClickingStartAgainCancels),
         ("a measurement's 3D label sits on its end", WorldLabelSitsOnEnd),
+        ("a target overhead reads its height as range, and a level pair its map distance", RangeRunsThroughTheAir),
         ("the label hangs from the arrowhead", LabelHangsFromArrowhead),
         ("measurement text is built only when it changes", MeasureTextBuiltOnlyOnChange),
         ("dragging from the centre draws a circle", DraggingDrawsCircle),
@@ -57,23 +58,23 @@ internal static class MeasureToolTests
         var tool = new BearingRangeTool(map);
         tool.OnClick(At(0, 0));
         tool.OnClick(OnUnit(map, 7));
-        ExpectText(Draw(map).Labels[0].Text, "000° 1.0nm");
+        ExpectText(Draw(map).Labels[0].Text, "000° 1.8nm 9.8k ft");
 
         map.Positions[7] = new Vector3(2 * Nm, 3000, 0);
-        ExpectText(Draw(map).Labels[0].Text, "090° 2.0nm");
+        ExpectText(Draw(map).Labels[0].Text, "090° 2.5nm 9.8k ft");
 
         map.States[7] = TrackState.Stale;
         map.Positions[7] = new Vector3(3 * Nm, 5000, 0);
         var stale = Draw(map);
-        ExpectText(stale.Labels[0].Text, "090° 2.0nm\nlost");
+        ExpectText(stale.Labels[0].Text, "090° 2.5nm 9.8k ft\nlost");
         Expect(stale.Arrows[0].To == new Vector2(2 * Nm, 0), "expected a stale end to stay where the unit was last known");
         var labels = new RecordingLabels();
         tool.OnFrame(labels);
         Expect(labels.Added[0].Position == new Vector3(2 * Nm, 3000, 0), "expected a stale end's 3D label at the last known altitude");
-        ExpectText(labels.Added[0].Text, "090° 2.0nm\nlost");
+        ExpectText(labels.Added[0].Text, "090° 2.5nm 9.8k ft\nlost");
 
         map.States[7] = TrackState.Live;
-        ExpectText(Draw(map).Labels[0].Text, "090° 3.0nm");
+        ExpectText(Draw(map).Labels[0].Text, "090° 4.0nm 16k ft");
     }
 
     private static void ClickingStartAgainCancels()
@@ -106,7 +107,29 @@ internal static class MeasureToolTests
         Expect(labels.Added[0].Position == new Vector3(Nm, 120, 0), "expected a fixed end's label on the ground");
         ExpectText(labels.Added[0].Text, "090° 1.0nm");
         Expect(labels.Added[1].Position == new Vector3(0, 3000, -Nm), "expected a unit's label at its altitude");
-        ExpectText(labels.Added[1].Text, "180° 1.0nm");
+        ExpectText(labels.Added[1].Text, "180° 1.8nm 9.8k ft");
+    }
+
+    /// <summary>The ground is 120 m up everywhere, so a unit 5120 m above a fixed point is 5 km from it.</summary>
+    private static void RangeRunsThroughTheAir()
+    {
+        var map = new FakeMap { Units = DistanceUnit.Kilometres };
+        map.Positions[7] = new Vector3(0, 5120, 0);
+        map.Positions[8] = new Vector3(0, 3000, 0);
+        map.Positions[9] = new Vector3(3000, 3000, 4000);
+        map.Shapes.Add(new BearingRangeShape(new MapPoint(Vector2.Zero), new MapPoint(Vector2.Zero, 7), 120f, 0f, White));
+
+        var tool = new BearingRangeTool(map);
+        tool.OnClick(OnUnit(map, 8));
+        tool.OnPointerMove(At(3840, 0));
+        var preview = new RecordingCanvas(map);
+        tool.DrawOverlay(preview);
+        ExpectText(preview.Labels[0].Text, "090° 4.8km");
+        tool.OnClick(OnUnit(map, 9));
+
+        var canvas = Draw(map);
+        ExpectText(canvas.Labels[0].Text, "000° 5.0km 5100 m");
+        ExpectText(canvas.Labels[1].Text, "037° 5.0km 3000 m");
     }
 
     /// <summary>On a unit, the label hangs from just past its icon: the marker radius, 10 units of 10 m, beyond the head.</summary>
@@ -127,19 +150,30 @@ internal static class MeasureToolTests
     private static void MeasureTextBuiltOnlyOnChange()
     {
         var label = new MeasureLabel();
-        var first = label.BearingRange(Vector2.Zero, new Vector2(0, 4.21f * Nm), DistanceUnit.NauticalMiles, lost: false);
-        var same = label.BearingRange(Vector2.Zero, new Vector2(0.1f, 4.24f * Nm), DistanceUnit.NauticalMiles, lost: false);
+        var first = label.BearingRange(Vector3.Zero, new Vector3(0, 0, 4.21f * Nm), false, DistanceUnit.NauticalMiles, lost: false);
+        var same = label.BearingRange(Vector3.Zero, new Vector3(0.1f, 0, 4.24f * Nm), false, DistanceUnit.NauticalMiles, lost: false);
         Expect(ReferenceEquals(first, same), "expected the same text to be reused");
-        ExpectText(label.BearingRange(Vector2.Zero, new Vector2(0, 4.21f * Nm), DistanceUnit.Kilometres, lost: false), "000° 7.8km");
-        ExpectText(label.BearingRange(Vector2.Zero, new Vector2(0, 4.21f * Nm), DistanceUnit.Kilometres, lost: true), "000° 7.8km\nlost");
+        ExpectText(label.BearingRange(Vector3.Zero, new Vector3(0, 0, 4.21f * Nm), false, DistanceUnit.Kilometres, lost: false), "000° 7.8km");
+        ExpectText(label.BearingRange(Vector3.Zero, new Vector3(0, 0, 4.21f * Nm), false, DistanceUnit.Kilometres, lost: true), "000° 7.8km\nlost");
+
+        var northeast = Vector3.Normalize(new Vector3(1, 0, 1));
+        var level = new Vector3(0, 5500, 0);
+        var climbing = label.BearingRange(level, northeast * 22000f + new Vector3(0, 5480, 0), true, DistanceUnit.Kilometres, lost: false);
+        ExpectText(climbing, "045° 22km 5500 m");
+        Expect(ReferenceEquals(climbing, label.BearingRange(level, northeast * 22000f + new Vector3(0, 5520, 0), true, DistanceUnit.Kilometres, lost: false)),
+               "expected a climb within the shown 100 m to reuse the text");
+        ExpectText(label.BearingRange(level, northeast * 22000f + new Vector3(0, 5560, 0), true, DistanceUnit.Kilometres, lost: true), "045° 22km 5600 m\nlost");
+        var angels18 = new Vector3(0, 18000 * NavFormat.MetersPerFoot, 0);
+        ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, true, DistanceUnit.NauticalMiles, lost: false), "045° 12nm 18k ft");
+        ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, false, DistanceUnit.NauticalMiles, lost: false), "045° 12nm");
 
         var radius = new MeasureLabel();
         var ring = radius.Radius(5 * Nm, DistanceUnit.NauticalMiles, lost: false);
         Expect(ReferenceEquals(ring, radius.Radius(5.01f * Nm, DistanceUnit.NauticalMiles, lost: false)), "expected the same radius text to be reused");
         ExpectText(ring, "5.0nm");
 
-        var westSouthwest = new Vector2(MathF.Sin(256f * MathF.PI / 180f), MathF.Cos(256f * MathF.PI / 180f)) * 5 * Nm;
-        ExpectText(radius.BearingRange(Vector2.Zero, westSouthwest, DistanceUnit.NauticalMiles, lost: false), "256° 5.0nm");
+        var westSouthwest = new Vector3(MathF.Sin(256f * MathF.PI / 180f), 0, MathF.Cos(256f * MathF.PI / 180f)) * 5 * Nm;
+        ExpectText(radius.BearingRange(Vector3.Zero, westSouthwest, false, DistanceUnit.NauticalMiles, lost: false), "256° 5.0nm");
         ExpectText(radius.Radius(5 * Nm, DistanceUnit.NauticalMiles, lost: false), "5.0nm");
     }
 
@@ -403,6 +437,7 @@ internal static class MeasureToolTests
         public MapPoint? OwnAircraft => _view.OwnAircraft;
 
         public bool TryResolve(MapPoint point, out Vector2 position) => _view.TryResolve(point, out position);
+        public bool TryResolveWorld(MapPoint point, out Vector3 position) => _view.TryResolveWorld(point, out position);
         public void Line(Vector2 from, Vector2 to, ShapeColor color) => Lines++;
         public void Arrow(Vector2 from, Vector2 to, ShapeColor color) => Arrows.Add((from, to));
         public void Polyline(IReadOnlyList<Vector2> points, ShapeColor color) => Lines++;

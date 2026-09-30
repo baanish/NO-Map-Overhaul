@@ -63,6 +63,8 @@ public sealed class ShapeHitTest : IMapCanvas
 
     public bool TryResolve(MapPoint point, out Vector2 position) => _view.TryResolve(point, out position);
 
+    public bool TryResolveWorld(MapPoint point, out Vector3 position) => _view.TryResolveWorld(point, out position);
+
     public void Line(Vector2 from, Vector2 to, ShapeColor color) => Measure(SegmentDistance(from, to));
 
     public void Arrow(Vector2 from, Vector2 to, ShapeColor color) => Measure(SegmentDistance(from, to));

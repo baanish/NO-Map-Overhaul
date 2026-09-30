@@ -67,6 +67,10 @@ Click where to measure from, then where to. An arrow joins the two points, and t
 
 Click on or beside a unit's icon to tie that end to the unit. The arrow and its numbers then follow the unit as the map updates. Tie one end to your own aircraft and the other to a target, and the label is always your bearing and range to it. The label also shows in the 3D view.
 
+When the arrow ends on a unit, the label adds that unit's altitude above sea level, like a BRA call: `045° 12nm 18k ft` in miles, or `045° 22km 5500 m` in kilometres. Feet show in thousands, to the nearest 100 ft below 10,000 ft (`4.5k ft`) and the nearest 1,000 ft above; metres show to the nearest 100 m. An arrow ending on a spot on the map shows no altitude.
+
+The range is the straight line between the two ends, through the air: a unit's end is at its altitude, and a spot on the map is on the ground. So a target straight above you reads its height as range. The bearing is still measured across the map. Circles and waypoint distances measure across the ground.
+
 ## Circle
 
 Press on the centre and drag out to the radius, or click the centre and then the edge. The radius is written on the ring.
@@ -96,7 +100,7 @@ Drawings show on the full map and on the minimap. Turn off **Show on minimap** t
 
 Measurements, radii, and waypoint numbers sit on small dark plates. On the full map, they move aside so they don't cover unit icons, airbase names, runway numbers, or each other. On the minimap, they move aside so they don't cover each other.
 
-Distances follow the game's unit setting: kilometres for metric, nautical miles for imperial. Set **Distance units** to always use one unit.
+Distances follow the game's unit setting: kilometres for metric, nautical miles for imperial. Set **Distance units** to always use one unit. Altitudes go with it: metres beside kilometres, feet beside miles.
 
 ## Keeping it fast
 

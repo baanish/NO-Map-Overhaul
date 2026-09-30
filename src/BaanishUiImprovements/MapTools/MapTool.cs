@@ -33,15 +33,9 @@ public interface IMapToolContext : IMapView
     ShapeColor Color { get; }
 
     /// <summary>
-    /// <see cref="IMapView.TryResolve"/> in 3D, for a label in the 3D view: global meters, X east, Y up from sea level,
-    /// Z north, at the altitude the faction knows for the unit. Same rule and same false case; a fixed point gets sea level.
-    /// </summary>
-    bool TryResolveWorld(MapPoint point, out Vector3 position);
-
-    /// <summary>
     /// Ground or sea height at a point, in meters above sea level, found the way the game's own map jump finds it but
     /// passing through units, so a label never rests on a ship or building the player can't see. It casts a ray, so
-    /// call it once per new shape, not per frame. 0 where nothing is under the point.
+    /// call it as a point is picked or previewed, not per frame. 0 where nothing is under the point.
     /// </summary>
     float GroundElevation(Vector2 position);
 }

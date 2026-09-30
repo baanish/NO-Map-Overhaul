@@ -24,6 +24,7 @@ internal static class MapToolTests
         ("history keeps the last 100 steps", HistoryKeepsLastSteps),
         ("bearings are three digits true", BearingsAreThreeDigitsTrue),
         ("distances round per unit", DistancesRoundPerUnit),
+        ("altitudes round per unit", AltitudesRoundPerUnit),
         ("the game's unit system picks the unit", GameUnitSystemPicksUnit),
         ("the hit test measures lines, rings, and labels", HitTestMeasuresShapes),
         ("the hit test finds a label where the map placed it", HitTestFindsPlacedLabel),
@@ -200,6 +201,23 @@ internal static class MapToolTests
         Expect(NavFormat.DistanceKey(NavFormat.MetersPerNauticalMile * 4.24f, DistanceUnit.NauticalMiles) !=
                NavFormat.DistanceKey(NavFormat.MetersPerNauticalMile * 4.26f, DistanceUnit.NauticalMiles),
             "expected 4.2nm and 4.3nm to differ");
+    }
+
+    private static void AltitudesRoundPerUnit()
+    {
+        const float Ft = NavFormat.MetersPerFoot;
+        ExpectText(NavFormat.Altitude(4540 * Ft, DistanceUnit.NauticalMiles), "4.5k ft");
+        ExpectText(NavFormat.Altitude(9940 * Ft, DistanceUnit.NauticalMiles), "9.9k ft");
+        ExpectText(NavFormat.Altitude(9960 * Ft, DistanceUnit.NauticalMiles), "10k ft");
+        ExpectText(NavFormat.Altitude(18400 * Ft, DistanceUnit.StatuteMiles), "18k ft");
+        ExpectText(NavFormat.Altitude(5549f, DistanceUnit.Kilometres), "5500 m");
+        ExpectText(NavFormat.Altitude(12350f, DistanceUnit.Kilometres), "12400 m");
+        ExpectText(NavFormat.Altitude(-20f, DistanceUnit.Kilometres), "0 m");
+        ExpectText(NavFormat.Altitude(-20f, DistanceUnit.NauticalMiles), "0.0k ft");
+        Expect(NavFormat.AltitudeKey(5480f, DistanceUnit.Kilometres) == NavFormat.AltitudeKey(5520f, DistanceUnit.Kilometres),
+            "expected altitudes that read the same to share a key");
+        Expect(NavFormat.AltitudeKey(4540 * Ft, DistanceUnit.NauticalMiles) != NavFormat.AltitudeKey(4560 * Ft, DistanceUnit.NauticalMiles),
+            "expected 4.5k ft and 4.6k ft to differ");
     }
 
     private static void GameUnitSystemPicksUnit()

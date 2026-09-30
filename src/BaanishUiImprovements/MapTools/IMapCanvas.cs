@@ -29,6 +29,13 @@ public interface IMapView
     /// follows again once the unit is spotted again. A fixed point is always true.
     /// </summary>
     bool TryResolve(MapPoint point, out Vector2 position);
+
+    /// <summary>
+    /// <see cref="TryResolve"/> in 3D, for a label in the 3D view or a unit's altitude: global meters, X east, Y up from
+    /// sea level, Z north, at the altitude the faction knows for the unit. Same rule and same false case; a fixed point
+    /// gets sea level.
+    /// </summary>
+    bool TryResolveWorld(MapPoint point, out Vector3 position);
 }
 
 /// <summary>What a label names, which sets the places it may take and which labels give way to it (see <see cref="LabelLayout"/>).</summary>

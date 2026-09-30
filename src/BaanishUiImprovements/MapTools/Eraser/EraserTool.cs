@@ -82,6 +82,7 @@ public sealed class EraserTool : MapTool
         }
 
         public bool TryResolve(MapPoint point, out Vector2 position) => _inner.TryResolve(point, out position);
+        public bool TryResolveWorld(MapPoint point, out Vector3 position) => _inner.TryResolveWorld(point, out position);
         public void Line(Vector2 from, Vector2 to, ShapeColor color) => _inner.Line(from, to, _color);
         public void Arrow(Vector2 from, Vector2 to, ShapeColor color) => _inner.Arrow(from, to, _color);
         public void Polyline(IReadOnlyList<Vector2> points, ShapeColor color) => _inner.Polyline(points, _color);

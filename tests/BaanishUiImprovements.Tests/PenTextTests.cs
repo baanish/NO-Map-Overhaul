@@ -359,6 +359,12 @@ internal static class PenTextTests
             return true;
         }
 
+        public bool TryResolveWorld(MapPoint point, out Vector3 position)
+        {
+            position = new Vector3(point.Position.X, 0f, point.Position.Y);
+            return true;
+        }
+
         public void Line(Vector2 from, Vector2 to, ShapeColor color)
         {
         }

@@ -18,6 +18,8 @@ public sealed class BearingRangeTool : MapTool
     private readonly MeasureLabel _previewLabel = new();
     private MapPoint? _start;
     private MapPoint? _hover;
+    private float _startElevation;
+    private float _hoverElevation;
 
     public BearingRangeTool(IMapToolContext context)
         : base(context)
@@ -41,6 +43,7 @@ public sealed class BearingRangeTool : MapTool
         _hover = pointer.Point;
         if (_start is not null)
         {
+            _hoverElevation = Elevation(pointer.Point);
             InvalidateOverlay();
         }
     }
@@ -48,10 +51,12 @@ public sealed class BearingRangeTool : MapTool
     public override void OnClick(MapPointer pointer)
     {
         _hover = pointer.Point;
+        _hoverElevation = Elevation(pointer.Point);
         InvalidateOverlay();
         if (_start is not { } start)
         {
             _start = pointer.Point;
+            _startElevation = _hoverElevation;
             return;
         }
 
@@ -64,8 +69,7 @@ public sealed class BearingRangeTool : MapTool
             return;
         }
 
-        var elevation = end.IsAnchored ? 0f : Context.GroundElevation(end.Position);
-        Context.Shapes.Add(new BearingRangeShape(start, end, elevation, Context.Color));
+        Context.Shapes.Add(new BearingRangeShape(start, end, _startElevation, _hoverElevation, Context.Color));
     }
 
     public override void DrawOverlay(IMapCanvas canvas)
@@ -75,8 +79,8 @@ public sealed class BearingRangeTool : MapTool
             return;
         }
 
-        var startFound = canvas.TryResolve(start, out var from);
-        var hoverFound = canvas.TryResolve(hover, out var to);
+        var startFound = BearingRangeShape.TryResolveEnd(canvas, start, _startElevation, out var from);
+        var hoverFound = BearingRangeShape.TryResolveEnd(canvas, hover, _hoverElevation, out var to);
         BearingRangeShape.DrawMeasurement(canvas, _previewLabel, from, to, hover.IsAnchored, !startFound || !hoverFound, Context.Color);
     }
 
@@ -91,6 +95,9 @@ public sealed class BearingRangeTool : MapTool
             }
         }
     }
+
+    /// <summary>Ground height under a fixed point, which the range starts or ends at; a unit's altitude is read as it moves.</summary>
+    private float Elevation(MapPoint point) => point.IsAnchored ? 0f : Context.GroundElevation(point.Position);
 
     private void Forget()
     {

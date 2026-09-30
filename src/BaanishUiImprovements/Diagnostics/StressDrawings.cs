@@ -53,7 +53,7 @@ public static class StressDrawings
         {
             var from = units.Count > 1 ? units[i % units.Count] : new MapPoint(OnRing(center, radius * 0.3f, i, Bearings));
             var to = units.Count > 0 ? units[(i + 1) % units.Count] : new MapPoint(OnRing(center, radius * 0.9f, i, Bearings));
-            shapes.Add(new BearingRangeShape(from, to, to.IsAnchored ? 0f : elevation(to.Position), Color(i)));
+            shapes.Add(new BearingRangeShape(from, to, from.IsAnchored ? 0f : elevation(from.Position), to.IsAnchored ? 0f : elevation(to.Position), Color(i)));
         }
 
         for (var i = 0; i < Circles; i++)
@@ -100,7 +100,7 @@ public static class StressDrawings
         {
             var from = i == 0 && units.Count > 1 ? units[1] : new MapPoint(OnRing(center, radius * 0.2f, i, TypicalBearings));
             var to = units.Count > 0 ? units[i % units.Count] : new MapPoint(OnRing(center, radius * 0.8f, i, TypicalBearings));
-            shapes.Add(new BearingRangeShape(from, to, to.IsAnchored ? 0f : elevation(to.Position), Color(i + 2)));
+            shapes.Add(new BearingRangeShape(from, to, from.IsAnchored ? 0f : elevation(from.Position), to.IsAnchored ? 0f : elevation(to.Position), Color(i + 2)));
         }
 
         for (var i = 0; i < TypicalCircles; i++)

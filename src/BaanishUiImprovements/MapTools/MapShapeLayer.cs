@@ -4,6 +4,7 @@ using BaanishUiImprovements.Drawing;
 using TMPro;
 using UnityEngine;
 using FlatVector = System.Numerics.Vector2;
+using WorldVector = System.Numerics.Vector3;
 
 namespace BaanishUiImprovements.MapTools;
 
@@ -369,6 +370,16 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
 
         return _view.TryResolve(point, out position);
+    }
+
+    public bool TryResolveWorld(MapPoint point, out WorldVector position)
+    {
+        if (point.IsAnchored)
+        {
+            MarkLive();
+        }
+
+        return _view.TryResolveWorld(point, out position);
     }
 
     public void Line(FlatVector from, FlatVector to, ShapeColor color)

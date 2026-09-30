@@ -42,7 +42,8 @@ public abstract class MapShape
 
     /// <summary>
     /// Draws the shape. The same call renders it on the map and hit-tests it for the eraser, so draw everything that
-    /// should be clickable. Read anchored points through <see cref="IMapView.TryResolve"/> and ownship through
+    /// should be clickable. Read anchored points through <see cref="IMapView.TryResolve"/> or
+    /// <see cref="IMapView.TryResolveWorld"/> and ownship through
     /// <see cref="IMapView.OwnAircraft"/>: either marks the shape live, and the map then redraws it on each of the game's
     /// 10 Hz map refreshes. Other shapes redraw only when added, removed, or zoomed. Don't allocate here: a live shape
     /// draws ten times a second, so keep label strings cached until their text changes.
