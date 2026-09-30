@@ -16,12 +16,14 @@ landing zone: stop inside it after landing and the sortie counts as returned.
 Optional airbase names, off by default, label every airbase on the full map,
 friendly, enemy, and neutral, so a base called out on comms is easy to find.
 
-Helicopters see only the airbase boundary and names, and carriers are left out. The mod
+A red arrow on the screen edge points toward each incoming missile outside
+your view, for any missile the game's missile warning already knows about.
+
+Helicopters see only the airbase boundary, names, and missile arrows, and carriers are left out. The mod
 only draws. It patches no game code and sends nothing over the network.
 Switch off General > Enabled to hide everything it draws without uninstalling.
 
-Coming soon: map markers and drawing, waypoints with HUD markers, and an
-incoming-missile direction arrow.
+Coming soon: map markers and drawing, and waypoints with HUD markers.
 
 Requirements
 

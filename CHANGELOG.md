@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-09-30
+
+### Added
+
+- Missile arrows, on by default: a red arrow on the screen edge toward each incoming missile outside the view, on the correct side even when the missile is behind you. Only missiles the game's missile warning knows about get one.
+
 ## 0.3.0 - 2026-09-30
 
 ### Added
