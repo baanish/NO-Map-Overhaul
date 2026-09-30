@@ -34,6 +34,7 @@ internal static class Program
             ("a missile dead astern points down", MissileDeadAsternPointsDown),
         };
         tests.AddRange(MapToolTests.All);
+        tests.AddRange(MeasureToolTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)
