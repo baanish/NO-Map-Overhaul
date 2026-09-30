@@ -21,7 +21,7 @@ The script finds the game through Steam. If it can't, pass `-GameDir 'D:\SteamLi
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-The tests cover the runway-end choice and the naming rules. They don't need the game, and GitHub runs them on every push. Everything drawn on screen needs an in-game check. Include a screenshot and the map and airbase you tested in your pull request.
+The tests cover the logic that doesn't need Unity: the runway-end choice and naming, missile arrow placement, the map tools' drawings, undo history, formatting, label and menu layout, 3D ring projection, the perf test's statistics, and settings migration. [Testing](docs/TESTING.md) lists them in full. They don't need the game, and GitHub runs them on every push and pull request. Everything drawn on screen needs an in-game check. Include a screenshot and the map and airbase you tested in your pull request.
 
 [How it works](docs/DESIGN.md) explains the drawing and the game data it reads. To read the game code, decompile `NuclearOption_Data/Managed/Assembly-CSharp.dll` with `ilspycmd` into `.cache/decompiled/`, which Git ignores.
 

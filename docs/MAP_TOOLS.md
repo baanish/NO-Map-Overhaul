@@ -1,6 +1,6 @@
 # Map tools
 
-The map tools let you plan on the full map: a waypoint route with markers in the 3D view, freehand lines, text notes, bearing and range measurements, and range circles. Only you see what you draw, and it all clears when you leave the mission.
+The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Only you see what you draw, and it all clears when you leave the mission.
 
 Every setting mentioned here is listed in the [user guide's settings table](USER_GUIDE.md#settings), in the **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
 
@@ -10,11 +10,11 @@ Every setting mentioned here is listed in the [user guide's settings table](USER
 2. Click **Tools** just outside the map's top-left corner, or press `H`. A green rail of tool icons opens left of the map, with Bearing/range picked.
 3. Press `5` for Waypoint, then click the map to drop waypoints. A numbered route appears, and a line runs from your aircraft to the next waypoint.
 4. Close the map. The next two waypoints show in the 3D view with their distance and bearing, such as `WP2 4.2nm 045°`.
-5. Open the map again and click **Tools** to close the rail. Your clicks go back to the game.
+5. Open the map again. The rail closed with the map, so your clicks go to the game until you press `H` or click **Tools**.
 
 ## Mouse and keys
 
-These work on the full map. The mouse, undo, and redo work while the tools rail is open; the Tools key and the tool keys work with it open or closed.
+These work on the full map. The mouse works while the rail is open. The keys work with the rail open or closed.
 
 | Do this | To |
 | --- | --- |
@@ -27,17 +27,17 @@ These work on the full map. The mouse, undo, and redo work while the tools rail 
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**. Hover over a rail icon to see its key.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, while the game menu is open, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 
 ## The rail
 
-The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on Bearing/range. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on Bearing/range, and closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
 The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 
-When the screen leaves no room outside the map, such as on a nearly square screen, the rail or the strip moves inside the map's top-left corner instead, as a single column with the strip beside the **Tools** button.
+When the screen leaves no room outside the map, the rail or the strip moves inside the map's top-left corner instead. The rail moves in on a screen about as tall as it is wide, and stands as a single column. The strip moves in when the map sits too near the top of the screen, and runs beside the **Tools** button.
 
 ## Waypoint
 
@@ -104,6 +104,8 @@ Drawings only use what your side knows. A drawing on a unit follows it only wher
 ## Where drawings show
 
 Drawings show on the full map and on the minimap. Turn off **Show on minimap** to keep the minimap clear. They sit under the game's unit icons, so they never hide a unit.
+
+In the 3D view, a measurement's label shows at the arrowhead, a note shows on its unit or on the ground at its spot, the next two waypoints show with their distance and bearing, and each circle shows as a ring. They hide with the HUD and while the map is open. Labels on one point, such as a measurement and a note on the same contact, stack downward from it with the measurement on top.
 
 Measurements, radii, and waypoint numbers sit on small dark plates. On the full map, they move aside so they don't cover unit icons, airbase names, runway numbers, or each other. On the minimap, they move aside so they don't cover each other.
 

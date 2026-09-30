@@ -8,28 +8,30 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-121 tests pass. They cover:
+152 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
 - missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you;
 - the drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, save and restore, and the 100-step history;
-- bearing and distance text in each unit, and which unit the game's setting picks;
+- bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels (where the map placed them), the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
 - the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, the numbered drawing, and the 3D label text;
 - the pen: point spacing, simplifying, the point budget, and undo and erase; text notes: typing, Escape, Backspace, the length cap, and placing;
+- notes on units: a click putting the note on a unit, following it, reading lost while stale and resuming, going when the unit is destroyed, and undo, redo, and undoing a Clear never bringing it back;
 - bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, and the 3D labels and rings;
-- label placement: each kind's candidate slots, priority order, keeping a slot, leaders, a label drawn twice, and the minimap's upright and relayout steps;
+- label placement: each kind's candidate slots, a note beside its unit's icon, priority order, keeping a slot, leaders, a label drawn twice, crowded bearings, and the minimap's upright and relayout steps;
+- the rail and strip layout: outside the map at 2560x1440, 1920x1080, 3440x1440, and 1280x1024, falling back inside on a square screen, with the map near the screen's top, or with the HUD in the way, the strip's rows and hint wrapping, and each hover tag beside its cell;
 - the perf test's frame statistics, report, slice order, per-part timings, and typical and heavy drawings;
-- 3D ring projection: near-plane and screen-edge clipping, heading, and the chord count;
+- 3D ring projection: near-plane and screen-edge clipping, heading, the chord count, and moving a ring rather than rebuilding it;
 - tracked positions: live, stale, first seen stale, and never known;
-- settings migration from a real 0.4.0 file, a new value winning, and dropping a removed setting.
+- settings migration from a real 0.4.0 file, a new value winning, dropping a removed setting, and moving the tool keys.
 
-The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, the perf test switching the mod and map, or game-version compatibility.
+The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, 3D label stacking, the perf test switching the mod and map, or game-version compatibility.
 
 ## In-game status for v0.5.0
 
-Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, missile arrows, the map tools, the settings layout, and the perf test. Everything below was confirmed in game by the author.
+Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, missile arrows, the map tools and their keys, the settings layout, and the perf test. Everything below was confirmed in game by the author.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
@@ -43,10 +45,15 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | HUD callout | Observed | `RWY xx` sits below the lined-up threshold, with and without IncludeAirbaseName. |
 | Callout with gear down only | Observed | With OnlyWithGearDown on, the label stays hidden with the gear up and shows once the gear lever is down. |
 | Missile arrows | Partly observed | An arrow points at an incoming missile off screen and follows the game's own HUD marker for it. Getting shot down once disabled the mod, a bug since fixed. A missile behind you and two missiles at once weren't recorded as separate checks. |
-| Map tools rail | Observed | The Tools button and rail (design C) sit clear of the grid labels; every tool, swatch, Undo, Redo, and Clear work; left clicks go to the tool and not to unit selection; a Pen drag doesn't pan the map. |
+| Map tools rail | Observed | Every tool, swatch, Undo, Redo, and Clear work; left clicks go to the tool and not to unit selection; a Pen drag doesn't pan the map. |
+| Rail and strip placement | Observed | The rail stands left of the map and the strip above it, both outside the map, and the strip stays clear of the mission clock; each hover tag shows beside the cell it names. |
+| Map tool keys | Observed | `H` opens and closes the rail; `1` to `6` pick Bearing/range, Circle, Text, Pen, Waypoint, and Eraser, opening the rail when it's closed. |
 | Waypoint route | Observed | Numbered route with the next two waypoints labelled in the 3D view; the route moves on as waypoints are flown; Restart goes back to waypoint 1 without skipping waypoints behind; undo back to an erased route resumes its progress; markers clip at the minimap edge. |
 | Text notes and typing | Observed | Typing a note with W, A, S, D, and M leaves the aircraft alone, and the controls, the Escape pause menu, and NOAutopilot's hotkeys work again after Enter. |
+| Notes on units | Observed | A note placed on a contact follows it on the map and in the 3D view, reads `lost` when the track goes stale, and goes when the contact is destroyed. |
+| 3D labels on one unit | Observed | A bearing label and a note on the same unit stack in the 3D view instead of overlapping, with the bearing on top. |
 | Bearing, circle, and 3D rings | Observed | Arrows, circles, and labels draw flat and thin in the default green; a circle's radius stays at the cursor when dragged over a unit; circles show as rings in the 3D view. |
+| BRA labels | Observed | An arrow ending on a unit adds the unit's altitude to its label, and the range is the straight line through the air to it. |
 | Right click | Observed | With the rail open, right click cancels a drawing in progress or deletes a drawing, and NOAutopilot places no waypoint; with a friendly unit selected, the game's move order wins; with the rail closed, NOAutopilot's right click works. |
 | Map labels on the turning minimap | Observed | Bearings, radii, and close waypoint numbers stay upright, clear of each other and of their arrowheads while the minimap turns; plated text renders sharp. |
 | Fair play | Observed | An arrow tied to an enemy freezes and reads `lost` about 4 s after the radar track breaks, and resumes on reacquiring it. |

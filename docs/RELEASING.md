@@ -21,8 +21,8 @@ The script refuses a dirty working tree. It runs the tests, does a clean Release
 
 ```text
 artifacts/
-  BaanishUiImprovements-v0.1.0-nomm.zip
-  BaanishUiImprovements-v0.1.0-plugin-only.zip
+  BaanishUiImprovements-v<version>-nomm.zip
+  BaanishUiImprovements-v<version>-plugin-only.zip
   SHA256SUMS.txt
   BaanishUiImprovements.nomnom.json
 ```

@@ -23,7 +23,7 @@ To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` fi
 
 ## What you see
 
-Everything below applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+The runways, approach line, callout, boundary, and names apply to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
 
 ### On the map
 
@@ -63,13 +63,13 @@ Only missiles the game's missile warning already knows about get an arrow, and e
 
 ### Map tools
 
-On the full map, a **Tools** button just outside the map's top-left corner opens a rail of planning tools beside the map: a waypoint route with markers in the 3D view, a pen, text notes, bearing and range measurements, range circles, and an eraser, with undo, redo, and colours. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
+On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
 
 ## How the runway end is chosen
 
 Within range, the mod picks the runway nearest to you, measured to the runway strip itself, and then whichever of its two ends is closer. Heading plays no part. The map line and the HUD label always show the same end.
 
-Between two runways or ends at about the same distance, the choice can switch as you move. An earlier version tried to guess the landing end from your heading and traffic-pattern leg, and it got the end wrong while manoeuvring near the field.
+Between two runways or ends at about the same distance, the choice can switch as you move. Guessing the landing end from your heading and traffic-pattern leg picks the wrong end while you manoeuvre near the field, so the mod doesn't guess.
 
 ## Settings
 
@@ -110,7 +110,7 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
 | Map Tools / General | Circles in 3D view | ShowCirclesIn3D | `true` | Draw each circle in the 3D view as well, as a thin ring level with its centre. |
 | Map Tools / General | Distance units | DistanceUnits | `Game` | **Game setting** follows the game's unit setting. Nautical miles, kilometres, or statute miles always use that unit. Altitudes show in metres with kilometres and in feet with miles. In the file: `Game`, `NauticalMiles`, `Kilometres`, or `StatuteMiles`. |
-| Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here. |
+| Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The rail's swatches set it; any colour works here. |
 | Map Tools / Drawing | Line width, *advanced* | LineWidth | `1.5` | Width of drawn lines. Arrowheads grow with it. |
 | Map Tools / Drawing | Text size, *advanced* | TextSize | `10` | Size of text the tools draw on the map. |
 | Map Tools / Waypoints | Reached within (km), *advanced* | WaypointReachKm | `2.5` | How close to a waypoint counts as reaching it. |
@@ -187,7 +187,7 @@ Minimap, mod on                          0.004     0.002     0.001     0.003    
 
 The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the condition's last slice, and how many of them are TextMeshPro text.
 
-The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools menu and input, **Missiles** the missile arrows, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
+The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, **Missiles** the missile arrows, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
 
 Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
 

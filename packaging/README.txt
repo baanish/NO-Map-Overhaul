@@ -1,7 +1,8 @@
 Baanish UI Improvements v@VERSION@
 
-Map and HUD navigation aids for Nuclear Option. This release adds runway
-markers:
+Map and HUD navigation aids for Nuclear Option.
+
+Runway markers:
 
 - Friendly runways drawn on the minimap and full map, numbered at each end.
 - A dashed approach line off the nearest runway end, within 5 km.
@@ -9,23 +10,32 @@ markers:
 - A "RWY 27" label over that runway's threshold in the 3D view, with an
   optional airbase prefix for ATC calls, such as "NBSCLI RWY 27". Another
   option hides it until the landing gear is down.
+- An optional airbase boundary, off by default, shading each friendly
+  airbase's landing zone: stop inside it after landing and the sortie counts
+  as returned.
 
-An optional airbase boundary, off by default, shades each friendly airbase's
-landing zone: stop inside it after landing and the sortie counts as returned.
+Missile arrows: a red arrow on the screen edge points toward each incoming
+missile outside your view, for any missile the game's missile warning
+already knows about.
 
-Optional airbase names, off by default, label your faction's airbases on the
-full map, so a base called out on comms is easy to find. That includes
-airbases a mission adds and ones your side captures. Enemy and neutral
-airbases get no name, since the game doesn't mark them.
+Map tools: on the full map, click Tools or press H to open a rail of
+planning tools. Keys 1 to 6 pick Bearing/range, Circle, Text, Pen,
+Waypoint, and Eraser; Z and Y undo and redo. Measure bearing, range, and a
+contact's altitude, draw range circles that also show in the 3D view, tag
+contacts with notes that follow them, and fly a waypoint route labelled in
+the 3D view. Only you see what you draw. Drawings on other units use only
+what your side knows, and read "lost" when your side loses the contact.
 
-A red arrow on the screen edge points toward each incoming missile outside
-your view, for any missile the game's missile warning already knows about.
+Airbase names, off by default: your faction's airbases get a name on the
+full map, including ones a mission adds and ones your side captures. Enemy
+and neutral airbases get no name, since the game doesn't mark them.
 
-Helicopters see only the airbase boundary, names, and missile arrows, and carriers are left out. The mod
-only draws. It patches no game code and sends nothing over the network.
-Switch off General > Enabled to hide everything it draws without uninstalling.
-
-Coming soon: map markers and drawing, and waypoints with HUD markers.
+Helicopters get no runways, approach line, or callout, and carriers are left
+out. The mod only draws on your screen. It doesn't patch the game and sends
+nothing over the network. If NOAutopilot is installed, the mod holds back
+its right-click waypoints while the map tools rail is open, so a right click
+that deletes a drawing doesn't also move the autopilot route. Switch off
+General > Enabled to hide everything the mod draws without uninstalling.
 
 Requirements
 
@@ -49,6 +59,9 @@ Start the game once. BepInEx creates the settings file:
 
 Every setting and the airbase abbreviations are documented here:
 https://github.com/baanish/baanish-ui-improvements/blob/main/docs/USER_GUIDE.md
+
+How to use the map tools:
+https://github.com/baanish/baanish-ui-improvements/blob/main/docs/MAP_TOOLS.md
 
 Source and full documentation:
 https://github.com/baanish/baanish-ui-improvements
