@@ -13,6 +13,7 @@ internal sealed class MapToolContext : IMapToolContext
 
     private readonly ModSettings _settings;
     private readonly KnownPositions _known = new();
+    private readonly RaycastHit[] _groundHits = new RaycastHit[16];
 
     public MapToolContext(ModSettings settings, ShapeStore shapes)
     {
@@ -82,9 +83,18 @@ internal sealed class MapToolContext : IMapToolContext
     public float GroundElevation(FlatVector position)
     {
         var sea = new GlobalPosition(position.X, 0f, position.Y).ToLocalPosition();
-        return Physics.Raycast(sea + Vector3.up * RayHeight, Vector3.down, out var hit, RayHeight, PhysicsLayers.Everything)
-            ? hit.point.y - Datum.LocalSeaY
-            : 0f;
+        var count = Physics.RaycastNonAlloc(sea + Vector3.up * RayHeight, Vector3.down, _groundHits, RayHeight, PhysicsLayers.Everything);
+        var top = float.NegativeInfinity;
+        for (var i = 0; i < count; i++)
+        {
+            var hit = _groundHits[i];
+            if (hit.point.y > top && hit.collider.GetComponentInParent<Unit>() == null)
+            {
+                top = hit.point.y;
+            }
+        }
+
+        return float.IsNegativeInfinity(top) ? 0f : top - Datum.LocalSeaY;
     }
 
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>

@@ -39,8 +39,9 @@ public interface IMapToolContext : IMapView
     bool TryResolveWorld(MapPoint point, out Vector3 position);
 
     /// <summary>
-    /// Ground or sea height at a point, in meters above sea level, found the way the game's own map jump finds it. It
-    /// casts a ray, so call it once per new shape, not per frame. 0 where nothing is under the point.
+    /// Ground or sea height at a point, in meters above sea level, found the way the game's own map jump finds it but
+    /// passing through units, so a label never rests on a ship or building the player can't see. It casts a ray, so
+    /// call it once per new shape, not per frame. 0 where nothing is under the point.
     /// </summary>
     float GroundElevation(Vector2 position);
 }
