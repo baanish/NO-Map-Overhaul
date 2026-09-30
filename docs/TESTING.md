@@ -24,6 +24,7 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
 | Plugin loads | Observed | `Baanish UI Improvements <version> loaded.` in `LogOutput.log`. |
+| Master switch | Observed | Turning General → Enabled off in F1 removes the runways, approach line, and HUD label. Turning it back on restores them. Airbase names and the boundary weren't turned on for this check. |
 | Strip alignment | Observed | North Boscali (Heartland): strips sit on the runway outlines painted on the map, both runways. |
 | Runway numbers | Observed | North Boscali 03, 21, 12, 30 at the correct ends in the HUD font; Opal with both ends numbered. |
 | Contrast on busy map art | Observed | Feldspar: the dark rim keeps strips visible over bright linework. |

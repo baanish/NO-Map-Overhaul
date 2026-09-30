@@ -56,6 +56,13 @@ public sealed class Plugin : BaseUnityPlugin
     /// <summary>Per frame: the HUD label follows the camera and the numbers counter-rotate the heading-up minimap.</summary>
     private void LateUpdate() => Guard(() =>
     {
+        if (!_settings.Enabled.Value)
+        {
+            // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
+            RemoveOverlays();
+            return;
+        }
+
         if (SceneSingleton<DynamicMap>.i == null)
         {
             _approach = null; // the runways it points at went with the scene
@@ -91,6 +98,12 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         DynamicMap.onMapChanged -= OnMapChanged;
+        RemoveOverlays();
+    }
+
+    /// <summary>Each overlay rebuilds itself on its next render, so turning the mod back on needs nothing more.</summary>
+    private void RemoveOverlays()
+    {
         _mapOverlay.Reset();
         _hudCallout.Reset();
         _boundaryOverlay.Reset();
@@ -101,7 +114,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void RefreshMap()
     {
         var map = SceneSingleton<DynamicMap>.i;
-        if (map == null)
+        if (map == null || !_settings.Enabled.Value)
         {
             return;
         }
