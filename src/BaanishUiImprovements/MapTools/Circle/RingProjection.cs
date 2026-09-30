@@ -45,11 +45,17 @@ public readonly struct ScreenCamera : IEquatable<ScreenCamera>
 /// </summary>
 public sealed class RingProjection
 {
-    /// <summary>Chords per ring. At 20 nm a chord strays at most 6 m from the true circle, and at 1 km under 0.3 m.</summary>
+    /// <summary>Chords for a ring that fills the view. At 20 nm a chord strays at most 6 m from the true circle, and at 1 km under 0.3 m.</summary>
     public const int Segments = 128;
+
+    /// <summary>Chords for a ring a few pixels across, far away.</summary>
+    public const int MinSegments = 16;
 
     /// <summary>How far past the screen edge a cut line runs, so its faded end stays off screen.</summary>
     public const float GuardPixels = 32f;
+
+    /// <summary>How far a chord may stray from the true circle on screen, from a camera looking straight at it.</summary>
+    private const float MaxStrayPixels = 0.25f;
 
     private static readonly float[] Cosines = new float[Segments];
     private static readonly float[] Sines = new float[Segments];
@@ -77,6 +83,32 @@ public sealed class RingProjection
     /// <summary>The whole ring is in view: one run that closes on itself.</summary>
     public bool Closed { get; private set; }
 
+    /// <summary>How many chords the last projection cut the ring into, from <see cref="ChordsFor"/>.</summary>
+    public int Chords { get; private set; }
+
+    /// <summary>
+    /// The fewest chords, doubling from <see cref="MinSegments"/> up to <see cref="Segments"/>, that keep the ring round on
+    /// screen. No point of the ring is nearer the camera than <paramref name="distance"/> less the radius, so the ring's
+    /// radius spans at most the focal length times the radius over that many pixels. A camera inside the ring gets them all.
+    /// </summary>
+    /// <param name="distance">From the camera to the ring's centre, in meters.</param>
+    public static int ChordsFor(float distance, float radius, float focalPixels)
+    {
+        if (distance <= radius)
+        {
+            return Segments;
+        }
+
+        var pixels = focalPixels * radius / (distance - radius);
+        var chords = MinSegments;
+        while (chords < Segments && pixels * (1f - MathF.Cos(MathF.PI / chords)) > MaxStrayPixels)
+        {
+            chords *= 2;
+        }
+
+        return chords;
+    }
+
     /// <summary>Projects the ring around <paramref name="center"/> in the level plane through it, radius in meters.</summary>
     public void Project(Vector3 center, float radius, in ScreenCamera camera)
     {
@@ -88,10 +120,12 @@ public sealed class RingProjection
         var middle = Vector3.Transform(center - camera.Position, toCamera);
         var east = Vector3.Transform(Vector3.UnitX, toCamera) * radius;
         var north = Vector3.Transform(Vector3.UnitZ, toCamera) * radius;
+        var chords = Chords = ChordsFor(middle.Length(), radius, camera.FocalPixels);
+        var stride = Segments / chords;
         var outside = -1;
-        for (var i = 0; i < Segments; i++)
+        for (var i = 0; i < chords; i++)
         {
-            _samples[i] = middle + east * Cosines[i] + north * Sines[i];
+            _samples[i] = middle + east * Cosines[i * stride] + north * Sines[i * stride];
             if (outside < 0 && !Inside(_samples[i], camera))
             {
                 outside = i;
@@ -100,23 +134,23 @@ public sealed class RingProjection
 
         if (outside < 0)
         {
-            for (var i = 0; i < Segments; i++)
+            for (var i = 0; i < chords; i++)
             {
                 _points.Add(ToScreen(_samples[i], camera));
             }
 
-            _runs.Add((0, Segments));
+            _runs.Add((0, chords));
             Closed = true;
             return;
         }
 
         // Starting from a point out of view, no run wraps past the end of the samples.
         var open = false;
-        for (var step = 0; step < Segments; step++)
+        for (var step = 0; step < chords; step++)
         {
-            var i = (outside + step) % Segments;
+            var i = (outside + step) % chords;
             var from = _samples[i];
-            var to = _samples[(i + 1) % Segments];
+            var to = _samples[(i + 1) % chords];
             if (!TryClip(from, to, camera, out var enter, out var exit))
             {
                 open = false;

@@ -16,7 +16,7 @@ namespace BaanishUiImprovements.MapTools;
 /// </summary>
 internal sealed class WorldRingPool
 {
-    /// <summary>Rings drawn at once; requests past it are dropped. Each is a 128-chord mesh rebuilt as the camera moves.</summary>
+    /// <summary>Rings drawn at once; requests past it are dropped. Each is a mesh of up to 128 chords, rebuilt as the camera moves.</summary>
     private const int MaxRings = 16;
 
     private readonly ModSettings _settings;
