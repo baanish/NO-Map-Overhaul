@@ -578,6 +578,8 @@ internal sealed class MapShapeLayer : IMapCanvas
 
                 copy.name = "Marker";
                 image.raycastTarget = false;
+                // The game's prefab ships with maskable off, so without this the marker draws past the minimap's edge.
+                image.maskable = true;
                 _markers.Add(image);
             }
 
