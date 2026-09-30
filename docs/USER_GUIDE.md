@@ -129,7 +129,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Missile Arrows | Color | `FF4033FF` | Arrow colour. |
 | Map Tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
 | Map Tools | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
-| Map Tools | Color | `FFDD33FF` | Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here. |
+| Map Tools | Color | `33FF33FF` | Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here. |
 | Map Tools | LineWidth | `1.5` | Width of drawn lines. Arrowheads grow with it. |
 | Map Tools | TextSize | `10` | Size of text the tools draw on the map. |
 | Map Tools | DistanceUnits | `Game` | `Game` follows the game's unit setting. `NauticalMiles`, `Kilometres`, or `StatuteMiles` always use that unit. |
