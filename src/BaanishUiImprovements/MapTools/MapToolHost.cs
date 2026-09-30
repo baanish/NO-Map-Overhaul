@@ -55,6 +55,13 @@ internal sealed class MapToolHost
     /// <summary>The drawings and the game lookups the tools use, for the perf test's generated drawings.</summary>
     public MapToolContext Context => _context;
 
+    /// <summary>
+    /// The menu is open and no selected unit would take a move order, so a right-click on the map is the tools' and
+    /// NOAutopilot must not act on it too. Read by <see cref="AutopilotRightClickPatch"/> inside the game's map update,
+    /// before this frame's <see cref="Update"/>, so the menu is as the last frame left it. False after <see cref="Reset"/>.
+    /// </summary>
+    public bool TakesRightClick(DynamicMap map) => RightClickRule.ToolsTake(_active >= 0, GameOrdersRightClick(map));
+
     /// <summary>Per frame, after the HUD callout has found its label.</summary>
     public void Update(TextMeshProUGUI? hudStyle)
     {

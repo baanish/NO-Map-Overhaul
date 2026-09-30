@@ -10,13 +10,15 @@ using FlatVector = System.Numerics.Vector2;
 namespace BaanishUiImprovements;
 
 /// <summary>
-/// Client-side HUD and map additions. Nothing is patched: the plugin reads the game's own singletons
+/// Client-side HUD and map additions. Nothing in the game is patched: the plugin reads the game's own singletons
 /// (DynamicMap, CombatHUD, the local faction's airbases) and draws on top, so a game update that moves
-/// something fails loudly in the log instead of corrupting game state.
+/// something fails loudly in the log instead of corrupting game state. Its one patch is on NOAutopilot
+/// (<see cref="AutopilotRightClickPatch"/>), which it soft-depends on so that NOAutopilot is loaded before Awake looks for it.
 /// Map work runs on the game's own 10 Hz map refresh (<see cref="DynamicMap.onMapChanged"/>), the same
 /// cadence as its airbase icons. Only what must track the camera or the turning minimap runs every frame.
 /// </summary>
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+[BepInDependency(AutopilotRightClickPatch.AutopilotGuid, BepInDependency.DependencyFlags.SoftDependency)]
 public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.baanish.nuclearoption.uiimprovements";
@@ -65,6 +67,8 @@ public sealed class Plugin : BaseUnityPlugin
         {
             Logger.LogWarning("CombatHUD.targetArrow is missing in this game version: no missile arrows.");
         }
+
+        AutopilotRightClickPatch.Apply(_mapTools, Logger);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
     }
@@ -133,6 +137,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         DynamicMap.onMapChanged -= OnMapChanged;
+        AutopilotRightClickPatch.Remove();
         _perfTest.Shutdown();
         RemoveOverlays();
     }
