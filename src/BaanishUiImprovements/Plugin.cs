@@ -165,7 +165,7 @@ public sealed class Plugin : BaseUnityPlugin
         _approach = SelectApproach(aircraft, rotary);
         _mapOverlay.Render(map, _runways, _approach, _hudCallout.HudStyle);
 
-        // Both layers take the first slot each refresh, so the one rendered last draws lowest: boundary, then names.
+        // The boundary keeps the icon layer's first slot and the names the one after it, so both draw under the runways.
         CollectNamedAirbases();
         _labelOverlay.Render(map, _namedAirbases, _hudCallout.HudStyle);
         _boundaryOverlay.Render(map, _airbases);

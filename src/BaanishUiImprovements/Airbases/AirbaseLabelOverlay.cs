@@ -77,8 +77,8 @@ internal sealed class AirbaseLabelOverlay
     }
 
     /// <summary>
-    /// Re-takes the icon layer's first slot every refresh, just before the boundary overlay does the same, so the names
-    /// settle second: over the boundary, under the runways and the game's unit icons.
+    /// Takes the icon layer's second slot, after the boundary layer, which keeps the first: over the boundary, under the
+    /// runways and the game's unit icons. It moves only when out of place, since each move re-sorts the map's canvas.
     /// </summary>
     private RectTransform EnsureLayer(DynamicMap map)
     {
@@ -89,9 +89,11 @@ internal sealed class AirbaseLabelOverlay
             _layer.SetParent(map.iconLayer.transform, false);
         }
 
-        if (_layer.GetSiblingIndex() != 0)
+        var first = _layer.parent.GetChild(0);
+        var slot = first != _layer && first.name == AirbaseBoundaryOverlay.LayerName ? 1 : 0;
+        if (_layer.GetSiblingIndex() != slot)
         {
-            _layer.SetAsFirstSibling();
+            _layer.SetSiblingIndex(slot);
         }
 
         return _layer;

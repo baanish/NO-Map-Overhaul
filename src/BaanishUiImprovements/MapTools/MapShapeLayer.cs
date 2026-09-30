@@ -31,7 +31,7 @@ internal sealed class MapShapeLayer : IMapCanvas
 
     /// <summary>
     /// How the mod's other map layers are named (BaanishRunwayLayer, BaanishAirbaseLabelLayer,
-    /// BaanishAirbaseBoundaryLayer). Each takes the icon layer's first slot, so together they lead its children.
+    /// BaanishAirbaseBoundaryLayer). They take the icon layer's first slots, so together they lead its children.
     /// </summary>
     private const string ModLayerPrefix = "Baanish";
 
