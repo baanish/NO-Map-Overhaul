@@ -29,10 +29,12 @@ internal sealed class WorldLabelPool : IWorldLabels
     private readonly List<TextMeshProUGUI> _labels = new();
 
     /// <summary>
-    /// Each placed label's point this frame and the lowest edge its stack reaches. Labels on one point, such as a bearing
-    /// and a note on the same unit, stack downward in the order tools add them, so the bearing stays on top.
+    /// Each placed label's point this frame and the stack it joined, by the index of the stack's first label, and each
+    /// stack's lowest edge by that index. Labels on one point, such as a bearing and a note on the same unit, stack
+    /// downward in the order tools add them, so the bearing stays on top. A label near any label in a stack joins it.
     /// </summary>
     private readonly Vector2[] _points = new Vector2[MaxLabels];
+    private readonly int[] _stacks = new int[MaxLabels];
     private readonly float[] _stackBottoms = new float[MaxLabels];
     private readonly WorldRingPool _rings;
     private TextMeshProUGUI? _source;
@@ -82,18 +84,20 @@ internal sealed class WorldLabelPool : IWorldLabels
         var height = LineCount(text) * fontSize * LineSpacing * _source.transform.lossyScale.y;
         var point = new Vector2(screen.x, screen.y);
         var centerY = screen.y;
+        var stack = _used;
         for (var i = 0; i < _used; i++)
         {
             if ((_points[i] - point).sqrMagnitude < SamePointPixels * SamePointPixels)
             {
-                centerY = _stackBottoms[i] - 0.5f * height;
-                _stackBottoms[i] -= height;
+                stack = _stacks[i];
+                centerY = _stackBottoms[stack] - 0.5f * height;
                 break;
             }
         }
 
         _points[_used] = point;
-        _stackBottoms[_used] = centerY - 0.5f * height;
+        _stacks[_used] = stack;
+        _stackBottoms[stack] = centerY - 0.5f * height;
         var label = Label(_used++);
         label.transform.position = new Vector3(screen.x, centerY, 0f);
         label.text = text;
