@@ -23,6 +23,7 @@ internal static class LabelLayoutTests
         ("a label keeps its slot while it stays clear", LabelKeepsClearSlot),
         ("without obstacles labels keep their slots", NoObstaclesKeepsSlots),
         ("a label drawn twice takes the first one's slot", MirrorTakesOriginalSlot),
+        ("crowded bearings each take the first slot clear of everything", CrowdedBearingsTakeFirstClearSlot),
         ("minimap labels turn upright again only after a degree of turn", UprightStepsByADegree),
         ("minimap turns count across north", TurnsCountAcrossNorth),
     };
@@ -153,6 +154,53 @@ internal static class LabelLayoutTests
         var highlight = Label(arrow, overlay: true);
         new LabelLayout().Place(new List<PlacedLabel> { stored, highlight }, new List<LabelBox>());
         Expect(stored.Slot == 0 && highlight.Center == stored.Center, $"expected both past the head, got {stored.Slot} and {highlight.Center}");
+    }
+
+    /// <summary>
+    /// A blocked bearing checks its slots against only the boxes near it. Among hundreds of obstacles, each bearing, newest
+    /// first, must still take the first slot a check against every obstacle and every newer bearing finds clear.
+    /// </summary>
+    private static void CrowdedBearingsTakeFirstClearSlot()
+    {
+        var random = new Random(7);
+        Vector2 Around(float spread) => new Vector2(random.NextSingle() - 0.5f, random.NextSingle() - 0.5f) * 2f * spread;
+        var obstacles = new List<LabelBox>();
+        for (var i = 0; i < 300; i++)
+        {
+            obstacles.Add(LabelBox.Around(Around(300f), new Vector2(10)).Grown(LabelLayout.IconMargin));
+        }
+
+        var labels = new List<PlacedLabel>();
+        for (var i = 0; i < 16; i++)
+        {
+            var head = Around(80f);
+            labels.Add(Label(LabelAnchor.Bearing(head + Around(200f), head), order: i, text: i.ToString()));
+        }
+
+        new LabelLayout().Place(labels, obstacles);
+        var leaders = 0;
+        var newerFirst = labels.OrderByDescending(label => label.Order).ToList();
+        for (var i = 0; i < newerFirst.Count; i++)
+        {
+            var label = newerFirst[i];
+            var blockers = obstacles.Concat(newerFirst.Take(i).Select(newer => newer.Box)).ToList();
+            var expected = Enumerable.Range(0, LabelLayout.SlotCount(LabelKind.Bearing)).FirstOrDefault(slot => IsClear(label, slot, blockers));
+            Expect(label.Slot == expected, $"expected bearing {label.Text} in slot {expected}, got {label.Slot}");
+            leaders += label.Leader ? 1 : 0;
+        }
+
+        Expect(leaders > 0, "expected the crowd to push some bearings onto leaders");
+    }
+
+    /// <summary>The layout's rules for a slot, checked against every box.</summary>
+    private static bool IsClear(PlacedLabel label, int slot, List<LabelBox> blockers)
+    {
+        LabelLayout.Candidate(label.Anchor, label.HalfSize, slot, out _, out var center);
+        var box = LabelBox.Around(center, label.HalfSize);
+        var head = label.Anchor.Point;
+        return !box.Crosses(label.Anchor.From, head) &&
+               (!LabelLayout.IsLeaderSlot(LabelKind.Bearing, slot) || Vector2.Distance(box.Nearest(head), head) <= LabelLayout.LeaderReach) &&
+               !blockers.Any(box.Overlaps);
     }
 
     private static PlacedLabel Bearing(Vector2 from, Vector2 head) => Label(LabelAnchor.Bearing(from, head));

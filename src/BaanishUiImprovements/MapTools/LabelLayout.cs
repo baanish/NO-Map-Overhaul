@@ -161,6 +161,13 @@ public sealed class LabelLayout
     private readonly List<PlacedLabel> _order = new();
     private readonly List<LabelBox> _placed = new();
 
+    /// <summary>This pass's obstacles, copied out of the caller's list once rather than read through it for every slot.</summary>
+    private LabelBox[] _obstacles = Array.Empty<LabelBox>();
+    private int _obstacleCount;
+
+    /// <summary>The obstacles and placed labels that reach the label being placed, which only they can block.</summary>
+    private readonly List<LabelBox> _near = new();
+
     public static int SlotCount(LabelKind kind) => kind switch
     {
         LabelKind.Waypoint => 4,
@@ -228,11 +235,12 @@ public sealed class LabelLayout
 
         _order.Sort(PriorityOrder.Instance);
         _placed.Clear();
+        CopyObstacles(obstacles);
         foreach (var label in _order)
         {
             var count = SlotCount(label.Anchor.Kind);
             var kept = label.Slot >= 0 && label.Slot < count ? label.Slot : 0;
-            label.Take(obstacles == null ? kept : Choose(label, kept, count, obstacles));
+            label.Take(obstacles == null ? kept : Choose(label, kept, count));
             _placed.Add(label.Box);
         }
 
@@ -319,17 +327,28 @@ public sealed class LabelLayout
         return new Vector2(direction.X * cos - direction.Y * sin, direction.X * sin + direction.Y * cos);
     }
 
-    /// <summary>The kept slot if it's still clear, else the first clear one, else the first.</summary>
-    private int Choose(PlacedLabel label, int kept, int count, IReadOnlyList<LabelBox> obstacles)
+    /// <summary>
+    /// The kept slot if it's still clear, else the first clear one, else the first. A bearing whose kept slot is blocked
+    /// may try all its slots, dozens of them, so it first gathers the boxes that overlap any of them
+    /// (<see cref="GatherNear"/>): no other box can block one, so each slot checks a few boxes rather than every icon on
+    /// the map. The choice is the same either way.
+    /// </summary>
+    private int Choose(PlacedLabel label, int kept, int count)
     {
-        if (label.Slot >= 0 && IsClear(label, kept, obstacles))
+        if (label.Slot >= 0 && IsClear(label, kept, near: false))
         {
             return kept;
         }
 
+        var near = label.Anchor.Kind == LabelKind.Bearing;
+        if (near)
+        {
+            GatherNear(label);
+        }
+
         for (var slot = 0; slot < count; slot++)
         {
-            if (IsClear(label, slot, obstacles))
+            if (IsClear(label, slot, near))
             {
                 return slot;
             }
@@ -338,40 +357,104 @@ public sealed class LabelLayout
         return 0;
     }
 
-    /// <summary>Clear of every obstacle, every label placed so far, and, for a bearing, its own shaft.</summary>
-    private bool IsClear(PlacedLabel label, int slot, IReadOnlyList<LabelBox> obstacles)
+    /// <summary>
+    /// Clear of every obstacle, every label placed so far, and, for a bearing, its own shaft. With <paramref name="near"/>
+    /// it checks only the boxes <see cref="GatherNear"/> gathered for this label.
+    /// </summary>
+    private bool IsClear(PlacedLabel label, int slot, bool near) =>
+        Fits(label, slot, out var box) &&
+        (near ? !OverlapsAny(box, _near) : !OverlapsAny(box, _obstacles, _obstacleCount) && !OverlapsAny(box, _placed));
+
+    /// <summary>The label's box in the slot, and false where a bearing's box would cross its own shaft or a leader would reach too far.</summary>
+    private static bool Fits(PlacedLabel label, int slot, out LabelBox box)
     {
         var anchor = label.Anchor;
-        Candidate(anchor, label.HalfSize, slot, out _, out var center);
-        var box = LabelBox.Around(center, label.HalfSize);
+        box = SlotBox(label, slot);
         if (anchor.Kind == LabelKind.Bearing && box.Crosses(anchor.From, anchor.Point))
         {
             return false;
         }
 
         // A leader slot sets its box's side, not its corner, at the ring's distance; a corner past the reach is too far.
-        if (IsLeaderSlot(anchor.Kind, slot) && Vector2.Distance(box.Nearest(anchor.Point), anchor.Point) > LeaderReach)
+        return !IsLeaderSlot(anchor.Kind, slot) || Vector2.Distance(box.Nearest(anchor.Point), anchor.Point) <= LeaderReach;
+    }
+
+    private static LabelBox SlotBox(PlacedLabel label, int slot)
+    {
+        Candidate(label.Anchor, label.HalfSize, slot, out _, out var center);
+        return LabelBox.Around(center, label.HalfSize);
+    }
+
+    /// <summary>
+    /// Fills <see cref="_near"/> with the obstacles and placed labels that overlap the ground a bearing's slots cover.
+    /// A leader slot only fits with its box's nearest point within <see cref="LeaderReach"/> of the head, so the leader
+    /// slots together cover no more than that reach plus the box's size around the head, and a unit more for rounding.
+    /// </summary>
+    private void GatherNear(PlacedLabel label)
+    {
+        var reach = LabelBox.Around(label.Anchor.Point, new Vector2(LeaderReach + 1f) + 2f * label.HalfSize);
+        for (var slot = 0; slot < FirstLeader; slot++)
         {
-            return false;
+            var box = SlotBox(label, slot);
+            reach = new LabelBox(Vector2.Min(reach.Min, box.Min), Vector2.Max(reach.Max, box.Max));
         }
 
-        for (var i = 0; i < obstacles.Count; i++)
+        _near.Clear();
+        for (var i = 0; i < _obstacleCount; i++)
         {
-            if (box.Overlaps(obstacles[i]))
+            if (reach.Overlaps(_obstacles[i]))
             {
-                return false;
+                _near.Add(_obstacles[i]);
             }
         }
 
-        for (var i = 0; i < _placed.Count; i++)
+        foreach (var placed in _placed)
         {
-            if (box.Overlaps(_placed[i]))
+            if (reach.Overlaps(placed))
             {
-                return false;
+                _near.Add(placed);
+            }
+        }
+    }
+
+    private void CopyObstacles(IReadOnlyList<LabelBox>? obstacles)
+    {
+        _obstacleCount = obstacles?.Count ?? 0;
+        if (_obstacles.Length < _obstacleCount)
+        {
+            _obstacles = new LabelBox[Math.Max(_obstacleCount, 2 * _obstacles.Length)];
+        }
+
+        for (var i = 0; i < _obstacleCount; i++)
+        {
+            _obstacles[i] = obstacles![i];
+        }
+    }
+
+    private static bool OverlapsAny(LabelBox box, LabelBox[] boxes, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            if (box.Overlaps(boxes[i]))
+            {
+                return true;
             }
         }
 
-        return true;
+        return false;
+    }
+
+    private static bool OverlapsAny(LabelBox box, List<LabelBox> boxes)
+    {
+        for (var i = 0; i < boxes.Count; i++)
+        {
+            if (box.Overlaps(boxes[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Notes and waypoint numbers in drawing order, then labels being drawn now, then bearings and radii newest first.</summary>
