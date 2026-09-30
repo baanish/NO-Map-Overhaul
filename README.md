@@ -1,8 +1,14 @@
-# baanish-ui-improvements
+# NO Map Overhaul
 
-My Nuclear Option mod for map and HUD navigation aids. The first release adds runway markers. Every friendly runway shows on the minimap and the full map with its number at each end, plus an approach line off the nearest runway end.
+My map mod for Nuclear Option: numbered runways with an approach line and a runway callout for ATC, planning tools on the full map, and airbase names.
 
-It only draws on your screen. It installs no patches into the game's code and sends nothing over the network. I've tested it in free flight and in a multiplayer session. To turn it off without uninstalling, switch off **General → Enabled** in the settings.
+![A seven-waypoint route on the full map, with the Waypoint tool's strip above the map](docs/images/waypoint-route.jpg)
+
+**To install it, follow the [install guide](docs/INSTALL.md).** It isn't in the Nuclear Option Mod Manager catalog yet.
+
+Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
+
+It only draws on your screen. It doesn't patch the game and sends nothing over the network, so nobody else sees what it draws. I've tested it in single-player missions, and version 0.4.0 in a multiplayer session. The map tools haven't been flown in multiplayer yet. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
@@ -10,20 +16,52 @@ It only draws on your screen. It installs no patches into the game's code and se
 - **Approach line.** Within 5 km, a dashed 5 km centerline extends off the nearest end of the nearest runway, so you can judge the turn onto final. Each dash plus its gap is 500 m, so the dashes double as distance ticks.
 - **HUD callout.** The same runway end gets a `RWY 27` label pinned over its threshold in the 3D view, ready for an ATC call. An optional prefix adds the airbase (`NBSCLI RWY 27`), and another option hides the label until your gear is down.
 - **Airbase boundary**, off by default. A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
-- **Airbase names**, off by default. Every airbase, friendly, enemy, and neutral, gets a faint name label on the full map, so you can find the one someone just called out.
+
+<table>
+<tr>
+<td><img src="docs/images/airbase.jpg" alt="An airbase on the map with its runway strip numbered 05 and 23, its name, and the shaded landing zone"></td>
+<td><img src="docs/images/approach-line.jpg" alt="The dashed approach line off runway 23 on the minimap"></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/runway-callout.jpg" alt="The MARIS RWY 21 callout over the runway threshold in the 3D view"></td>
+</tr>
+</table>
 
 It doesn't guess which way you'll land: it always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
 
-## Missile arrows
+## Map tools
 
-When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. A missile behind you gets its arrow on the side it's on. Only missiles the game's missile warning already knows about get one, in every aircraft.
+On the full map, click **Tools** or press `H` to open a rail of planning tools beside the map. The number keys pick a tool:
 
-## Coming soon
+1. **Bearing/range** draws an arrow labelled with its bearing and range. End it on a contact and the label adds the contact's altitude, like a BRA call, and follows it.
+2. **Circle** draws a range ring, which also shows as a ring in the 3D view.
+3. **Text** places a note. Put it on a contact to tag it, and the tag follows the contact.
+4. **Pen** draws freehand lines.
+5. **Waypoint** builds a numbered route, with the next two waypoints labelled in the 3D view.
+6. **Eraser** deletes a drawing.
 
-These came from squadron requests and aren't built yet:
+![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](docs/images/tool-rail.jpg)
 
-- Map markers, and drawing on the map.
-- Waypoints, with HUD markers.
+<table>
+<tr>
+<td><img src="docs/images/bra.jpg" alt="A bearing and range arrow to an enemy, labelled 189° 2.4nm 1.5k ft"></td>
+<td><img src="docs/images/circles.jpg" alt="Two 2 nm range circles on the full map"></td>
+</tr>
+<tr>
+<td><img src="docs/images/hud-bra-note.jpg" alt="In the 3D view, a BRA label with a note tagging the same contact stacked under it"></td>
+<td><img src="docs/images/hud-ring.jpg" alt="A range circle drawn as a ring on the ground in the 3D view"></td>
+</tr>
+</table>
+
+Only you see what you draw, and it clears when you leave the mission. Drawings on other units use only what your side knows: when your side loses a contact, its drawings stop where it was last seen and read `lost`.
+
+The tools work alongside [NOAutopilot](https://github.com/qwerty1423/no-autopilot-mod). Its right-click waypoints work as usual while the rail is closed. While the rail is open, the mod holds them back, so a right click that deletes a drawing doesn't also move your autopilot route. That hold is the mod's one patch, and it's on NOAutopilot, not on the game.
+
+See the [map tools guide](docs/MAP_TOOLS.md) for every tool, the keys, and planning ideas.
+
+## Airbase names
+
+Off by default. Your side's airbases get a faint name label on the full map, so you can find the one someone just called out. That includes airbases a mission adds and ones your side captures. Enemy and neutral airbases get no name, since the game doesn't mark them.
 
 ## Requirements
 
@@ -33,9 +71,9 @@ These came from squadron requests and aren't built yet:
 
 ## Install
 
-Download a ZIP from [releases](https://github.com/baanish/baanish-ui-improvements/releases), then follow the [user guide](docs/USER_GUIDE.md#install). The mod isn't in the Nuclear Option Mod Manager catalog yet.
+Download `NoMapOverhaul-v<version>-plugin-only.zip` from [releases](https://github.com/baanish/NO-Map-Overhaul/releases) and follow the [install guide](docs/INSTALL.md). It covers BepInEx, checking the mod loaded, upgrading from Baanish UI Improvements, updating, and uninstalling.
 
-The [user guide](docs/USER_GUIDE.md) also covers every setting, how the runway end is chosen, and the airbase abbreviations.
+The [user guide](docs/USER_GUIDE.md) covers every setting, how the runway end is chosen, the airbase abbreviations, and how to measure the mod's cost on your machine.
 
 ## Contributing
 
@@ -43,4 +81,4 @@ Bug reports and ideas are welcome. Include your game and mod versions, a screens
 
 ## License
 
-[MIT](LICENSE). Nuclear Option and its assets belong to their respective owners.
+[MIT](LICENSE). The waypoint reach rule is adapted from NOAutopilot, also MIT; see [third-party notices](THIRD_PARTY_NOTICES.md). Nuclear Option and its assets belong to their respective owners.

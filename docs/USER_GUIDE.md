@@ -2,28 +2,11 @@
 
 ## Install
 
-You need BepInEx 5 installed in Nuclear Option. Each release has two ZIPs:
-
-- `BaanishUiImprovements-v<version>-plugin-only.zip` already contains the `BepInEx/plugins/BaanishUiImprovements/` folder. Extract it beside `NuclearOption.exe`.
-- `BaanishUiImprovements-v<version>-nomm.zip` is flat. For a manual install, copy `BaanishUiImprovements.dll` to `BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll`.
-
-Start the game once. BepInEx then creates the settings file:
-
-```text
-BepInEx/config/com.baanish.nuclearoption.uiimprovements.cfg
-```
-
-To confirm the mod loaded, look for this line in `BepInEx/LogOutput.log`:
-
-```text
-[Info   :Baanish UI Improvements] Baanish UI Improvements 0.4.0 loaded.
-```
-
-To uninstall, delete the `BaanishUiImprovements` plugin folder and the `.cfg` file.
+The [install guide](INSTALL.md) covers installing BepInEx and the mod, checking that it loaded, upgrading from Baanish UI Improvements, updating, and uninstalling.
 
 ## What you see
 
-Everything below except airbase names applies to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+The runways, approach line, callout, boundary, and names apply to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
 
 ### On the map
 
@@ -41,69 +24,151 @@ It's there to judge the turn onto final, so it shows whatever your heading. Over
 
 The same runway end gets a label pinned just below its threshold in the 3D view, such as `RWY 27`. It uses the same font as the game's own "Taxi to Runway" label and hides with the HUD. It also hides when the threshold is behind you.
 
-With **IncludeAirbaseName** on, the label adds the airbase: `NBSCLI RWY 27`.
+With **Include airbase name** on, the label adds the airbase: `NBSCLI RWY 27`.
 
-With **OnlyWithGearDown** on, the label shows only while your gear is down. It appears as soon as you lower the gear lever.
+With **Only with gear down** on, the label shows only while your gear is down. It appears as soon as you lower the gear lever.
 
 ### The airbase boundary
 
-Turn on **Airbase Boundary → ShowBoundary** to shade each friendly airbase's landing zone with a faint circle and a thin edge line, in the game's friendly map colour.
+Turn on **Map / Airbase Boundary → Show landing zone** to shade each friendly airbase's landing zone with a faint circle and a thin edge line, in the game's friendly map colour.
 
 The circle is the game's own rule. An aircraft that counts as landed inside it (radar altitude under 5 m, speed under 2.5 m/s) ends the sortie as returned rather than crashed. The same radius is the airbase's capture range, so the circle is also the capture zone.
 
 ### Airbase names
 
-Turn on **Airbase Names → ShowNames** to label every airbase on the full map, friendly, enemy, and neutral, just under where the game draws a friendly airbase's icon. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
+Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, just under where the game draws their icon. Every airbase the game gives your side an icon for gets a name: the map's own, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them, and carriers get none either, since the ship's icon marks the deck. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
 
-### Missile arrows
+### Map tools
 
-When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. Each missile gets its own arrow. A missile behind you gets an arrow on the side it's on, so a missile behind and to your left gets an arrow on the left edge. Once the missile is on screen, its arrow goes away.
-
-Only missiles the game's missile warning already knows about get an arrow, so the arrows show nothing the game hasn't told you. The arrow is a copy of the game's own off-screen target arrow in a different colour.
+On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
 
 ## How the runway end is chosen
 
 Within range, the mod picks the runway nearest to you, measured to the runway strip itself, and then whichever of its two ends is closer. Heading plays no part. The map line and the HUD label always show the same end.
 
-Between two runways or ends at about the same distance, the choice can switch as you move. An earlier version tried to guess the landing end from your heading and traffic-pattern leg, and it got the end wrong while manoeuvring near the field.
+Between two runways or ends at about the same distance, the choice can switch as you move. Guessing the landing end from your heading and traffic-pattern leg picks the wrong end while you manoeuvre near the field, so the mod doesn't guess.
 
 ## Settings
 
-Change settings in game with F1 if Configuration Manager is installed. Changes apply immediately. Without it, edit the `.cfg` file while the game is closed. Colours are hex `RRGGBBAA`.
+Change settings in game with F1 if Configuration Manager is installed. Changes apply immediately. Click the mod's name to open its settings; hover over a setting's name for a longer description. Settings marked *advanced* are tuning knobs that F1 shows only with **Advanced settings** ticked at the top of its window, or when a search finds them.
 
-| Section | Setting | Default | What it does |
-| --- | --- | --- | --- |
-| General | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
-| Map | ShowRunways | `true` | Draw runways and their numbers. |
-| Map | RunwayColor | `00D900D9` | Strip fill. |
-| Map | RunwayLabelColor | `99FF99FF` | Runway number colour. |
-| Map | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
-| Map | RunwayLabelSize | `8` | Runway number size. |
-| Map | OutlineColor | `051405D9` | Rim around strips, approach dashes, and map text. |
-| Map | OutlineWidth | `0.75` | Rim width around strips and dashes. `0` turns it off. Text always gets a 1-unit rim. |
-| Map | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
-| Airbase Boundary | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |
-| Airbase Boundary | FillOpacity | `0.01` | Opacity of the shaded zone. |
-| Airbase Boundary | EdgeOpacity | `0.1` | Opacity of the edge line. `0` hides it. |
-| Airbase Names | ShowNames | `false` | Name every airbase on the full map. |
-| Airbase Names | Color | `99FF99BF` | Name colour. |
-| Airbase Names | Size | `8` | Name size. |
-| Approach | TriggerRangeKm | `5` | How close to a runway the line and callout appear. |
-| Approach | LineLengthKm | `5` | Approach line length. |
-| Approach | LineColor | `00D90066` | Approach line colour. |
-| Approach | LineWidth | `1` | Approach line width. |
-| HUD | ShowRunwayCallout | `true` | Show the `RWY 27` label. |
-| HUD | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
-| HUD | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
-| HUD | CalloutColor | `33FF33FF` | Label colour. |
-| Missile Arrows | ShowArrows | `true` | Point an arrow at each incoming missile outside the view. |
-| Missile Arrows | Color | `FF4033FF` | Arrow colour. |
+Without Configuration Manager, edit `BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg` while the game is closed. The game's first start with the mod creates it. Each section below is a `[Section]` heading in the file, and the key is the name before `=`. Colours are hex `RRGGBBAA`. Settings saved by Baanish UI Improvements, this mod's name up to 0.4.0, carry over into these sections the first time the game starts with NO Map Overhaul, apart from the missile arrows, which moved to [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
+
+The table lists the sections in the order F1 shows them.
+
+| Section | F1 name | Key | Default | What it does |
+| --- | --- | --- | --- | --- |
+| General | Enabled | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
+| Map / Runways | Show runways | ShowRunways | `true` | Draw runways and their numbers. |
+| Map / Runways | Runway colour | RunwayColor | `00D900D9` | Strip fill. |
+| Map / Runways | Number colour | RunwayLabelColor | `99FF99FF` | Runway number colour. |
+| Map / Runways | Number both ends | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
+| Map / Runways | Number size, *advanced* | RunwayLabelSize | `8` | Runway number size. |
+| Map / Runways | Minimum width, *advanced* | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
+| Map / Approach Line | Show within (km) | TriggerRangeKm | `5` | How close to a runway the approach line and the HUD callout appear. |
+| Map / Approach Line | Line length (km) | LineLengthKm | `5` | Approach line length. |
+| Map / Approach Line | Line colour | LineColor | `00D90066` | Approach line colour. |
+| Map / Approach Line | Line width, *advanced* | LineWidth | `1` | Approach line width. |
+| Map / Airbase Names | Show airbase names | ShowNames | `false` | Name your faction's airbases on the full map. |
+| Map / Airbase Names | Name colour | Color | `99FF99BF` | Name colour. |
+| Map / Airbase Names | Name size, *advanced* | Size | `8` | Name size. |
+| Map / Airbase Boundary | Show landing zone | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |
+| Map / Airbase Boundary | Fill opacity, *advanced* | FillOpacity | `0.01` | Opacity of the shaded zone, from 0 to 1. |
+| Map / Airbase Boundary | Edge opacity, *advanced* | EdgeOpacity | `0.1` | Opacity of the edge line, from 0 to 1. `0` hides it. |
+| Map / Outline | Outline colour, *advanced* | OutlineColor | `051405D9` | Rim around strips, approach dashes, and map text. |
+| Map / Outline | Outline width, *advanced* | OutlineWidth | `0.75` | Rim width around strips and dashes. `0` turns it off. Text always gets a 1-unit rim. |
+| HUD / Runway Callout | Show runway callout | ShowRunwayCallout | `true` | Show the `RWY 27` label. |
+| HUD / Runway Callout | Only with gear down | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
+| HUD / Runway Callout | Include airbase name | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
+| HUD / Runway Callout | Callout colour | CalloutColor | `33FF33FF` | Label colour. |
+| Map Tools / General | Show map tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
+| Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
+| Map Tools / General | Circles in 3D view | ShowCirclesIn3D | `true` | Draw each circle in the 3D view as well, as a thin ring level with its centre. |
+| Map Tools / General | Distance units | DistanceUnits | `Game` | **Game setting** follows the game's unit setting. Nautical miles, kilometres, or statute miles always use that unit. Altitudes show in metres with kilometres and in feet with miles. In the file: `Game`, `NauticalMiles`, `Kilometres`, or `StatuteMiles`. |
+| Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The rail's swatches set it; any colour works here. |
+| Map Tools / Drawing | Line width, *advanced* | LineWidth | `1.5` | Width of drawn lines. Arrowheads grow with it. |
+| Map Tools / Drawing | Text size, *advanced* | TextSize | `10` | Size of text the tools draw on the map. |
+| Map Tools / Waypoints | Reached within (km), *advanced* | WaypointReachKm | `2.5` | How close to a waypoint counts as reaching it. |
+| Map Tools / Waypoints | Passed within (km), *advanced* | WaypointPassedKm | `10` | How far behind you a waypoint still counts as reached. `0` turns it off. |
+| Map Tools / Keys and Limits | Tools key | ToolsKey | `H` | Open or close the tools rail while the full map is open, like clicking Tools. |
+| Map Tools / Keys and Limits | Undo key | UndoKey | `Z` | Undo while the full map is open. |
+| Map Tools / Keys and Limits | Redo key | RedoKey | `Y` | Redo while the full map is open. |
+| Map Tools / Keys and Limits | Bearing/range key, *advanced* | BearingRangeKey | `Alpha1` | Pick Bearing/range while the full map is open, opening the rail if it's closed. |
+| Map Tools / Keys and Limits | Circle key, *advanced* | CircleKey | `Alpha2` | Pick Circle, the same way. |
+| Map Tools / Keys and Limits | Text key, *advanced* | TextKey | `Alpha3` | Pick Text, the same way. |
+| Map Tools / Keys and Limits | Pen key, *advanced* | PenKey | `Alpha4` | Pick Pen, the same way. |
+| Map Tools / Keys and Limits | Waypoint key, *advanced* | WaypointKey | `Alpha5` | Pick Waypoint, the same way. |
+| Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
+| Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `200` | Most drawings kept at once. |
+| Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `5000` | Most freehand points kept across all pen strokes, so the map stays fast. At most `7500`. |
+| Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |
+| Diagnostics | Log performance, *advanced* | LogPerformance | `false` | Log the frame rate and the mod's own time every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 
+## Measuring the mod's cost
+
+Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 seconds the mod writes one line to `BepInEx/LogOutput.log`:
+
+```text
+[Info   :NO Map Overhaul] Perf 5.0 s, mod on: 612 frames, 122.4 fps avg (8.17 ms), 1% low 88.1 fps, worst frame 21.3 ms. Mod per frame 0.084 ms avg, 0.412 ms worst. Map refresh 50x, 0.310 ms avg, 1.204 ms worst.
+```
+
+- **mod on** or **mod off** is whether Enabled was on for those 5 seconds, or **on and off** if you flipped it partway.
+- **fps avg**, **1% low**, and **worst frame** are the whole game's frame rate. The 1% low is the rate that 99% of frames beat, so it shows stutter the average hides.
+- **Mod per frame** is the time the mod's own code takes each frame, and **Map refresh** the time it takes on each of the game's map updates, about 10 a second. Neither counts what the graphics card spends drawing the mod's lines and text. That cost shows only in the frame rate, which is why the comparison below flips the mod off.
+
+To compare with and without the mod in one session:
+
+1. Turn on Log performance in F1, and close F1, since its window costs frames too.
+2. Fly something repeatable for at least 20 seconds, such as straight and level over the same area, or sit still on the runway. Keep the camera still.
+3. Open F1, turn **Enabled** off, close F1, and hold the same view for another 20 seconds.
+4. Turn Enabled back on and Log performance off.
+
+Compare the **mod on** lines with the **mod off** lines, skipping any line that reads **on and off**. The difference in fps avg and 1% low is the mod's full cost. With Enabled off, the mod's own times read near zero.
+
+### The perf test
+
+The perf test does the comparison for you, including a typical and a heavy load of map drawings. It takes about 85 seconds.
+
+1. Load the preset Escalation mission and spawn in an aircraft.
+2. Fly straight and level, or sit still on the runway, in the cockpit view. The game shows the minimap only in the cockpit view.
+3. Open F1 and press **Diagnostics → Run perf test**. Close F1 within 5 seconds, since its window costs frames too.
+4. Don't touch the camera or the map until the result appears. The test opens and closes the full map itself.
+
+It measures eight conditions: the minimap with the mod off, with it on, with it on plus typical drawings, and with it on plus heavy drawings, then the same four on the full map. Within each map the four take turns in slices of 2 seconds, each after half a second for the switch to settle, four times over, reversing the order every other round. So each condition gets 8 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly lands on all four alike.
+
+The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, the first one starts on another, and one circle sits on the nearest, so its 3D ring moves with it. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 99-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units each set rode on, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
+
+When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
+
+```text
+[Info   :NO Map Overhaul] Perf test: each condition measured in 4 slices of 2.0 s, taking turns with the others in its view, 0.5 s to settle after each switch. Drawings: typical 11 shapes on 3 live units, heavy 71 shapes on 10 live units (at most 10). Changes are against the same view with the mod off.
+Phase                                 Avg fps   1% low Mod ms avg/max   Refresh ms avg/max   Avg fps change    1% low change
+Minimap, mod off                        140.7    118.2    0.001/0.004      0.001/0.003 80x         baseline         baseline
+Minimap, mod on                         138.8    116.9    0.080/0.312      0.300/0.910 80x     -1.9 (-1.4%)     -1.3 (-1.1%)
+Minimap, mod on, typical drawings       136.4    114.3    0.120/0.418      0.540/1.320 80x     -4.3 (-3.1%)     -3.9 (-3.3%)
+Minimap, mod on, heavy drawings         129.6    104.0    0.210/0.655      1.200/2.410 80x    -11.1 (-7.9%)    -14.2 (-12.0%)
+...
+Rendering per frame. Canvas ms is every canvas's rebuild and batching, the game's too. n/a is a stat this build doesn't record.
+Phase                                 Canvas ms  BuildBatch ms  WillRender ms  Batches  SetPass Draw calls   Vertices  Mod graphics/TMP
+Minimap, mod off                          0.310            n/a            n/a      212       64        240     410233               0/0
+...
+Mod ms per frame by part. Meshes is the mod's graphics rebuilding their meshes, which counts in Canvas ms, not Mod ms. Other is the rest of Mod ms.
+Phase                                     Draw    Labels   Upright   3D text  3D rings     Input   Runways    Meshes     Other
+Minimap, mod on                          0.004     0.002     0.001     0.003     0.000     0.004     0.010     0.004     0.014
+...
+```
+
+The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the condition's last slice, and how many of them are TextMeshPro text.
+
+The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
+
+Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
+
 ## Airbase abbreviations
 
-With **IncludeAirbaseName** on, the airbases on the stock maps use these abbreviations:
+With **Include airbase name** on, the airbases on the stock maps use these abbreviations:
 
 | Airbase | Callout prefix |
 | --- | --- |
@@ -133,3 +198,4 @@ So Dustbowl Highway Strip becomes `DSTBWL HWY STRP`.
 
 - Only runways at your own faction's airbases are shown.
 - The HUD label hides when the runway threshold is behind the camera. It doesn't pin to the screen edge.
+- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter. The mod doesn't patch the game, so it can't hold that click back.

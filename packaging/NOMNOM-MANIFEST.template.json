@@ -1,7 +1,7 @@
 {
-  "id": "BaanishUiImprovements",
-  "displayName": "Baanish UI Improvements",
-  "description": "Map and HUD navigation aids. Draws friendly runways with their numbers on the minimap and full map, a dashed approach line for the runway you're lined up on, and a RWY label over its threshold for ATC calls. More navigation features are coming.",
+  "id": "NoMapOverhaul",
+  "displayName": "NO Map Overhaul",
+  "description": "Map mod. Draws friendly runways with their numbers on the minimap and full map, a dashed approach line and a RWY callout for ATC on the runway you're lined up on, planning tools on the full map (bearing and range, range circles, notes that tag contacts, a pen, and a waypoint route), and optional airbase names. Formerly Baanish UI Improvements.",
   "tags": [
     "QoL",
     "UI"
@@ -9,7 +9,7 @@
   "urls": [
     {
       "name": "info",
-      "url": "https://github.com/baanish/baanish-ui-improvements"
+      "url": "https://github.com/baanish/NO-Map-Overhaul"
     }
   ],
   "authors": [
@@ -17,16 +17,16 @@
   ],
   "isClientOrServer": "Client",
   "githubOwner": "baanish",
-  "githubRepoName": "baanish-ui-improvements",
+  "githubRepoName": "NO-Map-Overhaul",
   "autoUpdateArtifacts": "True",
   "artifacts": [
     {
-      "fileName": "BaanishUiImprovements-v@VERSION@-nomm.zip",
+      "fileName": "NoMapOverhaul-v@VERSION@-nomm.zip",
       "version": "@VERSION@",
       "category": "preRelease",
       "type": "plugin",
       "gameVersion": "0.34.2",
-      "downloadUrl": "https://github.com/baanish/baanish-ui-improvements/releases/download/v@VERSION@/BaanishUiImprovements-v@VERSION@-nomm.zip",
+      "downloadUrl": "https://github.com/baanish/NO-Map-Overhaul/releases/download/v@VERSION@/NoMapOverhaul-v@VERSION@-nomm.zip",
       "hash": "sha256:@SHA256@"
     }
   ]

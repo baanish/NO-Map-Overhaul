@@ -20,4 +20,4 @@ jobs:
           dotnet-version: '8.0.x'
       # The plugin itself compiles against the game's assemblies, so CI runs only the game-free tests.
       - name: Run tests
-        run: dotnet run --project tests/BaanishUiImprovements.Tests -c Release
+        run: dotnet run --project tests/NoMapOverhaul.Tests -c Release

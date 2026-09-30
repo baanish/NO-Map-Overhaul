@@ -10,9 +10,9 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$project = Join-Path $root 'src\BaanishUiImprovements\BaanishUiImprovements.csproj'
-$tests = Join-Path $root 'tests\BaanishUiImprovements.Tests'
-$pluginSource = Join-Path $root 'src\BaanishUiImprovements\Plugin.cs'
+$project = Join-Path $root 'src\NoMapOverhaul\NoMapOverhaul.csproj'
+$tests = Join-Path $root 'tests\NoMapOverhaul.Tests'
+$pluginSource = Join-Path $root 'src\NoMapOverhaul\Plugin.cs'
 $artifacts = Join-Path $root 'artifacts'
 $staging = Join-Path $artifacts 'release-staging'
 $nommStage = Join-Path $staging 'nomm'
@@ -50,11 +50,12 @@ function Invoke-DotNet([string[]]$Arguments) {
 
 function Copy-PackageFiles([string]$Destination, [string]$PluginDll) {
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    Copy-Item -LiteralPath $PluginDll -Destination (Join-Path $Destination 'BaanishUiImprovements.dll')
+    Copy-Item -LiteralPath $PluginDll -Destination (Join-Path $Destination 'NoMapOverhaul.dll')
     $readme = [IO.File]::ReadAllText((Join-Path $root 'packaging\README.txt'))
     if ($readme -notlike '*@VERSION@*') { throw 'packaging/README.txt does not contain its @VERSION@ token.' }
     [IO.File]::WriteAllText((Join-Path $Destination 'README.txt'), $readme.Replace('@VERSION@', $version), [Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $Destination 'LICENSE.txt')
+    Copy-Item -LiteralPath (Join-Path $root 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $Destination 'THIRD_PARTY_NOTICES.txt')
 }
 
 # Fixed entry order and timestamps, so the same inputs always produce the same archive bytes.
@@ -100,7 +101,7 @@ Invoke-DotNet @('run', '--project', $tests, '-c', 'Release')
 Invoke-DotNet @('clean', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
 Invoke-DotNet @('build', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
 
-$pluginDll = Join-Path $root 'src\BaanishUiImprovements\bin\Release\netstandard2.1\BaanishUiImprovements.dll'
+$pluginDll = Join-Path $root 'src\NoMapOverhaul\bin\Release\netstandard2.1\NoMapOverhaul.dll'
 $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($pluginDll).Version.ToString(3)
 if ($assemblyVersion -ne $version) { throw "Assembly version '$assemblyVersion' does not match project version '$version'." }
 $builtFiles = @(Get-ChildItem -LiteralPath (Split-Path $pluginDll) -Filter *.dll | ForEach-Object Name)
@@ -109,19 +110,20 @@ if ($builtFiles.Count -ne 1) { throw "The build output contains copied assemblie
 if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $nommStage, $pluginStage | Out-Null
 Copy-PackageFiles $nommStage $pluginDll
-Copy-PackageFiles (Join-Path $pluginStage 'BepInEx\plugins\BaanishUiImprovements') $pluginDll
+Copy-PackageFiles (Join-Path $pluginStage 'BepInEx\plugins\NoMapOverhaul') $pluginDll
 
-$nommZip = Join-Path $artifacts "BaanishUiImprovements-v$version-nomm.zip"
-$pluginZip = Join-Path $artifacts "BaanishUiImprovements-v$version-plugin-only.zip"
+$nommZip = Join-Path $artifacts "NoMapOverhaul-v$version-nomm.zip"
+$pluginZip = Join-Path $artifacts "NoMapOverhaul-v$version-plugin-only.zip"
 New-DeterministicZip $nommStage $nommZip
 New-DeterministicZip $pluginStage $pluginZip
 Remove-Item -LiteralPath $staging -Recurse -Force
 
-Assert-Package $nommZip @('BaanishUiImprovements.dll', 'LICENSE.txt', 'README.txt')
+Assert-Package $nommZip @('NoMapOverhaul.dll', 'LICENSE.txt', 'README.txt', 'THIRD_PARTY_NOTICES.txt')
 Assert-Package $pluginZip @(
-    'BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll',
-    'BepInEx/plugins/BaanishUiImprovements/LICENSE.txt',
-    'BepInEx/plugins/BaanishUiImprovements/README.txt')
+    'BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll',
+    'BepInEx/plugins/NoMapOverhaul/LICENSE.txt',
+    'BepInEx/plugins/NoMapOverhaul/README.txt',
+    'BepInEx/plugins/NoMapOverhaul/THIRD_PARTY_NOTICES.txt')
 
 $checksums = @($nommZip, $pluginZip | ForEach-Object { "$((Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path -Leaf $_)" })
 [IO.File]::WriteAllLines((Join-Path $artifacts 'SHA256SUMS.txt'), [string[]]$checksums, [Text.Encoding]::ASCII)
@@ -129,7 +131,7 @@ $checksums = @($nommZip, $pluginZip | ForEach-Object { "$((Get-FileHash -Literal
 # The catalog listing for NOMNOM, filled in with this build's version and NOMM archive hash.
 $nommHash = (Get-FileHash -LiteralPath $nommZip -Algorithm SHA256).Hash.ToLowerInvariant()
 $manifest = [IO.File]::ReadAllText((Join-Path $root 'packaging\NOMNOM-MANIFEST.template.json')).Replace('@VERSION@', $version).Replace('@SHA256@', $nommHash)
-[IO.File]::WriteAllText((Join-Path $artifacts 'BaanishUiImprovements.nomnom.json'), $manifest, [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $artifacts 'NoMapOverhaul.nomnom.json'), $manifest, [Text.UTF8Encoding]::new($false))
 
 $state = if ($gitStatus.Count -eq 0) { "from commit $((& git -c "safe.directory=$safeRoot" rev-parse --short HEAD).Trim())" } else { 'from a DIRTY tree (not releasable)' }
 Write-Host "v$version $state passed tests, build, and package validation."

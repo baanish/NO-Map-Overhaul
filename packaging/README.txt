@@ -1,7 +1,11 @@
-Baanish UI Improvements v@VERSION@
+NO Map Overhaul v@VERSION@
 
-Map and HUD navigation aids for Nuclear Option. This release adds runway
-markers:
+A map mod for Nuclear Option: runways, planning tools, and airbase names.
+Up to 0.4.0 it was called Baanish UI Improvements. Its missile arrows are
+now a mod of their own, NO Missile Indicators:
+https://github.com/baanish/NO-Missile-Indicators
+
+Runway markers:
 
 - Friendly runways drawn on the minimap and full map, numbered at each end.
 - A dashed approach line off the nearest runway end, within 5 km.
@@ -9,21 +13,28 @@ markers:
 - A "RWY 27" label over that runway's threshold in the 3D view, with an
   optional airbase prefix for ATC calls, such as "NBSCLI RWY 27". Another
   option hides it until the landing gear is down.
+- An optional airbase boundary, off by default, shading each friendly
+  airbase's landing zone: stop inside it after landing and the sortie counts
+  as returned.
 
-An optional airbase boundary, off by default, shades each friendly airbase's
-landing zone: stop inside it after landing and the sortie counts as returned.
+Map tools: on the full map, click Tools or press H to open a rail of
+planning tools. Keys 1 to 6 pick Bearing/range, Circle, Text, Pen,
+Waypoint, and Eraser; Z and Y undo and redo. Measure bearing, range, and a
+contact's altitude, draw range circles that also show in the 3D view, tag
+contacts with notes that follow them, and fly a waypoint route labelled in
+the 3D view. Only you see what you draw. Drawings on other units use only
+what your side knows, and read "lost" when your side loses the contact.
 
-Optional airbase names, off by default, label every airbase on the full map,
-friendly, enemy, and neutral, so a base called out on comms is easy to find.
+Airbase names, off by default: your faction's airbases get a name on the
+full map, including ones a mission adds and ones your side captures. Enemy
+and neutral airbases get no name, since the game doesn't mark them.
 
-A red arrow on the screen edge points toward each incoming missile outside
-your view, for any missile the game's missile warning already knows about.
-
-Helicopters see only the airbase boundary, names, and missile arrows, and carriers are left out. The mod
-only draws. It patches no game code and sends nothing over the network.
-Switch off General > Enabled to hide everything it draws without uninstalling.
-
-Coming soon: map markers and drawing, and waypoints with HUD markers.
+Helicopters get no runways, approach line, or callout, and carriers are left
+out. The mod only draws on your screen. It doesn't patch the game and sends
+nothing over the network. If NOAutopilot is installed, the mod holds back
+its right-click waypoints while the map tools rail is open, so a right click
+that deletes a drawing doesn't also move the autopilot route. Switch off
+General > Enabled to hide everything the mod draws without uninstalling.
 
 Requirements
 
@@ -37,18 +48,29 @@ The plugin-only archive contains the BepInEx folder tree. Extract it beside
 NuclearOption.exe.
 
 For a manual install from the flat NOMM archive, copy
-BaanishUiImprovements.dll to:
+NoMapOverhaul.dll to:
 
-  BepInEx/plugins/BaanishUiImprovements/BaanishUiImprovements.dll
+  BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
 
 Start the game once. BepInEx creates the settings file:
 
-  BepInEx/config/com.baanish.nuclearoption.uiimprovements.cfg
+  BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg
+
+Upgrading from Baanish UI Improvements: close the game and delete the old
+BepInEx/plugins/BaanishUiImprovements folder. Your settings carry over on
+the first start.
+
+Step-by-step install guide, including BepInEx:
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/INSTALL.md
 
 Every setting and the airbase abbreviations are documented here:
-https://github.com/baanish/baanish-ui-improvements/blob/main/docs/USER_GUIDE.md
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/USER_GUIDE.md
+
+How to use the map tools:
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/MAP_TOOLS.md
 
 Source and full documentation:
-https://github.com/baanish/baanish-ui-improvements
+https://github.com/baanish/NO-Map-Overhaul
 
-MIT license. See LICENSE.txt.
+MIT license. See LICENSE.txt, and THIRD_PARTY_NOTICES.txt for code adapted
+from NOAutopilot.
