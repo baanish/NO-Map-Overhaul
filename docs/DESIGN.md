@@ -99,7 +99,7 @@ Colours come from the game's MFD palette: ground `#050E07` at 78%, rim `#2BE127`
 
 A drawing is a `MapShape` subclass holding plain data only: meters (X east, Y north, the game's global x and z), unit anchors by `PersistentID.Id`, and colour bytes. None of it is a Unity type, so drawings could be saved or shared with other players later without a rewrite. A `MapPoint` with a unit id follows that unit. `ShapeStore` holds every tool's shapes in draw order. Each change stores a new snapshot of the list, so every Add, Remove, Replace, and Clear is exactly one undo step. Shapes are immutable, so snapshots share them, and an edit is a `Replace` with a changed copy. State that shouldn't be undone, like how far along a route the aircraft is, stays in the tool. The MaxShapes and MaxPenPoints settings cap the shape count and the total freehand points. The store keeps 100 undo steps and resets when the scene's `DynamicMap` changes, which is how leaving the mission shows.
 
-A shape draws itself in meters through `IMapCanvas`, which has lines, arrows, polylines, rings, the game's waypoint marker, and labels. A label says what it's attached to, and the layer decides where it sits (see Labels on the map). The same `Draw` call renders the shape, hit-tests it for the eraser, and redraws it red under the eraser's cursor. `ShapeHitTest` does the hit test by measuring how close each stroke passes to the click. When a shape reads a unit through `TryResolve`, or reads `OwnAircraft`, the layer marks it live and redraws it on each of the game's 10 Hz map refreshes. Other shapes redraw only when added, when the zoom changes, or when a drawing setting changes. A tool's overlay follows the same rule, and also redraws when the drawings change or the tool calls `InvalidateOverlay`, so the eraser redraws its highlight only when the cursor passes onto a different shape. Panning rebuilds nothing, because the layer moves with the map. An anchored point resolves the way the unit's map icon does in `UnitMapIcon.UpdateIcon`. A tracked unit gives the faction's tracked position, a friendly unit its own position, and an untracked enemy nothing, so a drawing reveals nothing the map doesn't. Once the unit is destroyed or no longer tracked, `TryResolve` returns false with the last seen position.
+A shape draws itself in meters through `IMapCanvas`, which has lines, arrows, polylines, rings, the game's waypoint marker, and labels. A label says what it's attached to, and the layer decides where it sits (see Labels on the map). The same `Draw` call renders the shape, hit-tests it for the eraser, and redraws it red under the eraser's cursor. `ShapeHitTest` does the hit test by measuring how close each stroke passes to the click. When a shape reads a unit through `TryResolve`, or reads `OwnAircraft`, the layer marks it live and redraws it on each of the game's 10 Hz map refreshes. Other shapes redraw only when added, when the zoom changes, or when a drawing setting changes. A tool's overlay follows the same rule, and also redraws when the drawings change or the tool calls `InvalidateOverlay`, so the eraser redraws its highlight only when the cursor passes onto a different shape. Panning rebuilds nothing, because the layer moves with the map. An anchored point resolves through the faction's knowledge, as the unit's map icon does (see What the mod may show). Once the unit is destroyed or its track goes stale, `TryResolve` returns false with the last known position, and the shape says lost.
 
 ### Drawing on the map
 
@@ -147,10 +147,38 @@ The Circle tool also requests each circle as a ring through `IWorldLabels.Ring`,
 | Grid letters and numbers | `DynamicMap.gridLabels`, legacy `Text` children placed by `GridLabels.GridLabels_OnMapChanged` |
 | Waypoint marker | `DynamicMap.mapWaypoint`, the prefab `DynamicMap.MapControls` places for a move order |
 | Right-click move order | `DynamicMap.selectedIcons[0]` a `UnitMapIcon` whose unit is `ICommandable` and friendly by `DynamicMap.GetFactionMode`, outside `GameState.Editor`, as in `DynamicMap.MapControls` |
-| Unit positions | `FactionHQ.GetTrackingData(id).GetPosition()`, else `UnitRegistry.TryGetUnit` |
-| Ground height | A ray down from 10 km, as in `DynamicMap.JumpCameraTo` |
+| Unit positions | `FactionHQ.TryGetKnownPosition`, live while `FactionHQ.IsTargetBeingTracked` |
+| Ground height | A ray down from 10 km, as in `DynamicMap.JumpCameraTo`, passing through units |
 | Unit system | `PlayerSettings.unitSystem` |
 | Chat or game menu open | `CursorManager.GetFlag(CursorFlags.Chat \| CursorFlags.GameMenu)` |
+
+## What the mod may show
+
+Nothing the mod shows or works out about another unit may tell the player more than the game already does. Every position, altitude, and fact about another unit comes from what the player's own side knows, read through the calls the game uses to show that unit to this player, never from the unit's transform. When the side's knowledge goes stale, whatever depends on it stops where the unit was last known and says so.
+
+What the game shows the player, in `Assembly-CSharp`:
+
+- **Friendly units**: where they are. `FactionHQ.GetKnownPosition` returns a friendly's own position, and `UnitMapIcon.UpdateIcon` draws a unit with no tracking entry where it is. With no faction (spectating), the map shows every unit that way.
+- **Enemies tracked live**: where they are. Each spot by a sensor (`TargetDetector.DetectTarget`, `RadarLocator`, `LaserDesignator`, `MissileWarning`) reaches `FactionHQ.RpcUpdateTrackingInfo`, which stamps `TrackingInfo.lastSpottedTime`. For 4 s after, `TrackingInfo.GetPosition` returns the unit's real position and `FactionHQ.IsTargetBeingTracked` is true.
+- **Enemies whose track is stale**: after 4 s without a spot, `GetPosition` returns `lastKnownPosition` and stops updating. The map icon stays there and stops turning (`UnitMapIcon.UpdateIcon`), and the HUD marker switches to its outdated sprite at half opacity, pinned to `FactionHQ.TryGetKnownPosition` (`HUDUnitMarker.UpdatePosition` and `SetOutdated`).
+- **Enemies never tracked**: nothing. There's no icon or marker, and `TryGetKnownPosition` fails.
+- **Destroyed units**: the icon and marker go (`UnitMapIcon_OnUnitDisabled`, `HUDIcon_OnDisableUnit`), and so does the track (`FactionHQ.DeregisterTrackedUnit`).
+- **Incoming missiles**: once `MissileWarning` moves a missile into `knownMissiles`, `ThreatList` flashes its HUD marker (`CombatHUD.FlashMarker`) and its map icon (`DynamicMap.FlagIncomingMissile`). Both follow the rules above, so they show the missile where it is unless the side holds a stale track on it.
+
+What the mod reads, and why each is fair:
+
+| Shows | Reads | Fair because |
+| --- | --- | --- |
+| Drawings on a unit, and their 3D labels and rings | `FactionHQ.TryGetKnownPosition`, live while `IsTargetBeingTracked`; every unit when `DynamicMap.HQ` is null | The same position, altitude included, that the unit's icon and marker use |
+| A drawing on a stale or destroyed unit | `KnownPositions`: the last live position, with `TryResolve` false, so the label says lost | Matches the frozen icon, and nothing moves until the unit is spotted again |
+| The unit a click lands on | Active `UnitMapIcon`s in `DynamicMap.mapIcons`, at their on-screen position | Only units whose icon the player can see |
+| Your aircraft | `CombatHUD.aircraft` | Your own |
+| Missile arrows | `MissileWarning.knownMissiles`, then the missile's `HUDUnitMarker`: the missile while current, `TryGetKnownPosition` once `outdated` | Points where the game's own marker is, faded when the marker is |
+| Ground height under a fixed point | A ray down that passes through units | Terrain and sea only, so a hidden ship or building doesn't lift a label |
+| Runways, boundaries, the HUD callout | `DynamicMap.HQ.GetAirbases()`, carriers skipped | Your side's airbases, which the game already marks |
+| Airbase names | Your side's; every other airbase only with ShowEnemyAndNeutral, off by default; carriers skipped | Fixed places on the map, not units, and opt-in since the game doesn't name them |
+
+The perf test anchors its stress drawings through the same `TryResolve`, so it only uses units live on the player's map. The freeze logic, `Tracking/KnownPositions`, is Unity-free: `KnownPositionsTests` covers it directly, and `MeasureToolTests` covers an arrow and its label going stale and being spotted again.
 
 ## Patches
 

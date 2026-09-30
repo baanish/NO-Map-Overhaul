@@ -83,8 +83,12 @@ With the Eraser, the drawing under the cursor turns red, and a click deletes it.
 
 - **Stay out of a SAM's reach.** Put a circle on the SAM's icon, sized to its range. Its ring then shows in the 3D view, so you can see the edge of the threat from the cockpit.
 - **Time on target from two sides.** Each pilot puts a circle of the same size around the target and picks an entry point on it, on opposite sides. Measure from each entry point to the target, and call "in" together so both arrive at once. Drawings aren't shared, so each pilot draws their own.
-- **Keep a target's bearing handy.** Measure from your aircraft to a moving target, with both ends on units. The label keeps updating as you both move.
+- **Keep a target's bearing handy.** Measure from your aircraft to a moving target, with both ends on units. The label keeps updating as you both move, while your side tracks the target.
 - **Brief a route.** Drop waypoints over the ingress, add notes such as `IP` or `EGRESS`, and fly it with the 3D labels.
+
+## What drawings know
+
+Drawings only use what your side knows. A drawing on a unit follows it only where the game shows that unit to you, at the altitude your side knows, and you can only tie a drawing to a unit whose icon is on your map. When nothing on your side has spotted the unit for 4 seconds, or it's destroyed, the unit is lost: the drawing stops where the unit was last known, its label reads `lost`, and its bearing and range stop changing except as you move. If your side spots the unit again, the drawing follows it again. The missile arrows work the same way: each points where the game's HUD marks that missile.
 
 ## Where drawings show
 
