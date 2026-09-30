@@ -24,7 +24,7 @@ internal sealed class MapToolHost
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
-    private readonly WorldLabelPool _worldLabels = new();
+    private readonly WorldLabelPool _worldLabels;
     private DynamicMap? _map;
     private int _active = -1;
     private int _unfinished = -1;
@@ -47,6 +47,7 @@ internal sealed class MapToolHost
         _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
         _menu = new MapToolMenu(settings);
         _layer = new MapShapeLayer(settings, _context, _tools.Length);
+        _worldLabels = new WorldLabelPool(settings);
     }
 
     /// <summary>Per frame, after the HUD callout has found its label.</summary>

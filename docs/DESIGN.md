@@ -71,7 +71,7 @@ Plugin.LateUpdate → MapToolHost.Update   (every frame)
   ├─ MapToolMenu       the rail and strip on the full map; a click records a MenuCommand
   ├─ MapToolInput      left clicks, drags, and typing to the active MapTool
   ├─ undo and redo keys, while the full map is open
-  ├─ MapTool.OnFrame   every tool, every frame: live state and 3D labels (WorldLabelPool)
+  ├─ MapTool.OnFrame   every tool, every frame: live state, 3D labels and rings (WorldLabelPool)
   └─ MapShapeLayer     redraws what changed; live shapes and live overlays on the 10 Hz refresh
        └─ LabelLayout  places the labels after a redraw, or once the full map comes to rest
 ```
@@ -116,9 +116,11 @@ The undo and redo keys, Z and Y by default, act only while the full map is open,
 
 Menu buttons and the catcher only record what happened. `MapToolHost` acts on it in the plugin's guarded update, since a throw inside Unity's event system would bypass the guard.
 
-### 3D labels
+### 3D labels and rings
 
 `WorldLabelPool` generalises the HUD callout. Each label is a copy of the callout's label, so it shares the HUD canvas, font, and visibility, and hides with the HUD and while the map is open. Tools request labels in `MapTool.OnFrame` with a global position in meters, Y being height above sea level. The pool projects each through the camera, hides the ones behind it, and reuses its copies from frame to frame, up to 32 at once.
+
+The Circle tool also requests each circle as a ring through `IWorldLabels.Ring`, newest first, level with the centre: the unit's altitude, or the ground height the tool reads once when the circle is made. `WorldRingPool` draws up to 16, each a flat `StrokeGraphic` in a container under the labels' parent, so a ring shares their visibility and draws under their text. The container sits at the world origin of the screen-space HUD canvas, where world units are pixels. `RingProjection`, which is Unity-free and unit-tested (`RingProjectionTests`), turns the ring into 128 chords in camera space and clips each against the near plane and the screen's four sides grown by 32 pixels before projecting it. So a ring that passes behind the camera is cut rather than mirrored the way `WorldToScreenPoint` mirrors points behind it, and no vertex lands so far off screen that float precision bends the line. A ring's mesh is rebuilt only when the camera, the circle, or the line width changed since the frame before. There is no radius label in the 3D view: at the ring's nearest point it would hop between chords, or vanish while flying inside the ring, where that point is beside or behind the aircraft.
 
 ### Adding a tool
 

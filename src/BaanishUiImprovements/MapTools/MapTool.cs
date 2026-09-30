@@ -45,7 +45,7 @@ public interface IMapToolContext : IMapView
     float GroundElevation(Vector2 position);
 }
 
-/// <summary>Labels in the 3D view. Requested every frame from <see cref="MapTool.OnFrame"/>, each shows for that frame only.</summary>
+/// <summary>Labels and rings in the 3D view. Requested every frame from <see cref="MapTool.OnFrame"/>, each shows for that frame only.</summary>
 public interface IWorldLabels
 {
     /// <summary>
@@ -53,6 +53,12 @@ public interface IWorldLabels
     /// meters: X east, Y up from sea level, Z north. Hidden while the point is behind the camera, and with the HUD.
     /// </summary>
     void Add(Vector3 position, string text, ShapeColor color);
+
+    /// <summary>
+    /// Draws a level ring around a point in the 3D view as a thin line, radius in meters, with the centre in the same
+    /// global meters as <see cref="Add"/>. Hidden with the HUD, and where it passes behind the camera.
+    /// </summary>
+    void Ring(Vector3 center, float radius, ShapeColor color);
 }
 
 /// <summary>
