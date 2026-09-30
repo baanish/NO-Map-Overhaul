@@ -1,6 +1,6 @@
 # Agent notes
 
-Client-side BepInEx 5 mod for Nuclear Option. The README covers the features, `CONTRIBUTING.md` the build and tests, and `docs/DESIGN.md` how the drawing works.
+NO Map Overhaul, a client-side BepInEx 5 map mod for Nuclear Option. Up to 0.4.0 it was Baanish UI Improvements (GUID `com.baanish.nuclearoption.uiimprovements`, folder `BaanishUiImprovements`), and this checkout keeps that directory name. Code naming the old GUID or folder does so on purpose: `Plugin` carries its settings over and switches off a leftover install, and `build/Build.ps1 -Install` deletes the old folder. The README covers the features, `docs/INSTALL.md` the player install, `CONTRIBUTING.md` the build and tests, and `docs/DESIGN.md` how the drawing works.
 
 - **Game code:** decompile the installed `Assembly-CSharp.dll` into `.cache/decompiled/` (gitignored) with `ilspycmd`, and read the real type before relying on it.
 - **Installing:** run `pwsh ./build/Build.ps1 -Install` as a background task. It waits for the game to exit before copying, so start it while Aanish is still playing instead of asking him to report that he closed the game. Keep one queued install at a time: a waiting one copies whatever DLL is newest when the game exits, and several racing for the same file fail.

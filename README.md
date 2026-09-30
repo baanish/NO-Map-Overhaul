@@ -1,6 +1,10 @@
 # NO Map Overhaul
 
-My Nuclear Option mod for map and HUD navigation aids: numbered runways with an approach line, planning tools on the full map, and airbase names.
+My map mod for Nuclear Option: numbered runways with an approach line and a runway callout for ATC, planning tools on the full map, and airbase names.
+
+**To install it, follow the [install guide](docs/INSTALL.md).** It isn't in the Nuclear Option Mod Manager catalog yet.
+
+Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
 It only draws on your screen. It doesn't patch the game and sends nothing over the network, so nobody else sees what it draws. I've tested it in single-player missions, and version 0.4.0 in a multiplayer session. The map tools haven't been flown in multiplayer yet. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
@@ -42,9 +46,9 @@ Off by default. Your side's airbases get a faint name label on the full map, so 
 
 ## Install
 
-Download a ZIP from [releases](https://github.com/baanish/NO-Map-Overhaul/releases), then follow the [user guide](docs/USER_GUIDE.md#install). The mod isn't in the Nuclear Option Mod Manager catalog yet.
+Download `NoMapOverhaul-v<version>-plugin-only.zip` from [releases](https://github.com/baanish/NO-Map-Overhaul/releases) and follow the [install guide](docs/INSTALL.md). It covers BepInEx, checking the mod loaded, upgrading from Baanish UI Improvements, updating, and uninstalling.
 
-The [user guide](docs/USER_GUIDE.md) also covers every setting, how the runway end is chosen, the airbase abbreviations, and how to measure the mod's cost on your machine.
+The [user guide](docs/USER_GUIDE.md) covers every setting, how the runway end is chosen, the airbase abbreviations, and how to measure the mod's cost on your machine.
 
 ## Contributing
 

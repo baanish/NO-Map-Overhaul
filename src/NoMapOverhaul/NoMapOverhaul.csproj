@@ -4,7 +4,7 @@
     <AssemblyName>NoMapOverhaul</AssemblyName>
     <RootNamespace>NoMapOverhaul</RootNamespace>
     <Version>0.5.0</Version>
-    <Description>Map and HUD navigation aids for Nuclear Option.</Description>
+    <Description>Runways, planning tools, and airbase names on the Nuclear Option map.</Description>
     <Authors>baanish</Authors>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>

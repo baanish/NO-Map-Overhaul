@@ -1,6 +1,9 @@
 NO Map Overhaul v@VERSION@
 
-Map and HUD navigation aids for Nuclear Option.
+A map mod for Nuclear Option: runways, planning tools, and airbase names.
+Up to 0.4.0 it was called Baanish UI Improvements. Its missile arrows are
+now a mod of their own, NO Missile Indicators:
+https://github.com/baanish/NO-Missile-Indicators
 
 Runway markers:
 
@@ -52,6 +55,13 @@ NoMapOverhaul.dll to:
 Start the game once. BepInEx creates the settings file:
 
   BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg
+
+Upgrading from Baanish UI Improvements: close the game and delete the old
+BepInEx/plugins/BaanishUiImprovements folder. Your settings carry over on
+the first start.
+
+Step-by-step install guide, including BepInEx:
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/INSTALL.md
 
 Every setting and the airbase abbreviations are documented here:
 https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/USER_GUIDE.md

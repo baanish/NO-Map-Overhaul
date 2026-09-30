@@ -2,24 +2,7 @@
 
 ## Install
 
-You need BepInEx 5 installed in Nuclear Option. Each release has two ZIPs:
-
-- `NoMapOverhaul-v<version>-plugin-only.zip` already contains the `BepInEx/plugins/NoMapOverhaul/` folder. Extract it beside `NuclearOption.exe`.
-- `NoMapOverhaul-v<version>-nomm.zip` is flat. For a manual install, copy `NoMapOverhaul.dll` to `BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll`.
-
-Start the game once. BepInEx then creates the settings file:
-
-```text
-BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg
-```
-
-To confirm the mod loaded, look for this line in `BepInEx/LogOutput.log`:
-
-```text
-[Info   :NO Map Overhaul] NO Map Overhaul 0.5.0 loaded.
-```
-
-To uninstall, delete the `NoMapOverhaul` plugin folder and the `.cfg` file.
+The [install guide](INSTALL.md) covers installing BepInEx and the mod, checking that it loaded, upgrading from Baanish UI Improvements, updating, and uninstalling.
 
 ## What you see
 
@@ -69,7 +52,7 @@ Between two runways or ends at about the same distance, the choice can switch as
 
 Change settings in game with F1 if Configuration Manager is installed. Changes apply immediately. Click the mod's name to open its settings; hover over a setting's name for a longer description. Settings marked *advanced* are tuning knobs that F1 shows only with **Advanced settings** ticked at the top of its window, or when a search finds them.
 
-Without Configuration Manager, edit the `.cfg` file while the game is closed. Each section below is a `[Section]` heading in the file, and the key is the name before `=`. Colours are hex `RRGGBBAA`. A settings file from 0.4.0 or earlier moves its values into these sections the first time the game starts with this version.
+Without Configuration Manager, edit `BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg` while the game is closed. The game's first start with the mod creates it. Each section below is a `[Section]` heading in the file, and the key is the name before `=`. Colours are hex `RRGGBBAA`. Settings saved by Baanish UI Improvements, this mod's name up to 0.4.0, carry over into these sections the first time the game starts with NO Map Overhaul, apart from the missile arrows, which moved to [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
 The table lists the sections in the order F1 shows them.
 

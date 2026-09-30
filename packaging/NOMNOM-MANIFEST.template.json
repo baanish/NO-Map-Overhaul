@@ -1,7 +1,7 @@
 {
   "id": "NoMapOverhaul",
   "displayName": "NO Map Overhaul",
-  "description": "Map and HUD navigation aids. Draws friendly runways with their numbers on the minimap and full map, a dashed approach line for the runway you're lined up on, and a RWY label over its threshold for ATC calls. More navigation features are coming.",
+  "description": "Map mod. Draws friendly runways with their numbers on the minimap and full map, a dashed approach line and a RWY callout for ATC on the runway you're lined up on, planning tools on the full map (bearing and range, range circles, notes that tag contacts, a pen, and a waypoint route), and optional airbase names. Formerly Baanish UI Improvements.",
   "tags": [
     "QoL",
     "UI"
