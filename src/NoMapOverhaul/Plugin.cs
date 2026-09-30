@@ -136,7 +136,7 @@ public sealed class Plugin : BaseUnityPlugin
     private bool CarryOverOldSettings(IDictionary<ConfigDefinition, string> saved)
     {
         var oldFile = Path.Combine(Paths.ConfigPath, OldConfigFile);
-        if (!File.Exists(oldFile))
+        if (saved.Count > 0 || !File.Exists(oldFile))
         {
             return false;
         }
