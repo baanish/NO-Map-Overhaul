@@ -12,7 +12,7 @@ namespace BaanishUiImprovements.MapTools;
 /// Rings in the 3D view, which the Circle tool requests each frame through <see cref="WorldLabelPool"/>. Each ring is a
 /// flat <see cref="StrokeGraphic"/> on the HUD canvas, beside the 3D labels, so it hides with the HUD and while the map
 /// is open. <see cref="RingProjection"/> projects and clips it; a ring is rebuilt only when the camera, the circle, or
-/// the line width changed since its last frame.
+/// the line width changed since its last frame. Nothing is projected while the HUD's canvas is switched off.
 /// </summary>
 internal sealed class WorldRingPool
 {
@@ -44,7 +44,8 @@ internal sealed class WorldRingPool
         }
 
         _used = 0;
-        _drawing = parent != null && camera != null && _settings.MapToolCirclesIn3D.Value;
+        // The game switches the HUD's canvas off while the full map is open over the cockpit; rings built then never show.
+        _drawing = parent != null && parent.gameObject.activeInHierarchy && camera != null && _settings.MapToolCirclesIn3D.Value;
         if (!_drawing)
         {
             return;

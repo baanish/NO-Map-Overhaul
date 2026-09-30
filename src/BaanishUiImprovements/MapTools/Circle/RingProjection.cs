@@ -111,18 +111,23 @@ public sealed class RingProjection
         return chords;
     }
 
-    /// <summary>Projects the ring around <paramref name="center"/> in the level plane through it, radius in meters.</summary>
+    /// <summary>
+    /// Projects the ring around <paramref name="center"/> in the level plane through it, radius in meters. A ring whose
+    /// bounding sphere lies wholly outside one of the clip planes projects to nothing without being sampled.
+    /// </summary>
     public void Project(Vector3 center, float radius, in ScreenCamera camera)
     {
         _points.Clear();
         _runs.Clear();
         Closed = false;
 
-        var toCamera = Quaternion.Conjugate(camera.Rotation);
-        var middle = Vector3.Transform(center - camera.Position, toCamera);
-        var east = Vector3.Transform(Vector3.UnitX, toCamera) * radius;
-        var north = Vector3.Transform(Vector3.UnitZ, toCamera) * radius;
+        ToCamera(center, radius, camera, out var middle, out var east, out var north);
         var chords = Chords = ChordsFor(middle.Length(), radius, camera.FocalPixels);
+        if (!MayShow(middle, radius, camera))
+        {
+            return;
+        }
+
         var stride = Segments / chords;
         var outside = -1;
         for (var i = 0; i < chords; i++)
@@ -200,6 +205,42 @@ public sealed class RingProjection
         }
 
         return enter <= exit;
+    }
+
+    /// <summary>The ring's centre in camera space, and its east and north radii turned into camera space.</summary>
+    private static void ToCamera(Vector3 center, float radius, in ScreenCamera camera, out Vector3 middle, out Vector3 east, out Vector3 north)
+    {
+        var toCamera = Quaternion.Conjugate(camera.Rotation);
+        middle = Vector3.Transform(center - camera.Position, toCamera);
+        east = Vector3.Transform(Vector3.UnitX, toCamera) * radius;
+        north = Vector3.Transform(Vector3.UnitZ, toCamera) * radius;
+    }
+
+    /// <summary>
+    /// False when the sphere around the ring lies wholly outside one of the clip planes, so none of the ring can show.
+    /// <see cref="Distance"/> scales each side plane's distance by the length of its normal, which this divides out.
+    /// </summary>
+    private static bool MayShow(Vector3 middle, float radius, in ScreenCamera camera)
+    {
+        var across = (camera.HalfScreen.X + GuardPixels) / camera.FocalPixels;
+        var up = (camera.HalfScreen.Y + GuardPixels) / camera.FocalPixels;
+        var sideReach = radius * MathF.Sqrt(1f + across * across);
+        var topReach = radius * MathF.Sqrt(1f + up * up);
+        for (var plane = 0; plane < 5; plane++)
+        {
+            var reach = plane switch
+            {
+                0 => radius,
+                1 or 2 => sideReach,
+                _ => topReach,
+            };
+            if (Distance(plane, middle, camera) < -reach)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool Inside(Vector3 point, in ScreenCamera camera)

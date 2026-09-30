@@ -20,6 +20,7 @@ internal static class RingProjectionTests
         ("a chord wholly behind the camera is dropped", ChordBehindDropped),
         ("a chord past the screen side stops at the guard band", ChordStopsAtGuardBand),
         ("a ring gets fewer chords the smaller it shows", ChordsFollowScreenSize),
+        ("a ring centred off screen that reaches into view still draws", RingReachingIntoViewDraws),
     };
 
     private const float Focal = 540f;
@@ -121,6 +122,21 @@ internal static class RingProjectionTests
             "expected the part on screen kept");
         var edge = (HalfScreen.X + RingProjection.GuardPixels) / Focal * 100f;
         Expect(enter == 0f && MathF.Abs(exit * 10000f - edge) < 0.01f, $"expected the chord to stop {edge} m across, got {exit * 10000f}");
+    }
+
+    /// <summary>
+    /// A 500 m ring whose centre is 2.6 km right of a camera looking north, 1 km ahead: its centre lies past the guarded
+    /// right edge by 365 m measured square to that plane, so its near side reaches 135 m back inside it.
+    /// </summary>
+    private static void RingReachingIntoViewDraws()
+    {
+        var projection = new RingProjection();
+        projection.Project(new Vector3(2600, 0, 1000), 500f, Camera(new Vector3(0, 100, 0), Quaternion.Identity));
+        Expect(projection.Runs.Count > 0 && !projection.Closed, $"expected part of the ring drawn, got {projection.Runs.Count} runs");
+        foreach (var point in projection.Points)
+        {
+            ExpectWithinGuard(point);
+        }
     }
 
     private static ScreenCamera Camera(Vector3 position, Quaternion rotation) => new(position, rotation, HalfScreen, Focal, 1f);
