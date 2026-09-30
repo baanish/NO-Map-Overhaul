@@ -57,6 +57,8 @@ Tag the release commit `v<version>` only after the script passes. Push the commi
 
 The NOMM archive must be first. The NOMNOM catalog treats the first asset as the package.
 
+The notes link relative to `docs/release-notes/`, and relative links break on a release page. In the body, rewrite each one to an absolute link at the tag, such as `https://github.com/baanish/baanish-ui-improvements/blob/v<version>/docs/TESTING.md`.
+
 After publishing, read the tag, prerelease flag, asset order, and asset checksums back from GitHub. A successful upload alone doesn't prove the release is right.
 
 ## List it in Nuclear Option Mod Manager
