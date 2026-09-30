@@ -76,7 +76,8 @@ internal sealed class MapToolHost
             _layer.MarkOverlayDirty(_active);
         }
 
-        if (open && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu))
+        if (open && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
+            !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
         {
             if (_settings.MapToolUndoKey.Value.IsDown())
             {
