@@ -28,6 +28,8 @@ public sealed class EraserTool : MapTool
 
     public override string Status => "Click a drawing to delete it.";
 
+    public override MapShape? RedrawnShape => _hovered;
+
     public override void OnDeactivate()
     {
         _hovered = null;

@@ -109,6 +109,12 @@ public abstract class MapTool
     /// <summary>A short count at the end of the strip, such as characters typed out of the most allowed. Return a cached string.</summary>
     public virtual string Counter => string.Empty;
 
+    /// <summary>
+    /// The stored drawing <see cref="DrawOverlay"/> draws again, such as the eraser's highlight, or null. Its labels
+    /// take that drawing's slots, not those of an identical drawing.
+    /// </summary>
+    public virtual MapShape? RedrawnShape => null;
+
     /// <summary>Set by <see cref="InvalidateOverlay"/>; the map layer clears it once it has redrawn the overlay.</summary>
     internal bool OverlayInvalid { get; set; }
 

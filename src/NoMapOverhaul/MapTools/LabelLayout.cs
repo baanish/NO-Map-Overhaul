@@ -68,7 +68,7 @@ public sealed class PlacedLabel
     /// <summary>Drawn by a tool's overlay, such as a measurement still being picked, rather than a stored shape.</summary>
     public bool Overlay { get; set; }
 
-    /// <summary>Higher is newer: the shape's id.</summary>
+    /// <summary>Higher is newer: the shape's id. For an overlay label, the id of the stored shape the overlay draws again, or 0.</summary>
     public int Order { get; set; }
 
     /// <summary>
@@ -232,7 +232,8 @@ public sealed class LabelLayout
     /// Places every label, as described on the class. With <paramref name="obstacles"/> null nothing is avoided: each
     /// label keeps the slot it had, or takes its first, which is what the full map does while it moves. The minimap,
     /// where the game's labels aren't known, passes none, so its labels avoid only each other.
-    /// A label drawn twice, such as the eraser's highlight redrawing a drawing, takes the slot of the first.
+    /// A label drawn twice, such as the eraser's highlight redrawing a drawing, takes the slot of the first: of the
+    /// drawing with its <see cref="PlacedLabel.Order"/> when it names one, so of two identical drawings it takes its own.
     /// </summary>
     public void Place(List<PlacedLabel> labels, IReadOnlyList<LabelBox>? obstacles)
     {
@@ -270,7 +271,8 @@ public sealed class LabelLayout
     {
         foreach (var label in labels)
         {
-            if (!label.Overlay && label.Anchor.Equals(copy.Anchor) && string.Equals(label.Text, copy.Text, StringComparison.Ordinal))
+            if (!label.Overlay && (copy.Order == 0 || label.Order == copy.Order) && label.Anchor.Equals(copy.Anchor) &&
+                string.Equals(label.Text, copy.Text, StringComparison.Ordinal))
             {
                 return label;
             }

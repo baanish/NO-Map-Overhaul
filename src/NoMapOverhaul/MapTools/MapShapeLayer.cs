@@ -193,6 +193,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                     tools[i].DrawOverlay(this);
                     End();
                     tools[i].OverlayInvalid = false;
+                    var redrawn = tools[i].RedrawnShape?.Id ?? 0;
+                    _labelsChanged |= redrawn != overlay.RedrawnId; // a highlight moving between identical drawings changes no label text
+                    overlay.RedrawnId = redrawn;
                 }
             }
         }
@@ -253,7 +256,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 
         foreach (var overlay in _overlays)
         {
-            overlay!.AddLabels(_placing, 0, overlay: true);
+            overlay!.AddLabels(_placing, overlay.RedrawnId, overlay: true);
         }
 
         var across = toUpright * Vector3.right;
@@ -657,6 +660,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         public bool Live { get; set; }
 
         public bool Undrawn { get; private set; } = true;
+
+        /// <summary>For a tool's overlay, the id of the stored shape it draws again (<see cref="MapTool.RedrawnShape"/>), or 0.</summary>
+        public int RedrawnId { get; set; }
 
         public void Begin()
         {

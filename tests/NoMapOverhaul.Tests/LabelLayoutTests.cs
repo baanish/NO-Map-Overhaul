@@ -24,6 +24,7 @@ internal static class LabelLayoutTests
         ("a label keeps its slot while it stays clear", LabelKeepsClearSlot),
         ("without obstacles labels keep their slots", NoObstaclesKeepsSlots),
         ("a label drawn twice takes the first one's slot", MirrorTakesOriginalSlot),
+        ("a highlight of one of two identical drawings takes its own drawing's slot", MirrorTakesItsOwnDrawingsSlot),
         ("crowded bearings each take the first slot clear of everything", CrowdedBearingsTakeFirstClearSlot),
         ("minimap labels turn upright again only after a degree of turn", UprightStepsByADegree),
         ("minimap turns count across north", TurnsCountAcrossNorth),
@@ -170,6 +171,18 @@ internal static class LabelLayoutTests
         var highlight = Label(arrow, overlay: true);
         new LabelLayout().Place(new List<PlacedLabel> { stored, highlight }, new List<LabelBox>());
         Expect(stored.Slot == 0 && highlight.Center == stored.Center, $"expected both past the head, got {stored.Slot} and {highlight.Center}");
+    }
+
+    /// <summary>Two measurements between the same points: the newer takes the first slot, and the eraser hovers the newer.</summary>
+    private static void MirrorTakesItsOwnDrawingsSlot()
+    {
+        var arrow = LabelAnchor.Bearing(Vector2.Zero, new Vector2(100, 0));
+        var older = Label(arrow, order: 1);
+        var newer = Label(arrow, order: 2);
+        var highlight = Label(arrow, order: 2, overlay: true);
+        new LabelLayout().Place(new List<PlacedLabel> { older, newer, highlight }, new List<LabelBox>());
+        Expect(newer.Slot == 0 && older.Slot != 0, $"expected the newer past the head, got slots {older.Slot} and {newer.Slot}");
+        Expect(highlight.Center == newer.Center, $"expected the highlight on the newer's label, got {highlight.Center}");
     }
 
     /// <summary>
