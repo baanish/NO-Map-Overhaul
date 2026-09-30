@@ -29,6 +29,7 @@ internal static class RailIcons
     private const float BoxCenter = 12f;
     private const float StrokeWidth = 2f;
     private const int ArcSteps = 12;
+    private const int RingSteps = 32;
     private const int CurveSteps = 10;
 
     /// <param name="center">The box's centre in the graphic's parent space.</param>
@@ -151,18 +152,18 @@ internal static class RailIcons
         public void Closed(params float[] xy) => Poly(true, xy);
 
         /// <summary>From <paramref name="from"/> to <paramref name="to"/> degrees, Y down, so positive turns clockwise on screen.</summary>
-        public void Arc(float cx, float cy, float radius, float from, float to)
+        public void Arc(float cx, float cy, float radius, float from, float to, int steps = ArcSteps)
         {
-            for (var i = 0; i <= ArcSteps; i++)
+            for (var i = 0; i <= steps; i++)
             {
-                var angle = Mathf.Lerp(from, to, (float)i / ArcSteps) * Mathf.Deg2Rad;
+                var angle = Mathf.Lerp(from, to, (float)i / steps) * Mathf.Deg2Rad;
                 Point(cx + radius * Mathf.Cos(angle), cy + radius * Mathf.Sin(angle));
             }
         }
 
         public void Ring(float cx, float cy, float radius)
         {
-            Arc(cx, cy, radius, 0f, 360f);
+            Arc(cx, cy, radius, 0f, 360f, RingSteps);
             End(closed: true);
         }
 
