@@ -53,7 +53,7 @@ The circle is the game's own rule. An aircraft that counts as landed inside it (
 
 ### Airbase names
 
-Turn on **Airbase Names → ShowNames** to label every airbase on the full map, friendly, enemy, and neutral, just under where the game draws a friendly airbase's icon. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
+Turn on **Airbase Names → ShowNames** to label your faction's airbases on the full map, just under where the game draws their icon. Turn on **ShowEnemyAndNeutral** as well to name every other airbase too. The game gives enemy and neutral airbases no icon at all, so this is how to find "Agrapol" when someone calls it out. It's off by default because it also shows you where bases are that the game doesn't mark. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Carriers and airbases the mission switched off get no label. Airbases sharing a name get one label, placed under your own faction's if it holds one: Ignus free flight has three airbases called "Feldspar International Airport".
 
 ### Missile arrows
 
@@ -113,7 +113,8 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Airbase Boundary | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |
 | Airbase Boundary | FillOpacity | `0.01` | Opacity of the shaded zone. |
 | Airbase Boundary | EdgeOpacity | `0.1` | Opacity of the edge line. `0` hides it. |
-| Airbase Names | ShowNames | `false` | Name every airbase on the full map. |
+| Airbase Names | ShowNames | `false` | Name your faction's airbases on the full map. |
+| Airbase Names | ShowEnemyAndNeutral | `false` | Also name enemy and neutral airbases. |
 | Airbase Names | Color | `99FF99BF` | Name colour. |
 | Airbase Names | Size | `8` | Name size. |
 | Approach | TriggerRangeKm | `5` | How close to a runway the line and callout appear. |

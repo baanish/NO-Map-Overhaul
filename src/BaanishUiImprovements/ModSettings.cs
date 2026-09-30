@@ -24,7 +24,8 @@ internal sealed class ModSettings
         BoundaryFillOpacity = config.Bind("Airbase Boundary", "FillOpacity", 0.01f, new ConfigDescription("Opacity of the shaded zone. The game blends in linear colour space, so small values already read strongly over the dark map.", new AcceptableValueRange<float>(0f, 1f)));
         BoundaryEdgeOpacity = config.Bind("Airbase Boundary", "EdgeOpacity", 0.1f, new ConfigDescription("Opacity of the zone's edge line. 0 hides it.", new AcceptableValueRange<float>(0f, 1f)));
 
-        ShowAirbaseNames = config.Bind("Airbase Names", "ShowNames", false, "Name every airbase, friendly, enemy, and neutral, just under it on the full map.");
+        ShowAirbaseNames = config.Bind("Airbase Names", "ShowNames", false, "Name your faction's airbases just under them on the full map.");
+        AirbaseNamesEnemyAndNeutral = config.Bind("Airbase Names", "ShowEnemyAndNeutral", false, "Also name enemy and neutral airbases. Off by default, since the names show where bases are that the game doesn't mark.");
         AirbaseNameColor = config.Bind("Airbase Names", "Color", new Color(0.6f, 1f, 0.6f, 0.75f), "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
         AirbaseNameSize = config.Bind("Airbase Names", "Size", 8f, new ConfigDescription("Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f)));
 
@@ -72,6 +73,7 @@ internal sealed class ModSettings
     public ConfigEntry<float> BoundaryEdgeOpacity { get; }
 
     public ConfigEntry<bool> ShowAirbaseNames { get; }
+    public ConfigEntry<bool> AirbaseNamesEnemyAndNeutral { get; }
     public ConfigEntry<Color> AirbaseNameColor { get; }
     public ConfigEntry<float> AirbaseNameSize { get; }
 

@@ -152,7 +152,8 @@ public sealed class Plugin : BaseUnityPlugin
     }
 
     /// <summary>
-    /// Every faction's airbases, not just ours, one per name: Ignus free flight stacks three airbases named
+    /// Our airbases, plus every other faction's when the player opts in (off by default, so names don't reveal where
+    /// the enemy's bases are), one per name: Ignus free flight stacks three airbases named
     /// "Feldspar International Airport" around one field. Friendly ones claim their name first, so the label lands
     /// under the game's icon. Skips carriers, airbases the mission switched off, and any without a centre to place a label at,
     /// so an unplaceable airbase never claims a name another could show.
@@ -162,7 +163,10 @@ public sealed class Plugin : BaseUnityPlugin
         _namedAirbases.Clear();
         _airbaseNames.Clear();
         AddNamed(_airbases);
-        AddNamed(FactionRegistry.airbaseLookup.Values);
+        if (_settings.AirbaseNamesEnemyAndNeutral.Value)
+        {
+            AddNamed(FactionRegistry.airbaseLookup.Values);
+        }
     }
 
     private void AddNamed(IEnumerable<Airbase> airbases)
