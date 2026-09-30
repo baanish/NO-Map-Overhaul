@@ -25,8 +25,11 @@ internal sealed class MapToolHost
     private readonly RailIcon[] _icons;
     private readonly ConfigEntry<KeyboardShortcut>[] _keys;
 
-    /// <summary>The tool the Tools button opens the rail on: Bearing/range, tool 1.</summary>
-    private readonly int _openingTool;
+    /// <summary>
+    /// The tool the Tools button opens the rail on: the last one picked this session, across missions, since it's a
+    /// preference rather than a drawing. Bearing/range, tool 1, until one is picked.
+    /// </summary>
+    private int _openingTool;
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
@@ -278,6 +281,7 @@ internal sealed class MapToolHost
         _active = tool;
         if (_active >= 0)
         {
+            _openingTool = _active;
             _tools[_active].OnActivate();
             _tools[_active].InvalidateOverlay();
         }

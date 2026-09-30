@@ -7,7 +7,7 @@ Every setting mentioned here is listed in the [user guide's settings table](USER
 ## Quick start
 
 1. Open the full map.
-2. Click **Tools** just outside the map's top-left corner, or press `H`. A green rail of tool icons opens left of the map, with Bearing/range picked.
+2. Click **Tools** just outside the map's top-left corner, or press `H`. A green rail of tool icons opens left of the map, with Bearing/range picked the first time, and the tool you last picked after that.
 3. Press `5` for Waypoint, then click the map to drop waypoints. A numbered route appears, and a line runs from your aircraft to the next waypoint.
 4. Close the map. The next two waypoints show in the 3D view with their distance and bearing, such as `WP2 4.2nm 045°`.
 5. Open the map again. The rail closed with the map, so your clicks go to the game until you press `H` or click **Tools**.
@@ -35,7 +35,7 @@ A selected friendly unit keeps its right click: with one selected, right click g
 
 ![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](images/tool-rail.jpg)
 
-The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on Bearing/range, and closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on the tool you last picked, Bearing/range the first time after starting the game, and closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
 The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 
