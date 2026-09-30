@@ -17,15 +17,7 @@ It only draws on your screen. It doesn't patch the game and sends nothing over t
 - **HUD callout.** The same runway end gets a `RWY 27` label pinned over its threshold in the 3D view, ready for an ATC call. An optional prefix adds the airbase (`NBSCLI RWY 27`), and another option hides the label until your gear is down.
 - **Airbase boundary**, off by default. A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
 
-<table>
-<tr>
-<td><img src="docs/images/airbase.jpg" alt="An airbase on the map with its runway strip numbered 05 and 23, its name, and the shaded landing zone"></td>
-<td><img src="docs/images/approach-line.jpg" alt="The dashed approach line off runway 23 on the minimap"></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/images/runway-callout.jpg" alt="The MARIS RWY 21 callout over the runway threshold in the 3D view"></td>
-</tr>
-</table>
+![An airbase with its numbered runway strip, name, and shaded landing zone; the dashed approach line off runway 23; and the MARIS RWY 21 callout over the threshold in the 3D view](docs/images/gallery-runways.jpg)
 
 It doesn't guess which way you'll land: it always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
 
@@ -42,16 +34,7 @@ On the full map, click **Tools** or press `H` to open a rail of planning tools b
 
 ![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](docs/images/tool-rail.jpg)
 
-<table>
-<tr>
-<td><img src="docs/images/bra.jpg" alt="A bearing and range arrow to an enemy, labelled 189° 2.4nm 1.5k ft"></td>
-<td><img src="docs/images/circles.jpg" alt="Two 2 nm range circles on the full map"></td>
-</tr>
-<tr>
-<td><img src="docs/images/hud-bra-note.jpg" alt="In the 3D view, a BRA label with a note tagging the same contact stacked under it"></td>
-<td><img src="docs/images/hud-ring.jpg" alt="A range circle drawn as a ring on the ground in the 3D view"></td>
-</tr>
-</table>
+![A BRA arrow to an enemy reading 189° 2.4nm 1.5k ft; two 2 nm range circles; a BRA label with a note stacked under it in the 3D view; and a range circle drawn as a ring on the ground](docs/images/gallery-map-tools.jpg)
 
 Only you see what you draw, and it clears when you leave the mission. Drawings on other units use only what your side knows: when your side loses a contact, its drawings stop where it was last seen and read `lost`.
 
