@@ -36,6 +36,7 @@ internal static class Program
         tests.AddRange(MapToolTests.All);
         tests.AddRange(WaypointTests.All);
         tests.AddRange(PenTextTests.All);
+        tests.AddRange(MeasureToolTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)
