@@ -9,8 +9,8 @@ namespace BaanishUiImprovements.MapTools;
 
 /// <summary>
 /// Draws the store's shapes and each tool's overlay on the DynamicMap. Like the runways it is a layer under the map's
-/// icon layer, so it shows on the minimap and the full map and inherits their pan, zoom, and rotation. It is the last
-/// child there, so drawings sit over unit icons, as the game's own waypoints do.
+/// icon layer, so it shows on the minimap and the full map and inherits their pan, zoom, and rotation. It sits just
+/// past the mod's other map layers there, so drawings cover the runways but never hide a unit icon.
 /// It is also the <see cref="IMapCanvas"/> the shapes draw into. Each shape keeps its own mesh and labels, rebuilt only
 /// when the shape is added, when the zoom or a drawing setting changes, or on the game's 10 Hz map refresh if it drew
 /// anything live. Panning moves the layer with the map and rebuilds nothing. The layer is its own canvas, so rebuilding
@@ -20,6 +20,12 @@ internal sealed class MapShapeLayer : IMapCanvas
 {
     /// <summary>Half the angle between an arrowhead's two barbs.</summary>
     private const float ArrowBarbDegrees = 25f;
+
+    /// <summary>
+    /// How the mod's other map layers are named (BaanishRunwayLayer, BaanishAirbaseLabelLayer,
+    /// BaanishAirbaseBoundaryLayer). Each takes the icon layer's first slot, so together they lead its children.
+    /// </summary>
+    private const string ModLayerPrefix = "Baanish";
 
     private readonly ModSettings _settings;
     private readonly IMapView _view;
@@ -70,9 +76,9 @@ internal sealed class MapShapeLayer : IMapCanvas
         var fresh = EnsureLayer(map);
         var tick = map.mapLastUpdated != _lastTick;
         _lastTick = map.mapLastUpdated;
-        if (tick && _layer!.GetSiblingIndex() != _layer.parent.childCount - 1)
+        if (fresh || tick)
         {
-            _layer.SetAsLastSibling(); // the game appends each new unit's icon
+            KeepUnderGameIcons();
         }
 
         var factor = map.mapDisplayFactor;
@@ -274,6 +280,36 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Takes the slot just past the mod's other layers, so drawings cover the runways, airbase names, and boundary, and
+    /// everything the game adds after them (unit icons, waypoints, radar pings) covers the drawings.
+    /// </summary>
+    private void KeepUnderGameIcons()
+    {
+        var parent = _layer!.parent;
+        var slot = 0;
+        for (var i = 0; i < parent.childCount; i++)
+        {
+            var child = parent.GetChild(i);
+            if (ReferenceEquals(child, _layer))
+            {
+                continue;
+            }
+
+            if (!child.name.StartsWith(ModLayerPrefix, System.StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            slot++;
+        }
+
+        if (_layer.GetSiblingIndex() != slot)
+        {
+            _layer.SetSiblingIndex(slot);
+        }
     }
 
     /// <summary>Makes graphics for new shapes, drops those of shapes gone from the store, and orders them as the store does, overlays on top.</summary>

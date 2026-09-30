@@ -83,7 +83,7 @@ With **Circle**, press on the centre and drag out to the radius, or click the ce
 
 With the Eraser, click on or near a drawing to delete it. The drawing under the cursor turns red first, so you can see what goes. Clear removes everything as one step, so Undo brings it all back. The Z and Y keys also undo and redo while the full map is open, but not while you type map text, chat, or into one of the game's text boxes. The colour swatches set the colour of new lines, arrows, and text.
 
-Drawings show on the minimap too. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
+Drawings show on the minimap too. They sit under the game's unit icons and waypoints, so they never hide a unit, and over the runways. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
 
 ## How the runway end is chosen
 
