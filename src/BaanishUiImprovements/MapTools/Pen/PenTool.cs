@@ -56,6 +56,7 @@ public sealed class PenTool : MapTool
     public override void OnPointerDown(MapPointer pointer)
     {
         Drop();
+        InvalidateOverlay();
         var shapes = Context.Shapes;
         _room = shapes.MaxPoints - shapes.PointCount;
         _limitedAt = _room < 1 ? shapes.Version : null;
@@ -93,6 +94,7 @@ public sealed class PenTool : MapTool
         var stroke = new PenStroke(_points.ToArray(), Context.Color);
         var limited = _stopped;
         Drop();
+        InvalidateOverlay();
         if (!Context.Shapes.Add(stroke) && !Context.Shapes.IsFull)
         {
             limited = true; // a redo during the drag took the room
@@ -123,6 +125,8 @@ public sealed class PenTool : MapTool
         {
             return;
         }
+
+        InvalidateOverlay(); // a point is kept, or the stroke is simplified to make room
 
         if (_points.Count >= _room)
         {

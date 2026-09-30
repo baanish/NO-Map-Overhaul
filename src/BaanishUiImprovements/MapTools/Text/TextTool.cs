@@ -41,6 +41,7 @@ public sealed class TextTool : MapTool
     public override void OnClick(MapPointer pointer)
     {
         Place();
+        InvalidateOverlay();
         if (Context.Shapes.IsFull)
         {
             return;
@@ -58,6 +59,7 @@ public sealed class TextTool : MapTool
             return;
         }
 
+        InvalidateOverlay();
         switch (character)
         {
             case '\n':

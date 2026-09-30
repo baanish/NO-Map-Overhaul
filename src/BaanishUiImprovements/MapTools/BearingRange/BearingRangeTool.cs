@@ -33,11 +33,20 @@ public sealed class BearingRangeTool : MapTool
 
     public override void OnMissionStart() => Forget();
 
-    public override void OnPointerMove(MapPointer pointer) => _hover = pointer.Point;
+    /// <summary>The preview follows the cursor once a start is picked.</summary>
+    public override void OnPointerMove(MapPointer pointer)
+    {
+        _hover = pointer.Point;
+        if (_start is not null)
+        {
+            InvalidateOverlay();
+        }
+    }
 
     public override void OnClick(MapPointer pointer)
     {
         _hover = pointer.Point;
+        InvalidateOverlay();
         if (_start is not { } start)
         {
             _start = pointer.Point;

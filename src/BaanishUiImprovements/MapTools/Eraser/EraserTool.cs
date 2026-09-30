@@ -35,9 +35,19 @@ public sealed class EraserTool : MapTool
         }
 
         _hovered = null;
+        InvalidateOverlay();
     }
 
-    public override void OnPointerMove(MapPointer pointer) => _hovered = Find(pointer);
+    /// <summary>Redraws the highlight only when the cursor moves onto a different shape: a long pen stroke is costly to redraw.</summary>
+    public override void OnPointerMove(MapPointer pointer)
+    {
+        var hovered = Find(pointer);
+        if (!ReferenceEquals(hovered, _hovered))
+        {
+            _hovered = hovered;
+            InvalidateOverlay();
+        }
+    }
 
     /// <summary>An undo or Clear can take the hovered shape away before the cursor moves again.</summary>
     public override void DrawOverlay(IMapCanvas canvas)

@@ -29,6 +29,7 @@ internal static class MapToolTests
         ("the eraser takes the nearest shape in reach", EraserTakesNearestInReach),
         ("the eraser misses beyond reach", EraserMissesBeyondReach),
         ("an erased shape comes back with undo", ErasedShapeComesBackWithUndo),
+        ("the eraser redraws its highlight only for a different shape", EraserHighlightRedrawsOnlyForDifferentShape),
     };
 
     private static readonly ShapeColor White = new(255, 255, 255);
@@ -240,6 +241,19 @@ internal static class MapToolTests
         ExpectShapes(context.Shapes);
         context.Shapes.Undo();
         ExpectShapes(context.Shapes, line);
+    }
+
+    private static void EraserHighlightRedrawsOnlyForDifferentShape()
+    {
+        var context = new FakeContext();
+        context.Shapes.Add(Line(0, 0, 1000, 0));
+        var eraser = new EraserTool(context);
+        eraser.OnPointerMove(new MapPointer(new Vector2(100, 10), null));
+        Expect(TakeOverlayInvalid(eraser), "expected hovering a shape to redraw the highlight");
+        eraser.OnPointerMove(new MapPointer(new Vector2(600, 20), null));
+        Expect(!TakeOverlayInvalid(eraser), "expected moving along the same shape to redraw nothing");
+        eraser.OnPointerMove(new MapPointer(new Vector2(600, 500), null));
+        Expect(TakeOverlayInvalid(eraser), "expected leaving the shape to clear the highlight");
     }
 
     private static LineShape Line(float x1, float y1, float x2, float y2, int points = 0) =>

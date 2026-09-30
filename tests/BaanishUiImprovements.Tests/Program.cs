@@ -1,4 +1,5 @@
 using System.Numerics;
+using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
 
@@ -143,6 +144,14 @@ internal static class Program
 
     private static string Describe(ApproachChoice? choice) =>
         choice is { } c ? $"runway {c.RunwayIndex} reverse={c.Reverse}" : "none";
+
+    /// <summary>Whether the tool asked for its overlay to be redrawn since the last call, cleared as the map layer does.</summary>
+    internal static bool TakeOverlayInvalid(MapTool tool)
+    {
+        var invalid = tool.OverlayInvalid;
+        tool.OverlayInvalid = false;
+        return invalid;
+    }
 
     internal static void Expect(bool condition, string message)
     {

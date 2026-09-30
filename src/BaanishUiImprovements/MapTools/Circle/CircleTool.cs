@@ -82,21 +82,35 @@ public sealed class CircleTool : MapTool
         _preset = _preset == index ? -1 : index;
     }
 
-    public override void OnPointerMove(MapPointer pointer) => _cursor = pointer.Point;
+    /// <summary>The preview follows the cursor once a centre or a preset is picked.</summary>
+    public override void OnPointerMove(MapPointer pointer)
+    {
+        _cursor = pointer.Point;
+        if (_center is not null || _preset >= 0)
+        {
+            InvalidateOverlay();
+        }
+    }
 
     public override void OnPointerDown(MapPointer pointer)
     {
         _cursor = pointer.Point;
+        InvalidateOverlay();
         _pressAt = pointer.Position;
         _pressPlacedCenter = _center is null;
         _center ??= pointer.Point;
     }
 
-    public override void OnPointerDrag(MapPointer pointer) => _cursor = pointer.Point;
+    public override void OnPointerDrag(MapPointer pointer)
+    {
+        _cursor = pointer.Point;
+        InvalidateOverlay();
+    }
 
     public override void OnPointerUp(MapPointer pointer)
     {
         _cursor = pointer.Point;
+        InvalidateOverlay();
         if (_center is not { } center)
         {
             return;

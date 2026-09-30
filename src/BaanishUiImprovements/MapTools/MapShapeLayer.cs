@@ -27,7 +27,6 @@ internal sealed class MapShapeLayer : IMapCanvas
     private readonly HashSet<MapShape> _seen = new();
     private readonly List<MapShape> _stale = new();
     private readonly ShapeGraphics?[] _overlays;
-    private readonly bool[] _overlayDirty;
     private RectTransform? _layer;
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
@@ -43,7 +42,6 @@ internal sealed class MapShapeLayer : IMapCanvas
         _settings = settings;
         _view = view;
         _overlays = new ShapeGraphics?[toolCount];
-        _overlayDirty = new bool[toolCount];
     }
 
     public DistanceUnit Units => _view.Units;
@@ -59,12 +57,11 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
     }
 
-    /// <summary>The tool at this index got an event: its overlay redraws on the next <see cref="Render"/>.</summary>
-    public void MarkOverlayDirty(int tool) => _overlayDirty[tool] = true;
-
     /// <summary>
-    /// Per frame, cheap when nothing changed. Redraws what the store, the zoom, the settings, or a tool event changed,
-    /// and on each of the game's 10 Hz map refreshes (<c>DynamicMap.mapLastUpdated</c>) the live shapes and every overlay.
+    /// Per frame, cheap when nothing changed. Redraws what the store, the zoom, or the settings changed, the overlays
+    /// their tools invalidated, and on each of the game's 10 Hz map refreshes (<c>DynamicMap.mapLastUpdated</c>) the
+    /// live shapes and overlays. A store change redraws every overlay too, since the eraser's highlight and the
+    /// waypoint leg draw stored shapes.
     /// </summary>
     public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle)
     {
@@ -81,7 +78,7 @@ internal sealed class MapShapeLayer : IMapCanvas
         var style = (_settings.MapToolLineWidth.Value, _settings.OutlineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value);
         var restyle = fresh || factor != _factor || inverseScale != _inverseScale || !style.Equals(_style) || !ReferenceEquals(hudStyle, _hudStyle);
         var synced = store.Version != _storeVersion;
-        if (!restyle && !synced && !tick && !AnyOverlayDirty())
+        if (!restyle && !synced && !tick && !AnyOverlayInvalid(tools))
         {
             return;
         }
@@ -109,12 +106,13 @@ internal sealed class MapShapeLayer : IMapCanvas
 
         for (var i = 0; i < tools.Count; i++)
         {
-            if (restyle || tick || _overlayDirty[i])
+            var overlay = _overlays[i]!;
+            if (restyle || synced || tools[i].OverlayInvalid || (tick && overlay.Live))
             {
-                Begin(_overlays[i]!);
+                Begin(overlay);
                 tools[i].DrawOverlay(this);
                 End();
-                _overlayDirty[i] = false;
+                tools[i].OverlayInvalid = false;
             }
         }
     }
@@ -321,11 +319,11 @@ internal sealed class MapShapeLayer : IMapCanvas
         _target = null;
     }
 
-    private bool AnyOverlayDirty()
+    private static bool AnyOverlayInvalid(IReadOnlyList<MapTool> tools)
     {
-        foreach (var dirty in _overlayDirty)
+        for (var i = 0; i < tools.Count; i++)
         {
-            if (dirty)
+            if (tools[i].OverlayInvalid)
             {
                 return true;
             }

@@ -28,6 +28,7 @@ internal static class MeasureToolTests
         ("a preset radius finishes a centre or places the next", PresetRadius),
         ("a circle's centre follows its unit and freezes when lost", CircleFollowsUnit),
         ("the eraser and undo take measurements and circles", EraserAndUndoTakeBoth),
+        ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
     };
 
     private const float Nm = NavFormat.MetersPerNauticalMile;
@@ -216,6 +217,25 @@ internal static class MeasureToolTests
         map.Shapes.Undo();
         map.Shapes.Undo();
         Expect(map.Shapes.Shapes.Count == 2, "expected undo to bring both back");
+    }
+
+    private static void PreviewsFollowCursorOnceStarted()
+    {
+        var map = new FakeMap();
+        var measure = new BearingRangeTool(map);
+        measure.OnPointerMove(At(100, 0));
+        Expect(!TakeOverlayInvalid(measure), "expected no measurement redraw before a start is picked");
+        measure.OnClick(At(0, 0));
+        TakeOverlayInvalid(measure);
+        measure.OnPointerMove(At(500, 0));
+        Expect(TakeOverlayInvalid(measure), "expected the measurement preview to follow the cursor");
+
+        var circle = new CircleTool(map);
+        circle.OnPointerMove(At(100, 0));
+        Expect(!TakeOverlayInvalid(circle), "expected no circle redraw before a centre or preset is picked");
+        circle.OnOption(0);
+        circle.OnPointerMove(At(500, 0));
+        Expect(TakeOverlayInvalid(circle), "expected the preset circle preview to follow the cursor");
     }
 
     private static MapPointer At(float x, float y) => new(new Vector2(x, y), null);

@@ -50,21 +50,18 @@ internal sealed class MapToolInput
     /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
     public bool Typing => _keyboard.IsSuspended;
 
-    /// <summary>
-    /// Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any, and returns whether it got
-    /// one, so its overlay can redraw at once.
-    /// </summary>
-    public bool Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool)
+    /// <summary>Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any.</summary>
+    public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool)
     {
         if (tool == null || catcher == null)
         {
             EndPress();
             ReleaseKeyboard(immediately: false);
-            return false;
+            return;
         }
 
-        var typed = UpdateKeyboard(tool);
-        return UpdatePointer(map, catcher, tool) || typed;
+        UpdateKeyboard(tool);
+        UpdatePointer(map, catcher, tool);
     }
 
     /// <summary>The tool is being switched off: forget its press. Its half-drawn work is its own to drop.</summary>
@@ -81,7 +78,7 @@ internal sealed class MapToolInput
         ReleaseKeyboard(immediately: true);
     }
 
-    private bool UpdatePointer(DynamicMap map, MapPointerCatcher catcher, MapTool tool)
+    private void UpdatePointer(DynamicMap map, MapPointerCatcher catcher, MapTool tool)
     {
         Vector2 mouse = Input.mousePosition;
         if (catcher.TakePress())
@@ -95,10 +92,9 @@ internal sealed class MapToolInput
             {
                 _mouse.Suspend();
                 tool.OnPointerDown(Pointer(map, mouse));
-                return true;
             }
 
-            return false;
+            return;
         }
 
         if (_pressed)
@@ -108,12 +104,12 @@ internal sealed class MapToolInput
             {
                 if (!_dragging || mouse == _lastAt)
                 {
-                    return false;
+                    return;
                 }
 
                 _lastAt = mouse;
                 tool.OnPointerDrag(Pointer(map, mouse));
-                return true;
+                return;
             }
 
             var dragging = _dragging;
@@ -121,34 +117,33 @@ internal sealed class MapToolInput
             if (dragging)
             {
                 tool.OnPointerUp(Pointer(map, mouse));
-                return true;
+                return;
             }
 
             if (_panned)
             {
-                return false;
+                return;
             }
 
             tool.OnClick(Pointer(map, _pressAt));
-            return true;
+            return;
         }
 
         if (!catcher.Hovered || mouse == _lastAt)
         {
-            return false;
+            return;
         }
 
         _lastAt = mouse;
         tool.OnPointerMove(Pointer(map, mouse));
-        return true;
     }
 
-    private bool UpdateKeyboard(MapTool tool)
+    private void UpdateKeyboard(MapTool tool)
     {
         if (!tool.CapturesKeyboard)
         {
             ReleaseKeyboard(immediately: false);
-            return false;
+            return;
         }
 
         if (!_keyboard.IsSuspended)
@@ -156,7 +151,7 @@ internal sealed class MapToolInput
             if (CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind)
             {
                 tool.OnTextInput('\u001b');
-                return true;
+                return;
             }
 
             _keyboard.Suspend();
@@ -164,20 +159,15 @@ internal sealed class MapToolInput
             CursorManager.SetFlag(CursorFlags.Chat, true);
         }
 
-        var typed = false;
         foreach (var character in Input.inputString)
         {
             tool.OnTextInput(character == '\r' ? '\n' : character);
-            typed = true;
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             tool.OnTextInput('\u001b');
-            typed = true;
         }
-
-        return typed;
     }
 
     private void ReleaseKeyboard(bool immediately)

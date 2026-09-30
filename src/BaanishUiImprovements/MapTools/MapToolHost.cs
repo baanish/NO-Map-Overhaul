@@ -71,11 +71,7 @@ internal sealed class MapToolHost
             _menu.Hide();
         }
 
-        if (_input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null))
-        {
-            _layer.MarkOverlayDirty(_active);
-        }
-
+        _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null);
         if (open && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
             !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
         {
@@ -159,10 +155,15 @@ internal sealed class MapToolHost
                 break;
             case MenuCommand.Option when _active >= 0:
                 _tools[_active].OnOption(command.Index);
-                _layer.MarkOverlayDirty(_active);
+                _tools[_active].InvalidateOverlay();
                 break;
             case MenuCommand.Swatch:
                 _settings.MapToolColor.Value = ShapeColor.Palette[command.Index].ToColor32();
+                if (_active >= 0)
+                {
+                    _tools[_active].InvalidateOverlay(); // a preview draws in the picked colour
+                }
+
                 break;
             case MenuCommand.Undo:
                 _store.Undo();
@@ -187,14 +188,14 @@ internal sealed class MapToolHost
         {
             _input.Cancel();
             _tools[_active].OnDeactivate();
-            _layer.MarkOverlayDirty(_active);
+            _tools[_active].InvalidateOverlay();
         }
 
         _active = tool;
         if (_active >= 0)
         {
             _tools[_active].OnActivate();
-            _layer.MarkOverlayDirty(_active);
+            _tools[_active].InvalidateOverlay();
         }
     }
 }

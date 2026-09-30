@@ -24,6 +24,7 @@ internal static class PenTextTests
         ("a spent point budget refuses the next stroke", SpentBudgetRefusesStroke),
         ("a pen stroke undoes and erases", PenStrokeUndoesAndErases),
         ("switching tools drops a half-drawn stroke", SwitchingToolsDropsStroke),
+        ("the pen redraws only for a kept point", PenRedrawsOnlyForKeptPoint),
         ("typed text is placed on enter", TypedTextPlacedOnEnter),
         ("escape drops the text", EscapeDropsText),
         ("backspace deletes and the length is capped", BackspaceAndLengthCap),
@@ -247,6 +248,19 @@ internal static class PenTextTests
         Expect(context.Shapes.Redo() && context.Shapes.Contains(note), "expected redo to bring it back");
         new EraserTool(context).OnClick(At(5100, 30));
         Expect(context.Shapes.Shapes.Count == 0, "expected the eraser to take the note");
+    }
+
+    private static void PenRedrawsOnlyForKeptPoint()
+    {
+        var pen = new PenTool(new FakeContext());
+        pen.OnPointerDown(At(0, 0));
+        Expect(TakeOverlayInvalid(pen), "expected a new stroke to redraw");
+        pen.OnPointerDrag(At(10, 0));
+        Expect(!TakeOverlayInvalid(pen), "expected a dropped point to redraw nothing");
+        pen.OnPointerDrag(At(40, 0));
+        Expect(TakeOverlayInvalid(pen), "expected a kept point to redraw");
+        pen.OnPointerUp(At(40, 0));
+        Expect(TakeOverlayInvalid(pen), "expected the finished stroke's preview to clear");
     }
 
     /// <summary>Up and down 50 m every 30 m for 300 m: 11 points that all survive thinning and simplifying.</summary>

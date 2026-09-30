@@ -87,6 +87,9 @@ public abstract class MapTool
     /// <summary>Extra buttons in the menu while active, such as preset radii. Return the same list until a label changes: the menu reads it every frame.</summary>
     public virtual IReadOnlyList<string> Options => Array.Empty<string>();
 
+    /// <summary>Set by <see cref="InvalidateOverlay"/>; the map layer clears it once it has redrawn the overlay.</summary>
+    internal bool OverlayInvalid { get; set; }
+
     protected IMapToolContext Context { get; }
 
     /// <summary>Picked in the menu, or the menu opened on this tool.</summary>
@@ -137,12 +140,17 @@ public abstract class MapTool
 
     /// <summary>
     /// Map drawing the tool owns that isn't a stored shape: a rubber-band line while placing, the leg from the aircraft
-    /// to the next waypoint, the eraser's highlight. Called for every tool, active or not, on each of the game's 10 Hz
-    /// map refreshes and right after each event this tool receives. Not erasable and not undone.
+    /// to the next waypoint, the eraser's highlight. Not erasable and not undone. Called for every tool, active or not,
+    /// only when something may have changed it: after <see cref="InvalidateOverlay"/>, when the tool is switched on or
+    /// off, a menu option or colour is picked, the drawings or the zoom change, and on each of the game's 10 Hz map
+    /// refreshes while it shows a unit or the aircraft. So an event that changes what it draws must invalidate it.
     /// </summary>
     public virtual void DrawOverlay(IMapCanvas canvas)
     {
     }
+
+    /// <summary>Redraws <see cref="DrawOverlay"/> this frame. Call it only when the drawing changes: a long pen stroke is costly to redraw.</summary>
+    protected internal void InvalidateOverlay() => OverlayInvalid = true;
 
     /// <summary>
     /// Every frame, whichever tool is active and whether the map is open or not: advance live state, such as a route
