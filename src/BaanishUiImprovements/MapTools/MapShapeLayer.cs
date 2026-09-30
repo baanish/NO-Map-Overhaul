@@ -13,8 +13,10 @@ namespace BaanishUiImprovements.MapTools;
 /// past the mod's other map layers there, so drawings cover the runways but never hide a unit icon.
 /// It is also the <see cref="IMapCanvas"/> the shapes draw into. Each shape keeps its own mesh and labels, rebuilt only
 /// when the shape is added, when the zoom or a drawing setting changes, or on the game's 10 Hz map refresh if it drew
-/// anything live. Panning moves the layer with the map and rebuilds nothing. The layer is its own canvas, so rebuilding
-/// a shape doesn't re-batch the game's icons, and icons moving every frame don't re-batch a long pen stroke.
+/// anything live. Panning moves the layer with the map and rebuilds nothing. Unity re-batches a whole canvas when any
+/// graphic in it changes or moves, so the layer is two: the lines in the layer's own canvas, so rebuilding a shape doesn't
+/// re-batch the game's icons and icons moving every frame don't re-batch a long pen stroke, and the markers and labels in
+/// a canvas of their own, since the minimap turns them upright every frame.
 /// Labels are placed after the shapes draw, by <see cref="LabelLayout"/>: on the full map clear of the game's icons and
 /// labels and of each other, whenever a drawing redraws and once the map comes to rest after a pan or zoom. While the
 /// map moves, and on the minimap, each label keeps its slot.
@@ -29,7 +31,7 @@ internal sealed class MapShapeLayer : IMapCanvas
 
     /// <summary>
     /// How the mod's other map layers are named (BaanishRunwayLayer, BaanishAirbaseLabelLayer,
-    /// BaanishAirbaseBoundaryLayer). Each takes the icon layer's first slot, so together they lead its children.
+    /// BaanishAirbaseBoundaryLayer). They take the icon layer's first slots, so together they lead its children.
     /// </summary>
     private const string ModLayerPrefix = "Baanish";
 
@@ -46,8 +48,14 @@ internal sealed class MapShapeLayer : IMapCanvas
     private readonly List<MapLabel> _placing = new();
     private RectTransform? _layer;
 
-    /// <summary>Every label, after every drawing's lines and markers.</summary>
+    /// <summary>Every marker, then the plates, then every label, after every drawing's lines, in a canvas of their own.</summary>
     private RectTransform? _labelRoot;
+
+    /// <summary>The first child of <see cref="_labelRoot"/>, so markers draw under every label.</summary>
+    private RectTransform? _markerRoot;
+
+    /// <summary>Every label's plate and leader as one mesh, after the markers and under every label's text.</summary>
+    private FeatheredRectBatch? _plates;
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
     private int _storeVersion = -1;
@@ -57,7 +65,6 @@ internal sealed class MapShapeLayer : IMapCanvas
     private (float Line, Color RimColor, float Text, DistanceUnit Units) _style;
     private ShapeGraphics? _target;
     private Quaternion _uprightFor;
-    private bool _redrawnSinceUpright;
     private bool _labelsDrawn;
     private Vector3 _viewPosition;
     private float _viewScale;
@@ -216,11 +223,27 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             label.Apply(_inverseScale);
         }
+
+        DrawPlates();
+    }
+
+    /// <summary>The placed labels' plates and leaders, turned as the labels are: upright against the layer's rotation.</summary>
+    private void DrawPlates()
+    {
+        var plates = _plates!;
+        var upright = Quaternion.Inverse(_labelRoot!.rotation);
+        plates.Clear();
+        foreach (var label in _placing)
+        {
+            label.AddPlate(plates, upright, _inverseScale);
+        }
+
+        plates.Apply();
     }
 
     /// <summary>
-    /// Per frame: the minimap turns every frame, so text and markers reset to upright between redraws. Nothing to do
-    /// while the map holds still, as the full map does, and no redraw has placed new ones.
+    /// Per frame: the minimap turns every frame, so text and markers reset to upright. Nothing to do while the map holds
+    /// still, as the full map does: each label and marker is made upright when it's created, and stays so until the map turns.
     /// </summary>
     public void KeepUpright()
     {
@@ -230,14 +253,12 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
 
         var rotation = _layer.rotation;
-        if (!_redrawnSinceUpright && rotation.Equals(_uprightFor))
+        if (rotation.Equals(_uprightFor))
         {
             return; // exact comparison: Quaternion's == lets a slow turn creep by unnoticed
         }
 
         _uprightFor = rotation;
-        _redrawnSinceUpright = false;
-
         foreach (var graphics in _graphics.Values)
         {
             graphics.KeepUpright();
@@ -247,6 +268,8 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             overlay?.KeepUpright();
         }
+
+        DrawPlates();
     }
 
     public void Reset()
@@ -258,6 +281,9 @@ internal sealed class MapShapeLayer : IMapCanvas
 
         _layer = null;
         _labelRoot = null;
+        _markerRoot = null;
+        _plates = null;
+        _placing.Clear();
         _graphics.Clear();
         System.Array.Clear(_overlays, 0, _overlays.Length);
         _storeVersion = -1;
@@ -337,8 +363,20 @@ internal sealed class MapShapeLayer : IMapCanvas
             return;
         }
 
-        marker.rectTransform.localPosition = Local(position);
-        marker.rectTransform.localScale = Vector3.one * _inverseScale;
+        // Unity counts any transform write as a change that re-batches the canvas, and a live route redraws ten times a second.
+        var rect = marker.rectTransform;
+        var local = (Vector3)Local(position);
+        if (rect.localPosition != local)
+        {
+            rect.localPosition = local;
+        }
+
+        var scale = Vector3.one * _inverseScale;
+        if (rect.localScale != scale)
+        {
+            rect.localScale = scale;
+        }
+
         marker.color = color.ToColor32();
     }
 
@@ -359,9 +397,13 @@ internal sealed class MapShapeLayer : IMapCanvas
         _layer = NewRect("BaanishMapToolsLayer", map.iconLayer.transform);
         _layer.gameObject.AddComponent<Canvas>();
         _labelRoot = NewRect("Labels", _layer);
+        _labelRoot.gameObject.AddComponent<Canvas>();
+        _markerRoot = NewRect("Markers", _labelRoot);
+        _plates = NewRect("Plates", _labelRoot).gameObject.AddComponent<FeatheredRectBatch>();
+        _plates.raycastTarget = false;
         for (var i = 0; i < _overlays.Length; i++)
         {
-            _overlays[i] = new ShapeGraphics(_layer, _labelRoot, "ToolOverlay");
+            _overlays[i] = new ShapeGraphics(_layer, _markerRoot, _labelRoot, "ToolOverlay");
         }
 
         return true;
@@ -407,13 +449,18 @@ internal sealed class MapShapeLayer : IMapCanvas
             var shape = shapes[i];
             if (!_graphics.TryGetValue(shape, out var graphics))
             {
-                graphics = new ShapeGraphics(_layer!, _labelRoot!, "MapShape");
+                graphics = new ShapeGraphics(_layer!, _markerRoot!, _labelRoot!, "MapShape");
                 _graphics.Add(shape, graphics);
             }
 
             if (graphics.Rect.GetSiblingIndex() != i)
             {
                 graphics.Rect.SetSiblingIndex(i);
+            }
+
+            if (graphics.MarkerRect.GetSiblingIndex() != i)
+            {
+                graphics.MarkerRect.SetSiblingIndex(i);
             }
 
             _seen.Add(shape);
@@ -437,6 +484,7 @@ internal sealed class MapShapeLayer : IMapCanvas
         foreach (var overlay in _overlays)
         {
             overlay!.Rect.SetAsLastSibling();
+            overlay.MarkerRect.SetAsLastSibling();
         }
 
         _labelRoot!.SetAsLastSibling();
@@ -447,7 +495,6 @@ internal sealed class MapShapeLayer : IMapCanvas
     {
         graphics.Begin();
         _target = graphics;
-        _redrawnSinceUpright = true;
         _labelsDrawn = true;
     }
 
@@ -499,8 +546,8 @@ internal sealed class MapShapeLayer : IMapCanvas
     }
 
     /// <summary>
-    /// One shape's graphics, reused from draw to draw: its lines as one mesh with its markers on top, and its labels,
-    /// which sit in the layer's label container so every label draws over every drawing's lines.
+    /// One shape's graphics, reused from draw to draw: its lines as one mesh, and its markers and labels, which sit in
+    /// the layer's marker and label containers so every marker and label draws over every drawing's lines.
     /// </summary>
     private sealed class ShapeGraphics
     {
@@ -510,15 +557,20 @@ internal sealed class MapShapeLayer : IMapCanvas
         private int _labelsUsed;
         private int _markersUsed;
 
-        public ShapeGraphics(Transform layer, Transform labels, string name)
+        public ShapeGraphics(Transform layer, Transform markers, Transform labels, string name)
         {
             _labelParent = labels;
             Rect = NewRect(name, layer);
             Strokes = NewRect("Strokes", Rect).gameObject.AddComponent<StrokeGraphic>();
             Strokes.raycastTarget = false;
+            MarkerRect = NewRect(name, markers);
         }
 
+        /// <summary>Holds the lines.</summary>
         public RectTransform Rect { get; }
+
+        /// <summary>Holds the markers, in the same order among the shapes as <see cref="Rect"/>.</summary>
+        public RectTransform MarkerRect { get; }
 
         public StrokeGraphic Strokes { get; }
 
@@ -555,7 +607,9 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             if (_labelsUsed == _labels.Count)
             {
-                _labels.Add(new MapLabel(_labelParent));
+                var created = new MapLabel(_labelParent);
+                created.Rect.rotation = Quaternion.identity; // upright from the start, see KeepUpright
+                _labels.Add(created);
             }
 
             var label = _labels[_labelsUsed++];
@@ -580,7 +634,7 @@ internal sealed class MapShapeLayer : IMapCanvas
         {
             if (_markersUsed == _markers.Count)
             {
-                var copy = Object.Instantiate(prefab, Rect);
+                var copy = Object.Instantiate(prefab, MarkerRect);
                 if (!copy.TryGetComponent<Image>(out var image))
                 {
                     Object.Destroy(copy);
@@ -588,6 +642,7 @@ internal sealed class MapShapeLayer : IMapCanvas
                 }
 
                 copy.name = "Marker";
+                copy.transform.rotation = Quaternion.identity;
                 image.raycastTarget = false;
                 // The game's prefab ships with maskable off, so without this the marker draws past the minimap's edge.
                 image.maskable = true;
@@ -599,23 +654,25 @@ internal sealed class MapShapeLayer : IMapCanvas
             return marker;
         }
 
+        /// <summary>Hidden ones too, so one shown again on a map that has stopped turning is already upright.</summary>
         public void KeepUpright()
         {
-            for (var i = 0; i < _labelsUsed; i++)
+            foreach (var label in _labels)
             {
-                _labels[i].Rect.rotation = Quaternion.identity;
+                label.Rect.rotation = Quaternion.identity;
             }
 
-            for (var i = 0; i < _markersUsed; i++)
+            foreach (var marker in _markers)
             {
-                _markers[i].rectTransform.rotation = Quaternion.identity;
+                marker.rectTransform.rotation = Quaternion.identity;
             }
         }
 
-        /// <summary>The labels live under the layer's label container, not this shape's rect, so they go separately.</summary>
+        /// <summary>The markers and labels live under the layer's containers, not this shape's rect, so they go separately.</summary>
         public void Destroy()
         {
             Object.Destroy(Rect.gameObject);
+            Object.Destroy(MarkerRect.gameObject);
             foreach (var label in _labels)
             {
                 Object.Destroy(label.Rect.gameObject);

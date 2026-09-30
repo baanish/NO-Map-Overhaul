@@ -12,6 +12,9 @@ namespace BaanishUiImprovements.Airbases;
 /// </summary>
 internal sealed class AirbaseBoundaryOverlay
 {
+    /// <summary>The layer's name, which the names layer looks for to take the slot after it.</summary>
+    public const string LayerName = "BaanishAirbaseBoundaryLayer";
+
     private const float EdgeWidth = 1f;
 
     private readonly ModSettings _settings;
@@ -89,8 +92,9 @@ internal sealed class AirbaseBoundaryOverlay
         if (_layer == null || _layer.parent != map.iconLayer.transform)
         {
             Reset();
-            _layer = new GameObject("BaanishAirbaseBoundaryLayer", typeof(RectTransform)).GetComponent<RectTransform>();
+            _layer = new GameObject(LayerName, typeof(RectTransform)).GetComponent<RectTransform>();
             _layer.SetParent(map.iconLayer.transform, false);
+            _layer.gameObject.AddComponent<Canvas>(); // so the game's icons moving every frame don't re-batch the circles
         }
 
         if (_layer.GetSiblingIndex() != 0)

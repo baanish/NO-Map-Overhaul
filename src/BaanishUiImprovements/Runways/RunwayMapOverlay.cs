@@ -25,6 +25,7 @@ internal sealed class RunwayMapOverlay
     private readonly List<Airbase.Runway> _stale = new();
     private RectTransform? _layer;
     private readonly List<FeatheredRect> _approachDashes = new();
+    private Quaternion _uprightFor;
 
     public RunwayMapOverlay(ModSettings settings) => _settings = settings;
 
@@ -67,7 +68,10 @@ internal sealed class RunwayMapOverlay
         UpdateApproachLine(layer, approach, factor, inverseScale);
     }
 
-    /// <summary>Per frame: the minimap turns every frame, so numbers reset to upright between the 10 Hz map refreshes.</summary>
+    /// <summary>
+    /// Per frame: the minimap turns every frame, so numbers reset to upright between the 10 Hz map refreshes. Nothing to
+    /// do while the map holds still, as the full map does, since each number is made upright when it's created.
+    /// </summary>
     public void KeepLabelsUpright()
     {
         if (_layer == null)
@@ -75,6 +79,13 @@ internal sealed class RunwayMapOverlay
             return; // destroyed with the old scene's map; the next refresh rebuilds everything
         }
 
+        var rotation = _layer.rotation;
+        if (rotation.Equals(_uprightFor))
+        {
+            return; // exact comparison: Quaternion's == lets a slow turn creep by unnoticed
+        }
+
+        _uprightFor = rotation;
         foreach (var graphic in _graphics.Values)
         {
             graphic.KeepLabelsUpright();
@@ -103,6 +114,8 @@ internal sealed class RunwayMapOverlay
 
         Reset();
         _layer = NewRect("BaanishRunwayLayer", map.iconLayer.transform);
+        // A canvas of its own: Unity re-batches a whole canvas when anything in it moves, and the game's icons move every frame.
+        _layer.gameObject.AddComponent<Canvas>();
         _layer.SetAsFirstSibling();
         return _layer;
     }
@@ -204,6 +217,7 @@ internal sealed class RunwayMapOverlay
             _strip = NewFeatheredRect("RunwayStrip", layer, new Vector2(0.5f, 0.5f));
             _startLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
             _endLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
+            KeepLabelsUpright();
         }
 
         public void Update(ModSettings settings, float factor, float inverseScale, TextMeshProUGUI? hudStyle)

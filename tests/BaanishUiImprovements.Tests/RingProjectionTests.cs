@@ -19,6 +19,7 @@ internal static class RingProjectionTests
         ("a chord through the near plane is split there", ChordSplitAtNearPlane),
         ("a chord wholly behind the camera is dropped", ChordBehindDropped),
         ("a chord past the screen side stops at the guard band", ChordStopsAtGuardBand),
+        ("a ring gets fewer chords the smaller it shows", ChordsFollowScreenSize),
     };
 
     private const float Focal = 540f;
@@ -30,10 +31,28 @@ internal static class RingProjectionTests
         var projection = new RingProjection();
         projection.Project(new Vector3(0, 0, 1000), 100f, Camera(new Vector3(0, 100, 0), Quaternion.Identity));
         Expect(projection.Closed && projection.Runs.Count == 1, "expected one closed run");
-        Expect(projection.Points.Count == RingProjection.Segments, $"expected a point per chord, got {projection.Points.Count}");
+        Expect(projection.Points.Count == projection.Chords, $"expected a point per chord, got {projection.Points.Count} for {projection.Chords}");
         var east = projection.Points[0];
         var expected = HalfScreen + new Vector2(100, -100) * (Focal / 1000f);
         Expect(Vector2.Distance(east, expected) < 0.01f, $"expected the ring's east point at {expected}, got {east}");
+    }
+
+    /// <summary>
+    /// A 100 m ring 20 km off spans about 3 pixels, 1 km off about 60, and a camera inside a ring sees it fill the view.
+    /// Each chord count keeps the stray under half a pixel.
+    /// </summary>
+    private static void ChordsFollowScreenSize()
+    {
+        var far = RingProjection.ChordsFor(20000f, 100f, Focal);
+        var near = RingProjection.ChordsFor(1000f, 100f, Focal);
+        var inside = RingProjection.ChordsFor(500f, 1000f, Focal);
+        Expect(far == RingProjection.MinSegments, $"expected {RingProjection.MinSegments} chords far off, got {far}");
+        Expect(near > far && near < RingProjection.Segments, $"expected between {far} and {RingProjection.Segments} chords at 1 km, got {near}");
+        Expect(inside == RingProjection.Segments, $"expected every chord from inside the ring, got {inside}");
+
+        var pixels = Focal * 100f / 900f;
+        var stray = pixels * (1f - MathF.Cos(MathF.PI / near));
+        Expect(stray < 0.5f, $"expected a chord at 1 km to stray under half a pixel, got {stray}");
     }
 
     /// <summary>
