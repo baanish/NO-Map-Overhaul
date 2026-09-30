@@ -3,6 +3,7 @@ using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.MapTools.BearingRange;
 using BaanishUiImprovements.MapTools.Circle;
 using BaanishUiImprovements.MapTools.Eraser;
+using BaanishUiImprovements.Tracking;
 using static BaanishUiImprovements.Tests.Program;
 
 namespace BaanishUiImprovements.Tests;
@@ -17,7 +18,7 @@ internal static class MeasureToolTests
     public static readonly (string Name, Action Test)[] All =
     {
         ("two clicks measure bearing and range", TwoClicksMeasure),
-        ("a measured end follows its unit and freezes when lost", MeasuredEndFollowsUnit),
+        ("a measured end follows its unit, freezes while its track is stale, and resumes when spotted", MeasuredEndFollowsUnit),
         ("clicking the start again cancels a measurement", ClickingStartAgainCancels),
         ("a measurement's 3D label sits on its end", WorldLabelSitsOnEnd),
         ("the label hangs from the arrowhead", LabelHangsFromArrowhead),
@@ -60,10 +61,18 @@ internal static class MeasureToolTests
         map.Positions[7] = new Vector3(2 * Nm, 3000, 0);
         ExpectText(Draw(map).Labels[0].Text, "090° 2.0nm");
 
-        map.Lost.Add(7);
-        var lost = Draw(map);
-        ExpectText(lost.Labels[0].Text, "090° 2.0nm\nlost");
-        Expect(lost.Arrows[0].To == new Vector2(2 * Nm, 0), "expected a lost end to stay where the unit was last seen");
+        map.States[7] = TrackState.Stale;
+        map.Positions[7] = new Vector3(3 * Nm, 5000, 0);
+        var stale = Draw(map);
+        ExpectText(stale.Labels[0].Text, "090° 2.0nm\nlost");
+        Expect(stale.Arrows[0].To == new Vector2(2 * Nm, 0), "expected a stale end to stay where the unit was last known");
+        var labels = new RecordingLabels();
+        tool.OnFrame(labels);
+        Expect(labels.Added[0].Position == new Vector3(2 * Nm, 3000, 0), "expected a stale end's 3D label at the last known altitude");
+        ExpectText(labels.Added[0].Text, "090° 2.0nm\nlost");
+
+        map.States[7] = TrackState.Live;
+        ExpectText(Draw(map).Labels[0].Text, "090° 3.0nm");
     }
 
     private static void ClickingStartAgainCancels()
@@ -204,8 +213,11 @@ internal static class MeasureToolTests
         Expect(canvas.Circles[0].Center == new Vector2(2000, 3000), "expected the ring to follow the unit");
         Expect(canvas.Lines == 0, "expected no cross over a unit's icon");
 
-        map.Lost.Add(9);
-        ExpectText(Draw(map).Labels[0].Text, "5.0km\nlost");
+        map.States[9] = TrackState.Unknown;
+        map.Positions.Remove(9);
+        var lost = Draw(map);
+        ExpectText(lost.Labels[0].Text, "5.0km\nlost");
+        Expect(lost.Circles[0].Center == new Vector2(2000, 3000), "expected a destroyed unit's ring to stay where it was last known");
     }
 
     private static void CircleRingsSitLevelWithCentre()
@@ -311,11 +323,16 @@ internal static class MeasureToolTests
         return canvas;
     }
 
-    /// <summary>Units sit at global positions (X east, Y altitude, Z north). A lost unit keeps its last position, as the game side does.</summary>
+    /// <summary>
+    /// Units sit at the global positions their side reports (X east, Y altitude, Z north), live unless
+    /// <see cref="States"/> says otherwise. Resolved through <see cref="KnownPositions"/>, as the game side does.
+    /// </summary>
     private sealed class FakeMap : IMapToolContext
     {
+        private readonly KnownPositions _known = new();
+
         public Dictionary<uint, Vector3> Positions { get; } = new();
-        public HashSet<uint> Lost { get; } = new();
+        public Dictionary<uint, TrackState> States { get; } = new();
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => White;
         public DistanceUnit Units { get; set; } = DistanceUnit.NauticalMiles;
@@ -338,13 +355,15 @@ internal static class MeasureToolTests
                 return true;
             }
 
-            if (!Positions.TryGetValue(point.UnitId, out position))
+            var state = !Positions.TryGetValue(point.UnitId, out var reported) ? TrackState.Unknown
+                : States.TryGetValue(point.UnitId, out var set) ? set
+                : TrackState.Live;
+            if (!_known.TryResolve(point.UnitId, state, reported, out position))
             {
                 position = new Vector3(point.Position.X, 0f, point.Position.Y);
-                return false;
             }
 
-            return !Lost.Contains(point.UnitId);
+            return state == TrackState.Live;
         }
 
         public float GroundElevation(Vector2 position) => 120f;

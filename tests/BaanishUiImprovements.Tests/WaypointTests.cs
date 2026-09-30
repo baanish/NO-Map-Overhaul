@@ -25,7 +25,7 @@ internal static class WaypointTests
         ("a new route starts at its first waypoint", NewRouteStartsAtFirstWaypoint),
         ("the route draws numbered markers on one line", RouteDrawsNumberedMarkers),
         ("the eraser takes the whole route", EraserTakesWholeRoute),
-        ("the 3D label re-formats only when its text changes", CalloutReformatsOnlyOnChange),
+        ("the 3D label re-formats only when its text changes, and says lost", CalloutReformatsOnlyOnChange),
     };
 
     private const float Reach = 2500f;
@@ -150,11 +150,12 @@ internal static class WaypointTests
     private static void CalloutReformatsOnlyOnChange()
     {
         var callout = new WaypointCallout();
-        var first = callout.Text(2, Vector2.Zero, new Vector2(0, NavFormat.MetersPerNauticalMile * 4.21f), DistanceUnit.NauticalMiles);
+        var first = callout.Text(2, Vector2.Zero, new Vector2(0, NavFormat.MetersPerNauticalMile * 4.21f), DistanceUnit.NauticalMiles, lost: false);
         ExpectText(first, "WP2 4.2nm 000°");
-        var same = callout.Text(2, new Vector2(0, 20), new Vector2(0, NavFormat.MetersPerNauticalMile * 4.21f), DistanceUnit.NauticalMiles);
+        var same = callout.Text(2, new Vector2(0, 20), new Vector2(0, NavFormat.MetersPerNauticalMile * 4.21f), DistanceUnit.NauticalMiles, lost: false);
         Expect(ReferenceEquals(first, same), "expected the same text object while the text reads the same");
-        ExpectText(callout.Text(3, Vector2.Zero, new Vector2(12000, 0), DistanceUnit.Kilometres), "WP3 12km 090°");
+        ExpectText(callout.Text(3, Vector2.Zero, new Vector2(12000, 0), DistanceUnit.Kilometres, lost: false), "WP3 12km 090°");
+        ExpectText(callout.Text(3, Vector2.Zero, new Vector2(12000, 0), DistanceUnit.Kilometres, lost: true), "WP3 12km 090° lost");
     }
 
     /// <summary>Adds a route one waypoint at a time, as the tool does: one Add, then a Replace per waypoint.</summary>

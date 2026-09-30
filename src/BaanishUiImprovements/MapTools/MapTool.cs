@@ -34,7 +34,7 @@ public interface IMapToolContext : IMapView
 
     /// <summary>
     /// <see cref="IMapView.TryResolve"/> in 3D, for a label in the 3D view: global meters, X east, Y up from sea level,
-    /// Z north, with the unit's own altitude. Same rule and same false case; a fixed point gets sea level.
+    /// Z north, at the altitude the faction knows for the unit. Same rule and same false case; a fixed point gets sea level.
     /// </summary>
     bool TryResolveWorld(MapPoint point, out Vector3 position);
 

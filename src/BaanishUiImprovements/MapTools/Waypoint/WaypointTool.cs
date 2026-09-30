@@ -148,23 +148,26 @@ public sealed class WaypointTool : MapTool
         for (var i = 0; i < LabelledAhead && _progress.Next + i < route.Count; i++)
         {
             var waypoint = route[_progress.Next + i];
-            var position = WorldPosition(waypoint);
-            var text = _callouts[i].Text(_progress.Next + i + 1, aircraft, new FlatVector(position.X, position.Z), Context.Units);
+            var found = WorldPosition(waypoint, out var position);
+            var text = _callouts[i].Text(_progress.Next + i + 1, aircraft, new FlatVector(position.X, position.Z), Context.Units, !found);
             labels.Add(position, text, route.Color);
         }
     }
 
-    /// <summary>A fixed waypoint's ground height was found when it was placed; a unit's altitude comes with its position.</summary>
-    private WorldVector WorldPosition(RouteWaypoint waypoint)
+    /// <summary>
+    /// A fixed waypoint's ground height was found when it was placed; a unit's known altitude comes with its position.
+    /// False for a waypoint on a lost unit.
+    /// </summary>
+    private bool WorldPosition(RouteWaypoint waypoint, out WorldVector position)
     {
         var point = waypoint.Point;
         if (point.IsAnchored)
         {
-            Context.TryResolveWorld(point, out var unit);
-            return unit;
+            return Context.TryResolveWorld(point, out position);
         }
 
-        return new WorldVector(point.Position.X, waypoint.Elevation, point.Position.Y);
+        position = new WorldVector(point.Position.X, waypoint.Elevation, point.Position.Y);
+        return true;
     }
 
     private static bool TryGetFlight(out FlatVector position, out FlatVector forward, out bool airborne)

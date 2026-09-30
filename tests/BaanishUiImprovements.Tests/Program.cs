@@ -42,6 +42,7 @@ internal static class Program
         tests.AddRange(FrameStatsTests.All);
         tests.AddRange(PerfTestTests.All);
         tests.AddRange(RingProjectionTests.All);
+        tests.AddRange(KnownPositionsTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)

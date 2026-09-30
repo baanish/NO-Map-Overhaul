@@ -24,9 +24,9 @@ public interface IMapView
 
     /// <summary>
     /// Where a point is now. An anchored point follows its unit the way the unit's map icon does, through the
-    /// faction's tracking for an enemy, so it reveals nothing the map doesn't. False once the unit is destroyed or no
-    /// longer tracked: <paramref name="position"/> is then where it was last seen, and it follows again if the unit
-    /// is tracked again. A fixed point is always true.
+    /// faction's tracking for an enemy, so it reveals nothing the map doesn't. False once the unit is destroyed or its
+    /// track goes stale (not spotted for 4 s): <paramref name="position"/> is then where it was last known, and it
+    /// follows again once the unit is spotted again. A fixed point is always true.
     /// </summary>
     bool TryResolve(MapPoint point, out Vector2 position);
 }

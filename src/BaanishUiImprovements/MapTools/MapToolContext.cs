@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using BaanishUiImprovements.Tracking;
 using UnityEngine;
 using FlatVector = System.Numerics.Vector2;
 using WorldVector = System.Numerics.Vector3;
@@ -12,7 +12,7 @@ internal sealed class MapToolContext : IMapToolContext
     private const float RayHeight = 10000f;
 
     private readonly ModSettings _settings;
-    private readonly Dictionary<uint, WorldVector> _lastSeen = new();
+    private readonly KnownPositions _known = new();
 
     public MapToolContext(ModSettings settings, ShapeStore shapes)
     {
@@ -70,19 +70,13 @@ internal sealed class MapToolContext : IMapToolContext
             return true;
         }
 
-        if (TryLocate(point.UnitId, out var global))
-        {
-            position = new WorldVector(global.x, global.y, global.z);
-            _lastSeen[point.UnitId] = position;
-            return true;
-        }
-
-        if (!_lastSeen.TryGetValue(point.UnitId, out position))
+        var state = Locate(point.UnitId, out var global);
+        if (!_known.TryResolve(point.UnitId, state, new WorldVector(global.x, global.y, global.z), out position))
         {
             position = new WorldVector(point.Position.X, 0f, point.Position.Y);
         }
 
-        return false;
+        return state == TrackState.Live;
     }
 
     public float GroundElevation(FlatVector position)
@@ -94,36 +88,36 @@ internal sealed class MapToolContext : IMapToolContext
     }
 
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>
-    public void ForgetUnits() => _lastSeen.Clear();
+    public void ForgetUnits() => _known.Forget();
 
     /// <summary>
-    /// The map icon's own rule (<c>UnitMapIcon.UpdateIcon</c>): the faction's tracked position when it tracks the unit,
-    /// else the unit itself. An enemy the faction doesn't track isn't read straight from the scene, which would reveal
-    /// it, and a destroyed unit counts as lost even while its track lingers.
+    /// What the player's side knows, read the way the game shows it. With no faction the map shows every unit where it
+    /// is (<c>UnitMapIcon.UpdateIcon</c>). Otherwise the position is the faction's (<c>FactionHQ.TryGetKnownPosition</c>):
+    /// a friendly's own, a tracked enemy's live while spotted in the last 4 s (<c>IsTargetBeingTracked</c>) and frozen
+    /// after. An enemy the faction never tracked is never read, and a destroyed unit is lost, as its icon goes.
     /// </summary>
-    private static bool TryLocate(uint unitId, out GlobalPosition position)
+    private static TrackState Locate(uint unitId, out GlobalPosition position)
     {
         position = default;
         var id = new PersistentID { Id = unitId };
         if (!UnitRegistry.TryGetUnit(id, out var unit) || unit == null || unit.disabled)
         {
-            return false;
+            return TrackState.Unknown;
         }
 
         var map = SceneSingleton<DynamicMap>.i;
         var hq = map != null ? map.HQ : null;
-        if (hq != null && hq.GetTrackingData(id) is { } tracking)
-        {
-            position = tracking.GetPosition();
-            return true;
-        }
-
-        if (hq == null || unit.NetworkHQ == hq)
+        if (hq == null)
         {
             position = unit.GlobalPosition();
-            return true;
+            return TrackState.Live;
         }
 
-        return false;
+        if (!hq.TryGetKnownPosition(unit, out position))
+        {
+            return TrackState.Unknown;
+        }
+
+        return hq.IsTargetBeingTracked(unit) ? TrackState.Live : TrackState.Stale;
     }
 }
