@@ -50,6 +50,9 @@ internal sealed class ModSettings
         MapToolMaxPenPoints = config.Bind("Map Tools", "MaxPenPoints", 5000, new ConfigDescription("Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500)));
         MapToolUndoKey = config.Bind("Map Tools", "UndoKey", new KeyboardShortcut(KeyCode.Z), "Undo the last drawing change while the full map is open. Z isn't bound in the game's default controls.");
         MapToolRedoKey = config.Bind("Map Tools", "RedoKey", new KeyboardShortcut(KeyCode.Y), "Redo while the full map is open. Y isn't bound in the game's default controls.");
+
+        MapToolWaypointReachKm = config.Bind("Map Tools", "WaypointReachKm", 2.5f, new ConfigDescription("A waypoint counts as reached once you fly within this distance of it, and the route moves on to the next. NOAutopilot's default.", new AcceptableValueRange<float>(0.1f, 20f)));
+        MapToolWaypointPassedKm = config.Bind("Map Tools", "WaypointPassedKm", 10f, new ConfigDescription("A waypoint behind you also counts as reached while it's within this distance, so a wide miss still moves the route on. NOAutopilot's default. 0 turns it off.", new AcceptableValueRange<float>(0f, 50f)));
     }
 
     public ConfigEntry<bool> Enabled { get; }
@@ -93,4 +96,7 @@ internal sealed class ModSettings
     public ConfigEntry<int> MapToolMaxPenPoints { get; }
     public ConfigEntry<KeyboardShortcut> MapToolUndoKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolRedoKey { get; }
+
+    public ConfigEntry<float> MapToolWaypointReachKm { get; }
+    public ConfigEntry<float> MapToolWaypointPassedKm { get; }
 }

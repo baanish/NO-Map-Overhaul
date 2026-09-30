@@ -67,6 +67,12 @@ On the full map, a **Tools** button in the top-left corner opens the tools menu:
 
 While the menu is open, a left click on the map goes to the tool instead of selecting a unit, and unit tooltips wait until it closes. Dragging still pans the map, except with a tool that draws by dragging. Right clicks still belong to the game, so move orders for selected units and NOAutopilot's waypoints keep working. Click **Tools** again, or close the map, to give left clicks back to the game.
 
+With Waypoint, each click on the map adds a numbered waypoint to the end of your route, on the game's own waypoint marker, and one line joins them in order. Click on or just beside a unit's icon to put the waypoint on that unit. It then moves with the unit as long as your side tracks it, and its number reads `3 lost` once the unit is destroyed or no longer tracked. While you fly, a line runs from your aircraft to the next waypoint, and the next two waypoints get labels in the 3D view with their distance and bearing from you, such as `WP2 4.2nm 045°`.
+
+A waypoint counts as reached once you're within 2.5 km of it (**WaypointReachKm**), or once it's behind you and within 10 km (**WaypointPassedKm**), the same rule NOAutopilot uses. The route then moves on to the next waypoint. Only flying counts, so taxiing past a waypoint doesn't. Flown waypoints stay on the map. **Skip** moves on without flying the next waypoint, and **Restart** starts the route again from waypoint 1. Undo takes back the last waypoint, and the Eraser deletes the whole route. The route keeps the colour it started with.
+
+With NOAutopilot installed, its route is the only one. Plan it with right clicks as usual, and the 3D labels follow NOAutopilot's next two waypoints instead. Left clicks with the Waypoint tool then do nothing, and the menu says so.
+
 With the Eraser, click on or near a drawing to delete it. The drawing under the cursor turns red first, so you can see what goes. Clear removes everything as one step, so Undo brings it all back. The Z and Y keys also undo and redo while the full map is open, but not while you type map text or chat. The colour swatches set the colour of new lines, arrows, and text.
 
 Drawings show on the minimap too. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
@@ -117,6 +123,8 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Map Tools | MaxPenPoints | `5000` | Most freehand points kept across all pen strokes, so the map stays fast. At most `7500`. |
 | Map Tools | UndoKey | `Z` | Undo while the full map is open. |
 | Map Tools | RedoKey | `Y` | Redo while the full map is open. |
+| Map Tools | WaypointReachKm | `2.5` | How close to a waypoint counts as reaching it. |
+| Map Tools | WaypointPassedKm | `10` | How far behind you a waypoint still counts as reached. `0` turns it off. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 

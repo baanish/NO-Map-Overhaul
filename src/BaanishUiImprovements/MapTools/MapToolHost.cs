@@ -35,7 +35,7 @@ internal sealed class MapToolHost
         // Menu order; the menu opens on the first. Each tool lives in its own folder under MapTools.
         _tools = new MapTool[]
         {
-            new WaypointTool(_context),
+            new WaypointTool(_context, settings),
             new PenTool(_context),
             new TextTool(_context),
             new BearingRangeTool(_context),

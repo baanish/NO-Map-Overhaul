@@ -17,6 +17,9 @@
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeColor.cs" Link="MapTools\ShapeColor.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeHitTest.cs" Link="MapTools\ShapeHitTest.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeStore.cs" Link="MapTools\ShapeStore.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\RouteProgress.cs" Link="MapTools\Waypoint\RouteProgress.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\WaypointCallout.cs" Link="MapTools\Waypoint\WaypointCallout.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Waypoint\WaypointRoute.cs" Link="MapTools\Waypoint\WaypointRoute.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
