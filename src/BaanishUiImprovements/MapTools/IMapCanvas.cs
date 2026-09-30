@@ -123,8 +123,6 @@ public static class MapCanvasMetrics
     /// <summary>Half the game's 20-unit map waypoint marker.</summary>
     public const float MarkerRadius = 10f;
 
-    public const float ArrowHeadLength = 10f;
-
     /// <summary>A character's rough width as a fraction of the text size. The hit test has no font, so it boxes labels with this.</summary>
     public const float CharWidth = 0.6f;
 }

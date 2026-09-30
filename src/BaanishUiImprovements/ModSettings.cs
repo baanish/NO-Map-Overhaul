@@ -45,7 +45,7 @@ internal sealed class ModSettings
         ShowMapTools = config.Bind("Map Tools", "ShowTools", true, "Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission.");
         MapToolShowOnMinimap = config.Bind("Map Tools", "ShowOnMinimap", true, "Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them.");
         MapToolColor = config.Bind("Map Tools", "Color", (Color)new Color32(255, 221, 51, 255), "Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here.");
-        MapToolLineWidth = config.Bind("Map Tools", "LineWidth", 2f, new ConfigDescription("Width of drawn lines, in map icon units.", new AcceptableValueRange<float>(0.5f, 8f)));
+        MapToolLineWidth = config.Bind("Map Tools", "LineWidth", 1.5f, new ConfigDescription("Width of drawn lines, in map icon units.", new AcceptableValueRange<float>(0.5f, 8f)));
         MapToolTextSize = config.Bind("Map Tools", "TextSize", 10f, new ConfigDescription("Size of text the tools draw on the map.", new AcceptableValueRange<float>(4f, 64f)));
         MapToolUnits = config.Bind("Map Tools", "DistanceUnits", UnitsSetting.Game, "Units for distances the tools show. Game follows the game's own setting: kilometres for metric, nautical miles for imperial.");
         MapToolMaxShapes = config.Bind("Map Tools", "MaxShapes", 200, new ConfigDescription("Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000)));

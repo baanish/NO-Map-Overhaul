@@ -24,6 +24,9 @@ internal sealed class MapShapeLayer : IMapCanvas
     /// <summary>Half the angle between an arrowhead's two barbs.</summary>
     private const float ArrowBarbDegrees = 25f;
 
+    /// <summary>An arrowhead's length as a multiple of the line width, so the head keeps its shape at any LineWidth.</summary>
+    private const float ArrowHeadPerLineWidth = 5f;
+
     /// <summary>
     /// How the mod's other map layers are named (BaanishRunwayLayer, BaanishAirbaseLabelLayer,
     /// BaanishAirbaseBoundaryLayer). Each takes the icon layer's first slot, so together they lead its children.
@@ -51,7 +54,7 @@ internal sealed class MapShapeLayer : IMapCanvas
     private float _lastTick = -1f;
     private float _factor;
     private float _inverseScale;
-    private (float Line, float Rim, Color RimColor, float Text, DistanceUnit Units) _style;
+    private (float Line, Color RimColor, float Text, DistanceUnit Units) _style;
     private ShapeGraphics? _target;
     private Quaternion _uprightFor;
     private bool _redrawnSinceUpright;
@@ -115,7 +118,7 @@ internal sealed class MapShapeLayer : IMapCanvas
 
         var factor = map.mapDisplayFactor;
         var inverseScale = 1f / map.mapImage.transform.localScale.x;
-        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units);
+        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units);
         var restyle = fresh || factor != _factor || inverseScale != _inverseScale || !style.Equals(_style) || !ReferenceEquals(hudStyle, _hudStyle);
         var synced = store.Version != _storeVersion;
         if (restyle || synced || tick || AnyOverlayInvalid(tools))
@@ -289,7 +292,8 @@ internal sealed class MapShapeLayer : IMapCanvas
             return;
         }
 
-        var back = -shaft.normalized * Mathf.Min(MapCanvasMetrics.ArrowHeadLength * _inverseScale, shaft.magnitude);
+        var head = ArrowHeadPerLineWidth * _settings.MapToolLineWidth.Value * _inverseScale;
+        var back = -shaft.normalized * Mathf.Min(head, shaft.magnitude);
         var strokes = _target!.Strokes;
         strokes.AddPoint(tip + (Vector2)(Quaternion.Euler(0f, 0f, ArrowBarbDegrees) * back));
         strokes.AddPoint(tip);
@@ -474,9 +478,16 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
     }
 
-    private void EndStroke(ShapeColor color, bool closed) =>
-        _target!.Strokes.EndStroke(closed, _settings.MapToolLineWidth.Value * 0.5f * _inverseScale, color.ToColor32(),
-            _settings.OutlineWidth.Value * _inverseScale, _settings.OutlineColor.Value, EdgeProfile.AntiAliasWidth * _inverseScale);
+    /// <summary>
+    /// Flat: one colour across the width and a one-pixel anti-aliased edge. No dark rim, unlike the runways: on a line
+    /// this thin the fade from fill to rim to clear takes up most of the width and reads as a bevel.
+    /// </summary>
+    private void EndStroke(ShapeColor color, bool closed)
+    {
+        var fill = color.ToColor32();
+        _target!.Strokes.EndStroke(closed, _settings.MapToolLineWidth.Value * 0.5f * _inverseScale, fill, 0f, fill,
+            EdgeProfile.AntiAliasWidth * _inverseScale);
+    }
 
     private Vector2 Local(FlatVector meters) => new Vector2(meters.X, meters.Y) * _factor;
 
