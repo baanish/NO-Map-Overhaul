@@ -3,7 +3,6 @@ using BaanishUiImprovements.Diagnostics;
 using BaanishUiImprovements.Drawing;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using FlatVector = System.Numerics.Vector2;
 
 namespace BaanishUiImprovements.MapTools;
@@ -60,6 +59,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 
     /// <summary>Every label's plate and leader as one mesh, after the markers and under every label's text.</summary>
     private FeatheredRectBatch? _plates;
+
+    /// <summary>The text of every label on a plate, after the plates and under the notes.</summary>
+    private PlateText? _plateText;
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
     private int _storeVersion = -1;
@@ -251,14 +253,18 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _labelLayout.Place(_placements, obstacles);
         var toMap = Quaternion.Inverse(toUpright);
         var plates = _plates!;
+        var text = _plateText!;
         plates.Clear();
+        text.Clear();
         foreach (var label in _placing)
         {
             label.Apply(_inverseScale, toMap);
             label.AddPlate(plates, toMap, _inverseScale);
+            label.AddText(toMap, _inverseScale);
         }
 
         plates.Apply();
+        text.Apply();
     }
 
     /// <summary>
@@ -278,14 +284,15 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
 
         _uprightFor = rotation;
+        var toMap = Quaternion.Inverse(rotation);
         foreach (var graphics in _graphics.Values)
         {
-            graphics.KeepUpright();
+            graphics.KeepUpright(toMap);
         }
 
         foreach (var overlay in _overlays)
         {
-            overlay?.KeepUpright();
+            overlay?.KeepUpright(toMap);
         }
     }
 
@@ -300,6 +307,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _labelRoot = null;
         _markerRoot = null;
         _plates = null;
+        _plateText = null;
         _placing.Clear();
         _graphics.Clear();
         System.Array.Clear(_overlays, 0, _overlays.Length);
@@ -388,27 +396,11 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// <summary>A copy of the game's waypoint marker (<c>DynamicMap.mapWaypoint</c>), sized as the game sizes it. A ring stands in if the game has none.</summary>
     public void Marker(FlatVector position, ShapeColor color)
     {
-        if (_markerPrefab == null || _target!.NextMarker(_markerPrefab) is not { } marker)
+        if (_markerPrefab == null ||
+            !_target!.AddMarker(_markerPrefab, Local(position), _inverseScale, color.ToColor32(), Quaternion.Inverse(_uprightFor)))
         {
             Circle(position, MapCanvasMetrics.MarkerRadius * MetersPerIconUnit, color);
-            return;
         }
-
-        // Unity counts any transform write as a change that re-batches the canvas, and a live route redraws ten times a second.
-        var rect = marker.rectTransform;
-        var local = (Vector3)Local(position);
-        if (rect.localPosition != local)
-        {
-            rect.localPosition = local;
-        }
-
-        var scale = Vector3.one * _inverseScale;
-        if (rect.localScale != scale)
-        {
-            rect.localScale = scale;
-        }
-
-        marker.color = color.ToColor32();
     }
 
     /// <summary>Sets the text now; the label is placed once every shape has drawn (<see cref="PlaceLabels"/>).</summary>
@@ -437,9 +429,10 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _markerRoot = NewRect("Markers", _labelRoot);
         _plates = NewRect("Plates", _labelRoot).gameObject.AddComponent<FeatheredRectBatch>();
         _plates.raycastTarget = false;
+        _plateText = new PlateText(_labelRoot);
         for (var i = 0; i < _overlays.Length; i++)
         {
-            _overlays[i] = new ShapeGraphics(_layer, _markerRoot, _labelRoot, "ToolOverlay");
+            _overlays[i] = new ShapeGraphics(_layer, _markerRoot, _labelRoot, _plateText, "ToolOverlay");
         }
 
         return true;
@@ -485,7 +478,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             var shape = shapes[i];
             if (!_graphics.TryGetValue(shape, out var graphics))
             {
-                graphics = new ShapeGraphics(_layer!, _markerRoot!, _labelRoot!, "MapShape");
+                graphics = new ShapeGraphics(_layer!, _markerRoot!, _labelRoot!, _plateText!, "MapShape");
                 _graphics.Add(shape, graphics);
             }
 
@@ -582,20 +575,22 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     }
 
     /// <summary>
-    /// One shape's graphics, reused from draw to draw: its lines as one mesh, and its markers and labels, which sit in
-    /// the layer's marker and label containers so every marker and label draws over every drawing's lines.
+    /// One shape's graphics, reused from draw to draw: its lines as one mesh, its markers as one mesh, and its labels.
+    /// The markers and labels sit in the layer's marker and label containers, so every marker and label draws over
+    /// every drawing's lines.
     /// </summary>
     private sealed class ShapeGraphics
     {
         private readonly List<MapLabel> _labels = new();
-        private readonly List<Image> _markers = new();
         private readonly Transform _labelParent;
+        private readonly PlateText _plateText;
+        private ImageBatch? _markers;
         private int _labelsUsed;
-        private int _markersUsed;
 
-        public ShapeGraphics(Transform layer, Transform markers, Transform labels, string name)
+        public ShapeGraphics(Transform layer, Transform markers, Transform labels, PlateText plateText, string name)
         {
             _labelParent = labels;
+            _plateText = plateText;
             Rect = NewRect(name, layer);
             Strokes = NewRect("Strokes", Rect).gameObject.AddComponent<StrokeGraphic>();
             Strokes.raycastTarget = false;
@@ -618,8 +613,8 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         public void Begin()
         {
             Strokes.Clear();
+            _markers?.Clear();
             _labelsUsed = 0;
-            _markersUsed = 0;
             Live = false;
             Undrawn = false;
         }
@@ -631,11 +626,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                 _labels[i].Visible = false;
             }
 
-            for (var i = _markersUsed; i < _markers.Count; i++)
-            {
-                _markers[i].enabled = false;
-            }
-
+            _markers?.Apply();
             Strokes.Apply();
             // A note or an idle tool draws no lines, and an enabled graphic is still culled against the map's mask every frame.
             var drawn = !Strokes.IsEmpty;
@@ -649,9 +640,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         {
             if (_labelsUsed == _labels.Count)
             {
-                var created = new MapLabel(_labelParent);
-                created.Rect.rotation = Quaternion.identity; // upright from the start, see KeepUpright
-                _labels.Add(created);
+                _labels.Add(new MapLabel(_labelParent, _plateText));
             }
 
             var label = _labels[_labelsUsed++];
@@ -674,42 +663,41 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             }
         }
 
-        /// <summary>Null if the game's marker has no image to tint.</summary>
-        public Image? NextMarker(GameObject prefab)
+        /// <summary>
+        /// A copy of the marker at <paramref name="local"/>, <paramref name="scale"/> times its size, turned upright by
+        /// <paramref name="toMap"/>. False if the game's marker has no image to copy. A route's markers are one graphic,
+        /// where each used to be a copy of the game's prefab: a hundred graphics for Unity to cull every frame.
+        /// </summary>
+        public bool AddMarker(GameObject prefab, Vector2 local, float scale, Color32 color, Quaternion toMap)
         {
-            if (_markersUsed == _markers.Count)
+            if (_markers == null)
             {
-                var copy = Object.Instantiate(prefab, MarkerRect);
-                if (!copy.TryGetComponent<Image>(out var image))
-                {
-                    Object.Destroy(copy);
-                    return null;
-                }
-
-                copy.name = "Marker";
-                copy.transform.rotation = Quaternion.identity;
-                image.raycastTarget = false;
-                // The game's prefab ships with maskable off, so without this the marker draws past the minimap's edge.
-                image.maskable = true;
-                _markers.Add(image);
+                // Maskable, unlike the game's prefab, so markers don't draw past the minimap's edge.
+                _markers = MarkerRect.gameObject.AddComponent<ImageBatch>();
+                _markers.raycastTarget = false;
             }
 
-            var marker = _markers[_markersUsed++];
-            marker.enabled = true;
-            return marker;
+            if (!_markers.Use(prefab))
+            {
+                return false;
+            }
+
+            _markers.Turn = toMap;
+            _markers.Add(local, scale, color);
+            return true;
         }
 
-        /// <summary>Hidden ones too, so one shown again on a map that has stopped turning is already upright.</summary>
-        public void KeepUpright()
+        /// <summary>Hidden labels too, so one shown again on a map that has stopped turning is already upright.</summary>
+        public void KeepUpright(Quaternion toMap)
         {
             foreach (var label in _labels)
             {
-                label.Rect.rotation = Quaternion.identity;
+                label.StandUpright();
             }
 
-            foreach (var marker in _markers)
+            if (_markers != null)
             {
-                marker.rectTransform.rotation = Quaternion.identity;
+                _markers.Turn = toMap;
             }
         }
 
@@ -720,7 +708,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             Object.Destroy(MarkerRect.gameObject);
             foreach (var label in _labels)
             {
-                Object.Destroy(label.Rect.gameObject);
+                label.Destroy();
             }
         }
     }
