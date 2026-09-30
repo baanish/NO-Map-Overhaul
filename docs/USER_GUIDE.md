@@ -73,7 +73,7 @@ With Waypoint, each click on the map adds a numbered waypoint to the end of your
 
 A waypoint counts as reached once you're within 2.5 km of it (**WaypointReachKm**), or once it's behind you and within 10 km (**WaypointPassedKm**), the same rule NOAutopilot uses. The route then moves on to the next waypoint. Only flying counts, so taxiing past a waypoint doesn't. Flown waypoints stay on the map. **Skip** moves on without flying the next waypoint, and **Restart** starts the route again from waypoint 1. Undo takes back the last waypoint, and the Eraser deletes the whole route. The route keeps the colour it started with, and holds up to 99 waypoints.
 
-With NOAutopilot installed, its route is the only one. Plan it with right clicks as usual, and the 3D labels follow NOAutopilot's next two waypoints instead. Left clicks with the Waypoint tool then do nothing, and the strip says so.
+The route works the same with or without NOAutopilot installed. NOAutopilot plans its own route with right clicks, and the Waypoint tool plans this one with left clicks, so the two never touch each other. The 3D labels follow only this route.
 
 With the Pen, press and drag on the map to draw a line in the picked colour. The map doesn't pan while you draw. The line is thinned as you draw and smoothed slightly when you let go, so it keeps its shape with few points. A click without dragging leaves a dot. All pen lines together hold at most **MaxPenPoints** points. A line that reaches the limit stops there and the strip says so; erase or undo a line to draw more.
 

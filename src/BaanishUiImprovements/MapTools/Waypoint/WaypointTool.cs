@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Globalization;
-using UnityEngine;
 using FlatVector = System.Numerics.Vector2;
 using WorldVector = System.Numerics.Vector3;
 
@@ -11,8 +9,8 @@ namespace BaanishUiImprovements.MapTools.Waypoint;
 /// Plans a route: each click on the map adds a numbered waypoint to the end, on the unit under the cursor if there is
 /// one. While flying, the map joins the aircraft to the next waypoint, and the 3D view labels the next two with
 /// distance and bearing. A waypoint counts as reached by <see cref="RouteProgress.IsReached"/>, and the route moves on.
-/// With NOAutopilot loaded, its right-click route is the only route: clicks here do nothing and the labels follow its
-/// route, so the two mods never point different ways.
+/// The route never reads NOAutopilot's: that mod plans with right clicks and this tool with left clicks, so each
+/// keeps its own route and labels.
 /// </summary>
 public sealed class WaypointTool : MapTool
 {
@@ -25,19 +23,12 @@ public sealed class WaypointTool : MapTool
     private const string StartStatus = "Click the map to start a route.";
     private const string FlownStatus = "Route flown. Click to add a waypoint, or Restart.";
     private const string FullFlownStatus = "Route flown, and full. Restart, or erase it to plan another.";
-    private const string NoAutopilotStatus = "NOAutopilot owns the route: right-click the map to plan it.";
-
-    /// <summary>NOAutopilot's default route colour, for the labels on its route.</summary>
-    private static readonly ShapeColor NoAutopilotColor = new(0, 255, 255);
 
     private static readonly IReadOnlyList<string> RouteOptions = new[] { "Skip", "Restart" };
 
     private readonly ModSettings _settings;
     private readonly RouteProgress _progress = new();
-    private readonly NoAutopilotRoute _noAutopilot = new();
     private readonly WaypointCallout[] _callouts = { new(), new() };
-    private readonly FlatVector[] _groundedAt = { new(float.NaN), new(float.NaN) };
-    private readonly float[] _groundElevation = new float[LabelledAhead];
     private (int Count, int Next) _statusKey = (-1, -1);
     private string _status = string.Empty;
 
@@ -51,11 +42,6 @@ public sealed class WaypointTool : MapTool
     {
         get
         {
-            if (_noAutopilot.Queue != null)
-            {
-                return NoAutopilotStatus;
-            }
-
             _progress.Refresh(Context.Shapes);
             if (_progress.Route is not { } route)
             {
@@ -82,18 +68,13 @@ public sealed class WaypointTool : MapTool
         get
         {
             _progress.Refresh(Context.Shapes);
-            return _noAutopilot.Queue == null && _progress.Route is { IsFull: true };
+            return _progress.Route is { IsFull: true };
         }
     }
 
-    public override IReadOnlyList<string> Options => _noAutopilot.Queue != null ? Array.Empty<string>() : RouteOptions;
+    public override IReadOnlyList<string> Options => RouteOptions;
 
-    public override void OnMissionStart()
-    {
-        _progress.Forget();
-        _noAutopilot.Reload();
-        Array.Fill(_groundedAt, new FlatVector(float.NaN)); // a new map has new ground under the same coordinates
-    }
+    public override void OnMissionStart() => _progress.Forget();
 
     public override void OnOption(int index)
     {
@@ -109,11 +90,6 @@ public sealed class WaypointTool : MapTool
 
     public override void OnClick(MapPointer pointer)
     {
-        if (_noAutopilot.Queue != null)
-        {
-            return;
-        }
-
         _progress.Refresh(Context.Shapes);
         if (_progress.Route is { IsFull: true })
         {
@@ -137,14 +113,9 @@ public sealed class WaypointTool : MapTool
         }
     }
 
-    /// <summary>The leg being flown, from the aircraft to the next waypoint. NOAutopilot draws its own.</summary>
+    /// <summary>The leg being flown, from the aircraft to the next waypoint.</summary>
     public override void DrawOverlay(IMapCanvas canvas)
     {
-        if (_noAutopilot.Queue != null)
-        {
-            return;
-        }
-
         _progress.Refresh(Context.Shapes);
         if (_progress.Route is not { } route || !_progress.HasNext || canvas.OwnAircraft is not { } aircraft)
         {
@@ -159,12 +130,6 @@ public sealed class WaypointTool : MapTool
     {
         if (!TryGetFlight(out var aircraft, out var forward, out var airborne))
         {
-            return;
-        }
-
-        if (_noAutopilot.Queue is { } queue)
-        {
-            LabelNoAutopilotRoute(labels, queue, aircraft);
             return;
         }
 
@@ -189,18 +154,6 @@ public sealed class WaypointTool : MapTool
         }
     }
 
-    /// <summary>NOAutopilot's queue holds only the waypoints still to fly, so its next is always "WP1".</summary>
-    private void LabelNoAutopilotRoute(IWorldLabels labels, IReadOnlyList<Vector3> queue, FlatVector aircraft)
-    {
-        for (var i = 0; i < LabelledAhead && i < queue.Count; i++)
-        {
-            var point = queue[i];
-            var flat = new FlatVector(point.x, point.z);
-            var position = new WorldVector(point.x, Mathf.Max(point.y, GroundElevation(i, flat)), point.z);
-            labels.Add(position, _callouts[i].Text(i + 1, aircraft, flat, Context.Units), NoAutopilotColor);
-        }
-    }
-
     /// <summary>A fixed waypoint's ground height was found when it was placed; a unit's altitude comes with its position.</summary>
     private WorldVector WorldPosition(RouteWaypoint waypoint)
     {
@@ -212,18 +165,6 @@ public sealed class WaypointTool : MapTool
         }
 
         return new WorldVector(point.Position.X, waypoint.Elevation, point.Position.Y);
-    }
-
-    /// <summary>NOAutopilot's waypoints come at sea level, so each label slot casts a ray only when its waypoint moves.</summary>
-    private float GroundElevation(int slot, FlatVector position)
-    {
-        if (_groundedAt[slot] != position)
-        {
-            _groundedAt[slot] = position;
-            _groundElevation[slot] = Context.GroundElevation(position);
-        }
-
-        return _groundElevation[slot];
     }
 
     private static bool TryGetFlight(out FlatVector position, out FlatVector forward, out bool airborne)

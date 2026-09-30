@@ -2,7 +2,7 @@
 
 ## NOAutopilot
 
-The Waypoint tool's rule for when a waypoint counts as reached, and its default distances, are adapted from NOAutopilot's waypoint navigation (`src/BaanishUiImprovements/MapTools/Waypoint/RouteProgress.cs`). NOAutopilot is not bundled; when it's installed, the mod reads its route at runtime.
+The Waypoint tool's rule for when a waypoint counts as reached, and its default distances, are adapted from NOAutopilot's waypoint navigation (`src/BaanishUiImprovements/MapTools/Waypoint/RouteProgress.cs`). NOAutopilot is not bundled, and the mod never reads it.
 
 ```text
 MIT License
