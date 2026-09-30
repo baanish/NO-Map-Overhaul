@@ -67,6 +67,11 @@ internal sealed class MapToolInput
 
         UpdateKeyboard(tool);
         UpdatePointer(map, catcher, tool);
+        if (tool.CapturesKeyboard)
+        {
+            // A click that starts typing takes the keys now, before the game reads the next frame's. Their text arrives next frame.
+            TakeKeyboard(tool);
+        }
     }
 
     /// <summary>Where a right press on the map landed this frame, if there was one. A press on the menu doesn't count.</summary>
@@ -160,17 +165,9 @@ internal sealed class MapToolInput
             return;
         }
 
-        if (!_keyboard.IsSuspended)
+        if (!TakeKeyboard(tool))
         {
-            if (CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind)
-            {
-                tool.OnTextInput('\u001b');
-                return;
-            }
-
-            _keyboard.Suspend();
-            GameplayUI.AllowPauseKeybind = false;
-            CursorManager.SetFlag(CursorFlags.Chat, true);
+            return;
         }
 
         foreach (var character in Input.inputString)
@@ -182,6 +179,26 @@ internal sealed class MapToolInput
         {
             tool.OnTextInput('\u001b');
         }
+    }
+
+    /// <summary>False, and the typing cancelled, while a game UI that owns the Escape menu is open.</summary>
+    private bool TakeKeyboard(MapTool tool)
+    {
+        if (_keyboard.IsSuspended)
+        {
+            return true;
+        }
+
+        if (CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind)
+        {
+            tool.OnTextInput('\u001b');
+            return false;
+        }
+
+        _keyboard.Suspend();
+        GameplayUI.AllowPauseKeybind = false;
+        CursorManager.SetFlag(CursorFlags.Chat, true);
+        return true;
     }
 
     private void ReleaseKeyboard(bool immediately)
