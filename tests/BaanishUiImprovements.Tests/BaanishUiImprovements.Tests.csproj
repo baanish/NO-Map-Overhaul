@@ -39,5 +39,8 @@
     <Compile Include="..\..\src\BaanishUiImprovements\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\SettingSections.cs" Link="SettingSections.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\SettingsMigration.cs" Link="SettingsMigration.cs" />
+    <None Include="Fixtures\*.cfg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

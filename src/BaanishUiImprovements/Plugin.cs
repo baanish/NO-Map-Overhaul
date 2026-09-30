@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Reflection;
 using BaanishUiImprovements.Airbases;
 using BaanishUiImprovements.Diagnostics;
 using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
 using BepInEx;
+using BepInEx.Configuration;
 using FlatVector = System.Numerics.Vector2;
 
 namespace BaanishUiImprovements;
@@ -48,6 +50,7 @@ public sealed class Plugin : BaseUnityPlugin
 
     private void Awake()
     {
+        MoveSavedSettings();
         _settings = new ModSettings(Config);
         _mapOverlay = new RunwayMapOverlay(_settings);
         _hudCallout = new RunwayHudCallout(_settings);
@@ -71,6 +74,26 @@ public sealed class Plugin : BaseUnityPlugin
         AutopilotRightClickPatch.Apply(_mapTools, Logger);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
+    }
+
+    /// <summary>
+    /// Runs before anything is bound, while BepInEx still holds every saved value as an unclaimed ("orphaned") entry, so
+    /// each moved setting then picks up its value from the new place as it binds. BepInEx keeps that dictionary private.
+    /// </summary>
+    private void MoveSavedSettings()
+    {
+        var orphans = typeof(ConfigFile).GetProperty("OrphanedEntries", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(Config);
+        if (orphans is not IDictionary<ConfigDefinition, string> saved)
+        {
+            Logger.LogWarning("Can't read the saved settings in this BepInEx version, so settings saved by 0.4.0 go back to their defaults.");
+            return;
+        }
+
+        var moved = SettingsMigration.MoveSavedValues(saved, (section, key) => new ConfigDefinition(section, key));
+        if (moved > 0)
+        {
+            Logger.LogInfo($"Moved {moved} saved settings to their new sections.");
+        }
     }
 
     /// <summary>
