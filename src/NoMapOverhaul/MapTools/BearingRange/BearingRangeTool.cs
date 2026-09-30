@@ -9,7 +9,11 @@ namespace NoMapOverhaul.MapTools.BearingRange;
 /// </summary>
 public sealed class BearingRangeTool : MapTool
 {
-    /// <summary>A second click this close to the first, in icon units, is the same point: it cancels rather than measuring nothing.</summary>
+    /// <summary>
+    /// A second fixed point this close to a fixed first one, in icon units, is the same point: it cancels rather than
+    /// measuring nothing. A unit is the same point only as itself, so a unit stacked above another, or above the first
+    /// point, still measures through the air.
+    /// </summary>
     public const float SamePointReach = 6f;
 
     private const string PickStart = "Click where to measure from.";
@@ -62,9 +66,10 @@ public sealed class BearingRangeTool : MapTool
 
         var end = pointer.Point;
         _start = null;
-        Context.TryResolve(start, out var from);
-        Context.TryResolve(end, out var to);
-        if (Vector2.Distance(from, to) <= SamePointReach * Context.MetersPerIconUnit)
+        var same = start.IsAnchored || end.IsAnchored
+            ? start.UnitId == end.UnitId
+            : Vector2.Distance(start.Position, end.Position) <= SamePointReach * Context.MetersPerIconUnit;
+        if (same)
         {
             return;
         }

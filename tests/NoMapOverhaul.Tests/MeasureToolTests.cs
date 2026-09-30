@@ -20,6 +20,7 @@ internal static class MeasureToolTests
         ("two clicks measure bearing and range", TwoClicksMeasure),
         ("a measured end follows its unit, freezes while its track is stale, and resumes when spotted", MeasuredEndFollowsUnit),
         ("clicking the start again cancels a measurement", ClickingStartAgainCancels),
+        ("a unit stacked above the start still measures", StackedUnitStillMeasures),
         ("a measurement's 3D label sits on its end", WorldLabelSitsOnEnd),
         ("a target overhead reads its height as range, and a level pair its map distance", RangeRunsThroughTheAir),
         ("the label hangs from the arrowhead", LabelHangsFromArrowhead),
@@ -89,6 +90,23 @@ internal static class MeasureToolTests
         Expect(map.Shapes.Shapes.Count == 0, "expected clicking the same point or unit twice to add nothing");
         tool.OnClick(At(0, 1000));
         Expect(map.Shapes.Shapes.Count == 0, "expected the cancelled measurement to start over");
+    }
+
+    /// <summary>Two units 50 m apart on the map, inside the same-point reach, but 2 km apart in altitude; then a unit right over a fixed point.</summary>
+    private static void StackedUnitStillMeasures()
+    {
+        var map = new FakeMap { Units = DistanceUnit.Kilometres };
+        map.Positions[7] = new Vector3(0, 3000, 0);
+        map.Positions[8] = new Vector3(50, 5120, 0);
+        var tool = new BearingRangeTool(map);
+        tool.OnClick(OnUnit(map, 7));
+        tool.OnClick(OnUnit(map, 8));
+        tool.OnClick(At(50, 0));
+        tool.OnClick(OnUnit(map, 8));
+        var canvas = Draw(map);
+        Expect(canvas.Labels.Count == 2, $"expected both measurements, got {canvas.Labels.Count}");
+        ExpectText(canvas.Labels[0].Text, "090° 2.1km 5100 m");
+        ExpectText(canvas.Labels[1].Text, "000° 5.0km 5100 m");
     }
 
     private static void WorldLabelSitsOnEnd()
