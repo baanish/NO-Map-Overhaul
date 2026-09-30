@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Globalization;
 using System.Numerics;
 
@@ -14,6 +15,8 @@ public enum DistanceUnit
 /// <summary>The DistanceUnits setting: follow the game's unit system, or always use one unit.</summary>
 public enum UnitsSetting
 {
+    /// <summary>F1's dropdown shows the description in place of the bare name.</summary>
+    [Description("Game setting")]
     Game,
     NauticalMiles,
     Kilometres,

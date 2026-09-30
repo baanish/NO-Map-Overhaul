@@ -2,7 +2,7 @@
 
 The map tools let you plan on the full map: a waypoint route with markers in the 3D view, freehand lines, text notes, bearing and range measurements, and range circles. Only you see what you draw, and it all clears when you leave the mission.
 
-Every setting mentioned here is listed in the [user guide's settings table](USER_GUIDE.md#settings), under **Map Tools**.
+Every setting mentioned here is listed in the [user guide's settings table](USER_GUIDE.md#settings), in the **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
 
 ## Quick start
 
@@ -25,7 +25,7 @@ These work while the tools rail is open on the full map.
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes. Change them with **UndoKey** and **RedoKey**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes. Change them with **Undo key** and **Redo key**.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 
@@ -53,7 +53,7 @@ With NOAutopilot installed, both routes work side by side. Plan the autopilot's 
 
 Press and drag to draw a line. The map doesn't pan while you draw. A click without dragging leaves a dot.
 
-Pen lines share a budget of points, set by **MaxPenPoints**. A line that uses up the budget stops where it is, and the strip turns amber. Erase or undo a line to draw more.
+Pen lines share a budget of points, set by **Most pen points**. A line that uses up the budget stops where it is, and the strip turns amber. Erase or undo a line to draw more.
 
 ## Text
 
@@ -73,7 +73,7 @@ Press on the centre and drag out to the radius, or click the centre and then the
 
 For a set size, pick **5**, **10**, or **20** in the strip, then click the centre. The sizes are in your distance unit. Put the centre on a unit and the circle follows it.
 
-Each circle also shows in the 3D view as a thin ring, level with its centre: at the unit's altitude, or on the ground. Turn this off with **ShowCirclesIn3D**. The 3D view shows the 16 newest circles.
+Each circle also shows in the 3D view as a thin ring, level with its centre: at the unit's altitude, or on the ground. Turn this off with **Circles in 3D view**. The 3D view shows the 16 newest circles.
 
 ## Eraser, undo, and clear
 
@@ -92,14 +92,14 @@ Drawings only use what your side knows. A drawing on a unit follows it only wher
 
 ## Where drawings show
 
-Drawings show on the full map and on the minimap. Turn off **ShowOnMinimap** to keep the minimap clear. They sit under the game's unit icons, so they never hide a unit.
+Drawings show on the full map and on the minimap. Turn off **Show on minimap** to keep the minimap clear. They sit under the game's unit icons, so they never hide a unit.
 
 Measurements, radii, and waypoint numbers sit on small dark plates. On the full map, they move aside so they don't cover unit icons, airbase names, runway numbers, or each other.
 
-Distances follow the game's unit setting: kilometres for metric, nautical miles for imperial. Set **DistanceUnits** to always use one unit.
+Distances follow the game's unit setting: kilometres for metric, nautical miles for imperial. Set **Distance units** to always use one unit.
 
 ## Keeping it fast
 
-A few drawings cost almost nothing, and a map full of them costs frames. Two limits keep that in check. **MaxShapes** caps the number of drawings, 200 by default, and **MaxPenPoints** caps pen detail.
+A few drawings cost almost nothing, and a map full of them costs frames. Two limits keep that in check. **Most drawings** caps the number of drawings, 200 by default, and **Most pen points** caps pen detail.
 
 To measure the cost on your own machine, run the perf test described in the [user guide](USER_GUIDE.md#the-perf-test).

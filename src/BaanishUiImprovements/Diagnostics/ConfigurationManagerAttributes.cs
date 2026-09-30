@@ -14,4 +14,16 @@ internal sealed class ConfigurationManagerAttributes
     public Action<ConfigEntryBase>? CustomDrawer;
 
     public bool? HideDefaultButton;
+
+    /// <summary>The name F1 shows instead of the config key.</summary>
+    public string? DispName;
+
+    /// <summary>Position within the section: F1 lists higher numbers first.</summary>
+    public int? Order;
+
+    /// <summary>Hidden until "Advanced settings" is ticked at the top of F1, or a search finds it.</summary>
+    public bool? IsAdvanced;
+
+    /// <summary>F1 shows a 0 to 1 range as a whole percentage with no text box unless this is false.</summary>
+    public bool? ShowRangeAsPercent;
 }
