@@ -21,6 +21,7 @@ internal static class WaypointTests
         ("the route advances one waypoint at a time", RouteAdvancesOneAtATime),
         ("a restart doesn't pass waypoints already behind", RestartKeepsWaypointsBehindUntilSeenAhead),
         ("undo takes back waypoints but not progress", UndoTakesBackWaypointsNotProgress),
+        ("a redone waypoint behind isn't passed until seen ahead", RedoneWaypointBehindStaysNext),
         ("undoing an erase keeps the route's progress", UndoingEraseKeepsProgress),
         ("a new route starts at its first waypoint", NewRouteStartsAtFirstWaypoint),
         ("undoing back to an older route keeps its progress", UndoBackToOlderRouteKeepsProgress),
@@ -99,6 +100,25 @@ internal static class WaypointTests
         context.Shapes.Redo();
         progress.Refresh(context.Shapes);
         Expect(progress.Route!.Count == 2 && progress.Next == 1, "expected a redone waypoint to be unflown");
+    }
+
+    /// <summary>Waypoint 3 was seen ahead before undo took it and waypoint 2 back; the redone waypoint 2 sits behind.</summary>
+    private static void RedoneWaypointBehindStaysNext()
+    {
+        var context = new FakeContext();
+        var progress = new RouteProgress();
+        AddRoute(context.Shapes, new Vector2(0, 1000), new Vector2(0, -6000), new Vector2(0, 30000));
+        progress.Refresh(context.Shapes);
+        progress.Skip();
+        progress.Skip();
+        Expect(!progress.Advance(context, Vector2.Zero, North, Reach, Passed) && progress.Next == 2, "expected waypoint 3 ahead to stay next");
+        context.Shapes.Undo();
+        context.Shapes.Undo();
+        progress.Refresh(context.Shapes);
+        Expect(progress.Route!.Count == 1 && progress.Next == 1, "expected progress to shrink with the route");
+        context.Shapes.Redo();
+        progress.Refresh(context.Shapes);
+        Expect(!progress.Advance(context, Vector2.Zero, North, Reach, Passed) && progress.Next == 1, "expected the redone waypoint 2, never seen ahead, to stay next");
     }
 
     private static void UndoingEraseKeepsProgress()

@@ -75,7 +75,12 @@ public sealed class RouteProgress
             ForgetGone(store);
         }
 
-        Next = Math.Min(Next, Route.Count);
+        if (Next >= Route.Count)
+        {
+            // Undo took the next waypoint away, so whatever is next once a waypoint is added or redone hasn't been seen ahead.
+            Next = Route.Count;
+            _seenAhead = false;
+        }
     }
 
     /// <summary>Moves on past the next waypoint if the aircraft has reached it. At most one waypoint per call.</summary>
