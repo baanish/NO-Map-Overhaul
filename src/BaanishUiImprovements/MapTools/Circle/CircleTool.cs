@@ -33,7 +33,12 @@ public sealed class CircleTool : MapTool
 
     private readonly MeasureLabel _previewLabel = new();
     private MapPoint? _center;
+
+    /// <summary>What the cursor is on, for a preset's preview, which centres on a unit like the click would.</summary>
     private MapPoint? _cursor;
+
+    /// <summary>The ground under the cursor: the edge never snaps to a unit, since a radius is a distance, not a place.</summary>
+    private Vector2 _edge;
     private Vector2 _pressAt;
     private bool _pressPlacedCenter;
     private int _preset = -1;
@@ -96,7 +101,7 @@ public sealed class CircleTool : MapTool
     /// <summary>The preview follows the cursor once a centre or a preset is picked.</summary>
     public override void OnPointerMove(MapPointer pointer)
     {
-        _cursor = pointer.Point;
+        Track(pointer);
         if (_center is not null || _preset >= 0)
         {
             InvalidateOverlay();
@@ -105,7 +110,7 @@ public sealed class CircleTool : MapTool
 
     public override void OnPointerDown(MapPointer pointer)
     {
-        _cursor = pointer.Point;
+        Track(pointer);
         InvalidateOverlay();
         _pressAt = pointer.Position;
         _pressPlacedCenter = _center is null;
@@ -114,13 +119,13 @@ public sealed class CircleTool : MapTool
 
     public override void OnPointerDrag(MapPointer pointer)
     {
-        _cursor = pointer.Point;
+        Track(pointer);
         InvalidateOverlay();
     }
 
     public override void OnPointerUp(MapPointer pointer)
     {
-        _cursor = pointer.Point;
+        Track(pointer);
         InvalidateOverlay();
         if (_center is not { } center)
         {
@@ -139,7 +144,7 @@ public sealed class CircleTool : MapTool
         }
 
         Context.TryResolve(center, out var middle);
-        var radius = Vector2.Distance(middle, pointer.Point.Position);
+        var radius = Vector2.Distance(middle, pointer.Position);
         if (radius <= reach)
         {
             _center = null;
@@ -156,20 +161,20 @@ public sealed class CircleTool : MapTool
             return;
         }
 
-        var cursorFound = canvas.TryResolve(cursor, out var edge);
         if (_center is { } center)
         {
             var centerFound = canvas.TryResolve(center, out var middle);
-            var radius = Vector2.Distance(middle, edge);
+            var radius = Vector2.Distance(middle, _edge);
             if (radius > ClickReach * canvas.MetersPerIconUnit)
             {
-                canvas.Line(middle, edge, Context.Color);
+                canvas.Line(middle, _edge, Context.Color);
                 CircleShape.DrawRing(canvas, _previewLabel, middle, radius, center.IsAnchored, !centerFound, Context.Color);
             }
         }
         else if (_preset >= 0)
         {
-            CircleShape.DrawRing(canvas, _previewLabel, edge, PresetMeters(_preset, canvas.Units), cursor.IsAnchored, !cursorFound, Context.Color);
+            var cursorFound = canvas.TryResolve(cursor, out var at);
+            CircleShape.DrawRing(canvas, _previewLabel, at, PresetMeters(_preset, canvas.Units), cursor.IsAnchored, !cursorFound, Context.Color);
         }
     }
 
@@ -193,6 +198,12 @@ public sealed class CircleTool : MapTool
         Context.Shapes.Add(new CircleShape(center, radius, elevation, Context.Color));
         _center = null;
         _preset = -1;
+    }
+
+    private void Track(MapPointer pointer)
+    {
+        _cursor = pointer.Point;
+        _edge = pointer.Position;
     }
 
     private void Forget()

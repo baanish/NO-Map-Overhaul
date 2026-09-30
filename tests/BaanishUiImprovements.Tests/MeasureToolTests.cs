@@ -28,6 +28,7 @@ internal static class MeasureToolTests
         ("clicking the centre again cancels a circle", ClickingCenterAgainCancels),
         ("a preset radius finishes a centre or places the next", PresetRadius),
         ("a circle's centre follows its unit and freezes when lost", CircleFollowsUnit),
+        ("a circle's edge stays at the cursor beside a unit", CircleEdgeIgnoresUnits),
         ("a circle's 3D ring sits level with its centre", CircleRingsSitLevelWithCentre),
         ("the eraser and undo take measurements and circles", EraserAndUndoTakeBoth),
         ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
@@ -218,6 +219,22 @@ internal static class MeasureToolTests
         var lost = Draw(map);
         ExpectText(lost.Labels[0].Text, "5.0km\nlost");
         Expect(lost.Circles[0].Center == new Vector2(2000, 3000), "expected a destroyed unit's ring to stay where it was last known");
+    }
+
+    /// <summary>The cursor is within snapping reach of a unit's icon 100 m past it, which the centre would take but the edge mustn't.</summary>
+    private static void CircleEdgeIgnoresUnits()
+    {
+        var map = new FakeMap();
+        map.Positions[9] = new Vector3(3100, 0, 0);
+        var besideUnit = new MapPointer(new Vector2(3000, 0), new MapPoint(new Vector2(3100, 0), 9));
+        var tool = new CircleTool(map);
+        tool.OnPointerDown(At(0, 0));
+        tool.OnPointerDrag(besideUnit);
+        var preview = new RecordingCanvas(map);
+        tool.DrawOverlay(preview);
+        Expect(preview.Circles is [{ Radius: 3000f }], "expected the preview's edge at the cursor");
+        tool.OnPointerUp(besideUnit);
+        Expect(Draw(map).Circles is [{ Radius: 3000f }], "expected the radius to reach the cursor, not the unit");
     }
 
     private static void CircleRingsSitLevelWithCentre()
