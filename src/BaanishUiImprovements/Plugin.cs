@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BaanishUiImprovements.Airbases;
+using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
 using BepInEx;
 using FlatVector = System.Numerics.Vector2;
@@ -31,6 +32,7 @@ public sealed class Plugin : BaseUnityPlugin
     private RunwayHudCallout _hudCallout = null!;
     private AirbaseBoundaryOverlay _boundaryOverlay = null!;
     private AirbaseLabelOverlay _labelOverlay = null!;
+    private IncomingMissileArrows _missileArrows = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
@@ -44,16 +46,22 @@ public sealed class Plugin : BaseUnityPlugin
         _hudCallout = new RunwayHudCallout(_settings);
         _boundaryOverlay = new AirbaseBoundaryOverlay(_settings);
         _labelOverlay = new AirbaseLabelOverlay(_settings);
+        _missileArrows = new IncomingMissileArrows(_settings);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
             Logger.LogWarning("AirbaseOverlay.airbaseLabel is missing in this game version: no HUD runway callout, and map numbers use the default font.");
         }
 
+        if (!IncomingMissileArrows.ArrowFieldFound)
+        {
+            Logger.LogWarning("CombatHUD.targetArrow is missing in this game version: no missile arrows.");
+        }
+
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
     }
 
-    /// <summary>Per frame: the HUD label follows the camera and the numbers counter-rotate the heading-up minimap.</summary>
+    /// <summary>Per frame: the HUD label and missile arrows follow the camera, and the numbers counter-rotate the heading-up minimap.</summary>
     private void LateUpdate() => Guard(() =>
     {
         if (!_settings.Enabled.Value)
@@ -69,6 +77,7 @@ public sealed class Plugin : BaseUnityPlugin
         }
 
         _hudCallout.Render(_approach);
+        _missileArrows.Render();
         _mapOverlay.KeepLabelsUpright();
     });
 
@@ -108,6 +117,7 @@ public sealed class Plugin : BaseUnityPlugin
         _hudCallout.Reset();
         _boundaryOverlay.Reset();
         _labelOverlay.Reset();
+        _missileArrows.Reset();
         _approach = null;
     }
 

@@ -8,12 +8,13 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-9 tests pass. They cover:
+14 tests pass. They cover:
 
 - nothing beyond range, and the closer end from either side, including over the runway;
 - a base leg flown side-on to the runway showing the approach end;
 - the nearest runway winning between parallel and crossing runways;
-- callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule.
+- callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
+- missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you.
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, or game-version compatibility.
 
@@ -32,6 +33,7 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Carriers excluded | Observed | No runway graphics on ships. |
 | HUD callout | Observed | `RWY xx` sits below the lined-up threshold, with and without IncludeAirbaseName. |
 | Callout with gear down only | Observed | With OnlyWithGearDown on, the label stays hidden with the gear up and shows once the gear lever is down. |
+| Missile arrows | Partly observed | An arrow appeared for an incoming missile off screen. Getting shot down then disabled the mod, a bug since fixed. Surviving a shoot-down and respawn, a missile behind you, and two missiles at once aren't checked in game yet. |
 | Approach follows the nearest end | Observed | The line and callout show off the nearest runway end, including on a base leg flown side-on to the runway. Earlier heading-based rules failed in game three times: a closed pattern switched ends, circling flip-flopped, and final-only hid the line during the turn onto final. |
 | Helicopter hides runways | Observed | A helicopter sees no strips, line, or callout; the Tarantula tiltrotor sees runways. |
 | Minimap rotation | Observed | Numbers stay upright while the heading-up minimap turns. |

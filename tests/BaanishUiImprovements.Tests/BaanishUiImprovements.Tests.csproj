@@ -9,6 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\BaanishUiImprovements\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
   </ItemGroup>

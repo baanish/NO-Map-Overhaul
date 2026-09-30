@@ -36,6 +36,9 @@ internal sealed class ModSettings
         HudGearDownOnly = config.Bind("HUD", "OnlyWithGearDown", false, "Show the callout only while the landing gear is down.");
         HudAirbaseName = config.Bind("HUD", "IncludeAirbaseName", false, "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
         HudColor = config.Bind("HUD", "CalloutColor", new Color(0.2f, 1f, 0.2f, 1f), "Colour of the HUD runway callout.");
+
+        ShowMissileArrows = config.Bind("Missile Arrows", "ShowArrows", true, "Point an arrow from the screen edge at each incoming missile outside the view. Only missiles the game's missile warning already knows about get one.");
+        MissileArrowColor = config.Bind("Missile Arrows", "Color", new Color(1f, 0.25f, 0.2f, 1f), "Colour of the missile arrows.");
     }
 
     public ConfigEntry<bool> Enabled { get; }
@@ -66,4 +69,7 @@ internal sealed class ModSettings
     public ConfigEntry<bool> HudGearDownOnly { get; }
     public ConfigEntry<bool> HudAirbaseName { get; }
     public ConfigEntry<Color> HudColor { get; }
+
+    public ConfigEntry<bool> ShowMissileArrows { get; }
+    public ConfigEntry<Color> MissileArrowColor { get; }
 }
