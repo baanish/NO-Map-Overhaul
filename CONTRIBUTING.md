@@ -1,6 +1,6 @@
 # Contributing
 
-Bug reports and ideas are welcome. Talk to me before starting a larger change, especially one of the [coming soon](README.md#coming-soon) features, so we can agree on how it should look.
+Bug reports and ideas are welcome. Talk to me before starting a larger change, so we can agree on how it should look.
 
 ## Build
 
