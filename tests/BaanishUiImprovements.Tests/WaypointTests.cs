@@ -19,6 +19,7 @@ internal static class WaypointTests
         ("a waypoint behind within the passed distance is reached", WaypointBehindIsPassed),
         ("a waypoint ahead or far behind stays next", WaypointAheadOrFarBehindStaysNext),
         ("the route advances one waypoint at a time", RouteAdvancesOneAtATime),
+        ("a restart doesn't pass waypoints already behind", RestartKeepsWaypointsBehindUntilSeenAhead),
         ("undo takes back waypoints but not progress", UndoTakesBackWaypointsNotProgress),
         ("undoing an erase keeps the route's progress", UndoingEraseKeepsProgress),
         ("a new route starts at its first waypoint", NewRouteStartsAtFirstWaypoint),
@@ -63,6 +64,21 @@ internal static class WaypointTests
         Expect(!progress.Advance(context, Vector2.Zero, North, Reach, Passed), "expected nothing to advance on a flown route");
         progress.Restart();
         Expect(progress.Next == 0, "expected restart to go back to the first waypoint");
+    }
+
+    /// <summary>Restarting past the route's start: its first waypoints sit behind, inside the passed distance.</summary>
+    private static void RestartKeepsWaypointsBehindUntilSeenAhead()
+    {
+        var context = new FakeContext();
+        var progress = new RouteProgress();
+        AddRoute(context.Shapes, new Vector2(0, -6000), new Vector2(0, -3000), new Vector2(0, 30000));
+        progress.Refresh(context.Shapes);
+        progress.Restart();
+        Expect(!progress.Advance(context, Vector2.Zero, North, Reach, Passed) && progress.Next == 0, "expected waypoint 1 behind to stay next after a restart");
+        var south = new Vector2(0, -1);
+        Expect(!progress.Advance(context, Vector2.Zero, south, Reach, Passed), "expected waypoint 1 ahead after turning round to stay next");
+        Expect(progress.Advance(context, Vector2.Zero, North, Reach, Passed), "expected waypoint 1 seen ahead, then behind, to count as passed");
+        Expect(!progress.Advance(context, Vector2.Zero, North, Reach, Passed) && progress.Next == 1, "expected waypoint 2, never seen ahead, to stay next");
     }
 
     private static void UndoTakesBackWaypointsNotProgress()

@@ -14,6 +14,13 @@ public sealed class RouteProgress
     private int _storeVersion = -1;
     private int _routeId;
 
+    /// <summary>
+    /// Whether the next waypoint has been ahead of the aircraft since it became next. Only then can it count as passed:
+    /// after a restart or skip, a waypoint already behind would otherwise be passed at once, and the route would run
+    /// through every waypoint behind the aircraft in as many frames.
+    /// </summary>
+    private bool _seenAhead;
+
     /// <summary>The route in the store, or null when there is none (never drawn, erased, undone, or cleared).</summary>
     public WaypointRoute? Route { get; private set; }
 
@@ -55,6 +62,7 @@ public sealed class RouteProgress
         {
             _routeId = Route.Id;
             Next = 0;
+            _seenAhead = false;
         }
         else
         {
@@ -71,12 +79,14 @@ public sealed class RouteProgress
         }
 
         view.TryResolve(Route![Next].Point, out var waypoint);
-        if (!IsReached(aircraft, forward, waypoint, reach, passed))
+        _seenAhead |= Vector2.Dot(forward, waypoint - aircraft) >= 0f;
+        if (!IsReached(aircraft, forward, waypoint, reach, _seenAhead ? passed : 0f))
         {
             return false;
         }
 
         Next++;
+        _seenAhead = false;
         return true;
     }
 
@@ -85,10 +95,15 @@ public sealed class RouteProgress
         if (HasNext)
         {
             Next++;
+            _seenAhead = false;
         }
     }
 
-    public void Restart() => Next = 0;
+    public void Restart()
+    {
+        Next = 0;
+        _seenAhead = false;
+    }
 
     /// <summary>A new mission: the old route's id means nothing now.</summary>
     public void Forget()
@@ -97,6 +112,7 @@ public sealed class RouteProgress
         _routeId = 0;
         Route = null;
         Next = 0;
+        _seenAhead = false;
     }
 
     /// <summary>The topmost route. The tool only starts a route when there is none, so there is at most one.</summary>
