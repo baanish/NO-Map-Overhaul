@@ -4,15 +4,19 @@ using System.Text;
 
 namespace BaanishUiImprovements.Diagnostics;
 
-/// <summary>One measured phase of the perf test. <see cref="Baseline"/> is the index of the mod-off phase it's compared with, or -1 for a baseline.</summary>
+/// <summary>
+/// One measured condition of the perf test, over all its slices. <see cref="Baseline"/> is the index of the mod-off
+/// condition it's compared with, or -1 for a baseline.
+/// </summary>
 public readonly struct PerfPhase
 {
-    public PerfPhase(string name, FrameSummary summary, int baseline, RenderSummary render = default)
+    public PerfPhase(string name, FrameSummary summary, int baseline, RenderSummary render = default, float[]? sectionMs = null)
     {
         Name = name;
         Summary = summary;
         Baseline = baseline;
         Render = render;
+        SectionMs = sectionMs;
     }
 
     public string Name { get; }
@@ -22,6 +26,9 @@ public readonly struct PerfPhase
     public int Baseline { get; }
 
     public RenderSummary Render { get; }
+
+    /// <summary>Milliseconds per frame in each <see cref="ModSection"/>, in its order, or null if they weren't timed.</summary>
+    public float[]? SectionMs { get; }
 }
 
 /// <summary>
@@ -69,13 +76,16 @@ public static class PerfReport
             : change.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Column heads of the third table, one per <see cref="ModSection"/>, then the rest of the mod's frame.</summary>
+    private static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Missiles", "Runways", "Meshes", "Other" };
+
+    /// <param name="method">How the phases were measured, for the header.</param>
     /// <param name="drawings">What the heavy phases drew, for the header.</param>
-    public static string Table(IReadOnlyList<PerfPhase> phases, float settleSeconds, float measureSeconds, string drawings)
+    public static string Table(IReadOnlyList<PerfPhase> phases, string method, string drawings)
     {
         var text = new StringBuilder();
         text.AppendFormat(CultureInfo.InvariantCulture,
-            "Perf test: {0:0} s per phase after {1:0} s to settle. Heavy drawings: {2}. Changes are against the same view with the mod off.",
-            measureSeconds, settleSeconds, drawings).AppendLine();
+            "Perf test: {0}. Heavy drawings: {1}. Changes are against the same view with the mod off.", method, drawings).AppendLine();
         text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36} {1,8} {2,8} {3,14} {4,20} {5,16} {6,16}",
             "Phase", "Avg fps", "1% low", "Mod ms avg/max", "Refresh ms avg/max", "Avg fps change", "1% low change").AppendLine();
         foreach (var phase in phases)
@@ -104,7 +114,52 @@ public static class PerfReport
                 string.Format(CultureInfo.InvariantCulture, "{0}/{1}", r.ModGraphics, r.ModTexts)).AppendLine();
         }
 
+        AppendSections(text, phases);
         return text.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// The mod's own time per frame by part. Meshes is inside Canvas ms rather than Mod ms, since Unity rebuilds meshes in
+    /// its canvas update; Other is the rest of Mod ms.
+    /// </summary>
+    private static void AppendSections(StringBuilder text, IReadOnlyList<PerfPhase> phases)
+    {
+        var any = false;
+        foreach (var phase in phases)
+        {
+            any |= phase.SectionMs != null;
+        }
+
+        if (!any)
+        {
+            return;
+        }
+
+        text.AppendLine("Mod ms per frame by part. Meshes is the mod's graphics rebuilding their meshes, which counts in Canvas ms, not Mod ms. Other is the rest of Mod ms.");
+        text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36}", "Phase");
+        foreach (var head in SectionHeads)
+        {
+            text.AppendFormat(CultureInfo.InvariantCulture, " {0,9}", head);
+        }
+
+        text.AppendLine();
+        foreach (var phase in phases)
+        {
+            if (phase.SectionMs is not { } sections)
+            {
+                continue;
+            }
+
+            text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36}", phase.Name);
+            var inFrame = 0f;
+            for (var i = 0; i < sections.Length; i++)
+            {
+                text.AppendFormat(CultureInfo.InvariantCulture, " {0,9:0.000}", sections[i]);
+                inFrame += i == (int)ModSection.MeshRebuilds ? 0f : sections[i];
+            }
+
+            text.AppendFormat(CultureInfo.InvariantCulture, " {0,9:0.000}", System.Math.Max(0f, phase.Summary.ModAvgMs - inFrame)).AppendLine();
+        }
     }
 
     /// <summary>The value, or "n/a" for NaN.</summary>

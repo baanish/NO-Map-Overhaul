@@ -7,7 +7,7 @@ namespace BaanishUiImprovements.Drawing;
 /// A filled disk with an edge ring and anti-aliased edges, built as UI mesh so the ring keeps a set width at
 /// any zoom (a scaled sprite would thicken its edge as the map zooms in). The ring sits inside the radius.
 /// </summary>
-internal sealed class CircleGraphic : MaskableGraphic
+internal sealed class CircleGraphic : ModGraphic
 {
     private const int Segments = 96;
 

@@ -1,3 +1,4 @@
+using BaanishUiImprovements.Diagnostics;
 using BaanishUiImprovements.MapTools.BearingRange;
 using BaanishUiImprovements.MapTools.Circle;
 using BaanishUiImprovements.MapTools.Eraser;
@@ -74,6 +75,7 @@ internal sealed class MapToolHost
             return;
         }
 
+        var input = ModTimings.Start();
         _store.MaxShapes = _settings.MapToolMaxShapes.Value;
         _store.MaxPoints = _settings.MapToolMaxPenPoints.Value;
         var open = DynamicMap.mapMaximized;
@@ -107,6 +109,8 @@ internal sealed class MapToolHost
             }
         }
 
+        ModTimings.Stop(ModSection.InputAndMenu, input);
+        var world = ModTimings.Start();
         _worldLabels.Begin(hudStyle);
         foreach (var tool in _tools)
         {
@@ -114,8 +118,11 @@ internal sealed class MapToolHost
         }
 
         _worldLabels.End();
+        ModTimings.Stop(ModSection.WorldLabels, world);
         _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion);
+        var upright = ModTimings.Start();
         _layer.KeepUpright();
+        ModTimings.Stop(ModSection.UprightTurning, upright);
     }
 
     /// <summary>

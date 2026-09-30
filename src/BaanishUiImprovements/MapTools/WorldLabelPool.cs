@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaanishUiImprovements.Diagnostics;
 using TMPro;
 using UnityEngine;
 using NumericsVector3 = System.Numerics.Vector3;
@@ -42,7 +43,9 @@ internal sealed class WorldLabelPool : IWorldLabels
         var camera = SceneSingleton<CameraStateManager>.i?.mainCamera;
         _camera = _source != null && camera != null ? camera : null;
         _used = 0;
+        var rings = ModTimings.Start();
         _rings.Begin(_source != null ? _source.transform.parent : null, _camera);
+        ModTimings.Stop(ModSection.WorldRings, rings);
     }
 
     public void Add(NumericsVector3 position, string text, ShapeColor color)
@@ -71,7 +74,12 @@ internal sealed class WorldLabelPool : IWorldLabels
         label.enabled = true;
     }
 
-    public void Ring(NumericsVector3 center, float radius, ShapeColor color) => _rings.Add(center, radius, color);
+    public void Ring(NumericsVector3 center, float radius, ShapeColor color)
+    {
+        var rings = ModTimings.Start();
+        _rings.Add(center, radius, color);
+        ModTimings.Stop(ModSection.WorldRings, rings);
+    }
 
     /// <summary>Hides the labels and rings no tool asked for this frame.</summary>
     public void End()
@@ -81,7 +89,9 @@ internal sealed class WorldLabelPool : IWorldLabels
             _labels[i].enabled = false;
         }
 
+        var rings = ModTimings.Start();
         _rings.End();
+        ModTimings.Stop(ModSection.WorldRings, rings);
     }
 
     public void Reset()

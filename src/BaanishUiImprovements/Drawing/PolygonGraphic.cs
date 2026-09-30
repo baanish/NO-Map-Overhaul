@@ -9,7 +9,7 @@ namespace BaanishUiImprovements.Drawing;
 /// suits straight edges, with a <see cref="StrokeGraphic"/> rim over any slanted one. With no points it draws nothing
 /// but still takes clicks over its whole rect, which makes it a hit area.
 /// </summary>
-internal sealed class PolygonGraphic : MaskableGraphic
+internal sealed class PolygonGraphic : ModGraphic
 {
     private readonly List<Vector2> _points = new();
 

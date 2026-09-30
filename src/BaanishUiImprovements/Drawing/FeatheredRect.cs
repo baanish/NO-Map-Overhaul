@@ -7,7 +7,7 @@ namespace BaanishUiImprovements.Drawing;
 /// A filled rectangle with an optional dark rim and anti-aliased edges, drawn as nested rectangles whose
 /// vertex colours step through an <see cref="EdgeProfile"/>. The fill colour is <see cref="Graphic.color"/>.
 /// </summary>
-internal sealed class FeatheredRect : MaskableGraphic
+internal sealed class FeatheredRect : ModGraphic
 {
     private readonly (float Offset, Color32 Color)[] _profile = new (float, Color32)[EdgeProfile.MaxRings];
     private float _rimWidth;

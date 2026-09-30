@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace BaanishUiImprovements.Diagnostics;
 
 /// <summary>
-/// The perf test's rendering columns, per frame over a phase. Unity's own counters come from ProfilerRecorder, looked
+/// The perf test's rendering columns, per frame over each condition's slices. Unity's own counters come from ProfilerRecorder, looked
 /// up by name at runtime, since a release build of the game records only some of them. Canvas time the mod measures
 /// itself, with timestamps around the two player loop steps where Unity rebuilds and batches every canvas
 /// (<c>PostLateUpdate.PlayerUpdateCanvases</c> and <c>PlayerEmitCanvasGeometry</c>), which works in any build. That
@@ -36,11 +36,20 @@ internal sealed class RenderCounters
     private static long _canvasTicks;
 
     private readonly ProfilerRecorder[] _recorders = new ProfilerRecorder[StatNames.Length];
-    private readonly double[] _sums = new double[StatNames.Length];
+    private readonly double[,] _sums;
     private readonly bool[] _recorded = new bool[StatNames.Length];
-    private double _canvasMs;
+    private readonly double[] _canvasMs;
+    private readonly int[] _frames;
+    private readonly (int Graphics, int Texts)[] _counts;
     private bool _timed;
-    private int _frames;
+
+    public RenderCounters(int conditions)
+    {
+        _sums = new double[conditions, StatNames.Length];
+        _canvasMs = new double[conditions];
+        _frames = new int[conditions];
+        _counts = new (int, int)[conditions];
+    }
 
     /// <summary>Starts the recorders and the canvas timer. Found once per test, since listing every stat is slow.</summary>
     public void Start()
@@ -77,42 +86,47 @@ internal sealed class RenderCounters
     {
         System.Array.Clear(_sums, 0, _sums.Length);
         System.Array.Clear(_recorded, 0, _recorded.Length);
-        _canvasMs = 0;
+        System.Array.Clear(_canvasMs, 0, _canvasMs.Length);
+        System.Array.Clear(_frames, 0, _frames.Length);
+        System.Array.Clear(_counts, 0, _counts.Length);
         _canvasTicks = 0;
-        _frames = 0;
     }
 
-    /// <summary>Once per measured frame. Reads the frame before, the last one the player loop finished.</summary>
-    public void Sample()
+    /// <summary>A slice starts measuring: the canvas time of the frames that settled it is dropped.</summary>
+    public void BeginSlice() => _canvasTicks = 0;
+
+    /// <summary>Once per measured frame, into the condition being measured. Reads the frame before, the last one the player loop finished.</summary>
+    public void Sample(int condition)
     {
-        _frames++;
-        _canvasMs += _canvasTicks * MsPerTick;
+        _frames[condition]++;
+        _canvasMs[condition] += _canvasTicks * MsPerTick;
         _canvasTicks = 0;
         for (var i = 0; i < _recorders.Length; i++)
         {
             if (_recorders[i].Valid)
             {
                 var value = _recorders[i].LastValue;
-                _sums[i] += i < Markers ? value / 1e6 : value;
+                _sums[condition, i] += i < Markers ? value / 1e6 : value;
                 _recorded[i] |= value != 0;
             }
         }
     }
 
-    /// <summary>
-    /// Averages per frame, with NaN for a stat this build never recorded, plus a count of the mod's graphics now on
-    /// screen or culled by a mask. Searches the scene, so call it once per phase.
-    /// </summary>
-    public RenderSummary Summarize()
+    /// <summary>Counts the mod's graphics now on screen or culled by a mask, for the condition showing. Searches the scene, so call it once per slice.</summary>
+    public void CountGraphics(int condition) => _counts[condition] = CountModGraphics();
+
+    /// <summary>Averages per frame over the condition's slices, with NaN for a stat this build never recorded.</summary>
+    public RenderSummary Summarize(int condition)
     {
+        var frames = _frames[condition];
         var averages = new float[StatNames.Length];
         for (var i = 0; i < averages.Length; i++)
         {
-            averages[i] = _frames > 0 && _recorded[i] ? (float)(_sums[i] / _frames) : float.NaN;
+            averages[i] = frames > 0 && _recorded[i] ? (float)(_sums[condition, i] / frames) : float.NaN;
         }
 
-        var (graphics, texts) = CountModGraphics();
-        return new RenderSummary(_timed && _frames > 0 ? (float)(_canvasMs / _frames) : float.NaN, averages[0], averages[1],
+        var (graphics, texts) = _counts[condition];
+        return new RenderSummary(_timed && frames > 0 ? (float)(_canvasMs[condition] / frames) : float.NaN, averages[0], averages[1],
             averages[2], averages[3], averages[4], averages[5], graphics, texts);
     }
 

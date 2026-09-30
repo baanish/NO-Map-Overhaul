@@ -118,9 +118,13 @@ public sealed class Plugin : BaseUnityPlugin
                 _approach = null; // the runways it points at went with the scene
             }
 
+            var runways = ModTimings.Start();
             _hudCallout.Render(_approach);
-            _missileArrows.Render();
             _mapOverlay.KeepLabelsUpright();
+            ModTimings.Stop(ModSection.RunwayOverlays, runways);
+            var missiles = ModTimings.Start();
+            _missileArrows.Render();
+            ModTimings.Stop(ModSection.MissileArrows, missiles);
             _mapTools.Update(_hudCallout.HudStyle);
         });
         _performance.AddFrame(start, ModOn);

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BaanishUiImprovements.Diagnostics;
 using BaanishUiImprovements.Drawing;
 using TMPro;
 using UnityEngine;
@@ -126,6 +127,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             return;
         }
 
+        var drawing = ModTimings.Start();
         var tick = map.mapLastUpdated != _lastTick;
         _lastTick = map.mapLastUpdated;
         if (fresh || tick)
@@ -174,7 +176,10 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             }
         }
 
+        ModTimings.Stop(ModSection.ShapeDrawing, drawing);
+        var placing = ModTimings.Start();
         PlaceLabels(map, screenAreas, screenLayout);
+        ModTimings.Stop(ModSection.LabelPlacement, placing);
     }
 
     /// <summary>

@@ -9,22 +9,26 @@ using FlatVector = System.Numerics.Vector2;
 namespace BaanishUiImprovements.Diagnostics;
 
 /// <summary>
-/// The Run perf test button in F1. One press measures the whole game's frame rate in six phases: the minimap with the
-/// mod off, on, and on with <see cref="StressDrawings"/>, then the same on the full map. Each phase waits
-/// <see cref="SettleSeconds"/> before measuring, so the switch (graphics rebuilt, the map opened) stays out of the numbers.
-/// The mod-off phases override General.Enabled through <see cref="ModOn"/>, and the drawings show through
-/// <see cref="ModSettings.PerfTestShowsDrawings"/>, instead of writing the settings, so a crash mid-test can't leave
-/// any of them saved. Afterwards the player's drawings come back with their undo history, along with the map.
-/// Leaving the mission, losing the aircraft, opening or closing the map, or a second press stops it early and puts
-/// everything back the same way.
+/// The Run perf test button in F1. One press measures the whole game's frame rate in six conditions: the minimap with
+/// the mod off, on, and on with <see cref="StressDrawings"/>, then the same on the full map. Within each view the three
+/// conditions take turns in short slices (<see cref="PerfSchedule"/>), so drift while flying spreads over all three,
+/// and each slice waits <see cref="SliceSettleSeconds"/> after a switch so the switch (graphics rebuilt, the map
+/// opened) stays out of the numbers. The mod-off conditions override General.Enabled through <see cref="ModOn"/>, and
+/// the drawings show through <see cref="ModSettings.PerfTestShowsDrawings"/>, instead of writing the settings, so a
+/// crash mid-test can't leave any of them saved. Afterwards the player's drawings come back with their undo history,
+/// along with the map. Leaving the mission, losing the aircraft, opening or closing the map, or a second press stops it
+/// early and puts everything back the same way.
 /// </summary>
 internal sealed class PerfTest
 {
     /// <summary>Time to close F1, whose window costs frames too.</summary>
     private const float FirstSettleSeconds = 5f;
 
-    private const float SettleSeconds = 2f;
-    private const float MeasureSeconds = 10f;
+    /// <summary>After opening the full map.</summary>
+    private const float ViewSettleSeconds = 2f;
+
+    private const float SliceSettleSeconds = 0.5f;
+    private const float SliceSeconds = 2.5f;
 
     /// <summary>How far ahead of the aircraft <c>DynamicMap.CenterMinimizedMap</c> centres the minimap.</summary>
     private const float MinimapLead = 4000f;
@@ -32,16 +36,17 @@ internal sealed class PerfTest
     /// <summary>For a minimap whose size can't be read.</summary>
     private const float FallbackRadius = 8000f;
 
-    private const int MaxAnchors = 40;
+    /// <summary>The most live units the heavy drawings ride on, so runs in busy and quiet places redraw about the same amount.</summary>
+    private const int MaxAnchors = 10;
 
-    private static readonly (string Name, bool FullMap, bool ModOn, bool Stress, int Baseline)[] Phases =
+    private static readonly (string Name, bool FullMap, bool ModOn, bool Stress)[] Conditions =
     {
-        ("Minimap, mod off", false, false, false, -1),
-        ("Minimap, mod on", false, true, false, 0),
-        ("Minimap, mod on, heavy drawings", false, true, true, 0),
-        ("Full map, mod off", true, false, false, -1),
-        ("Full map, mod on", true, true, false, 3),
-        ("Full map, mod on, heavy drawings", true, true, true, 3),
+        ("Minimap, mod off", false, false, false),
+        ("Minimap, mod on", false, true, false),
+        ("Minimap, mod on, heavy drawings", false, true, true),
+        ("Full map, mod off", true, false, false),
+        ("Full map, mod on", true, true, false),
+        ("Full map, mod on, heavy drawings", true, true, true),
     };
 
     private readonly ModSettings _settings;
@@ -49,17 +54,20 @@ internal sealed class PerfTest
     private readonly MapToolHost _mapTools;
     private readonly MapToolContext _context;
     private readonly ManualLogSource _log;
-    private readonly FrameStats _stats = new();
-    private readonly RenderCounters _render = new();
-    private readonly List<PerfPhase> _results = new();
+    private readonly FrameStats[] _stats = new FrameStats[Conditions.Length];
+    private readonly double[][] _sectionMs = new double[Conditions.Length][];
+    private readonly double[] _settlingMs = new double[ModTimings.Count];
+    private readonly RenderCounters _render = new(Conditions.Length);
     private List<MapShape>? _stress;
     private int _stressUnits;
     private int _stressShown;
+    private bool? _showingStress;
     private ShapeStore.Saved? _savedShapes;
     private DynamicMap? _map;
     private bool _mapWasOpen;
-    private int _phase = -1;
-    private float _phaseStart;
+    private int _slice = -1;
+    private float _sliceStart;
+    private bool _measuring;
     private bool _requested;
 
     public PerfTest(ModSettings settings, PerformanceLog performance, MapToolHost mapTools, ManualLogSource log)
@@ -69,6 +77,12 @@ internal sealed class PerfTest
         _mapTools = mapTools;
         _context = mapTools.Context;
         _log = log;
+        for (var i = 0; i < Conditions.Length; i++)
+        {
+            _stats[i] = new FrameStats();
+            _sectionMs[i] = new double[ModTimings.Count];
+        }
+
         settings.PerfTestButton.CustomDrawer = DrawButton;
         settings.PerfTest.SettingChanged += (_, _) =>
         {
@@ -81,15 +95,15 @@ internal sealed class PerfTest
     }
 
     /// <summary>Whether the mod runs this frame while the test is on, overriding General.Enabled; null otherwise.</summary>
-    public bool? ModOn => _phase >= 0 ? Phases[_phase].ModOn : null;
+    public bool? ModOn => _slice >= 0 ? Conditions[PerfSchedule.Condition(_slice)].ModOn : null;
 
-    /// <summary>Per frame, first thing in the plugin's guarded update. Between phase switches it only compares a few numbers.</summary>
+    /// <summary>Per frame, first thing in the plugin's guarded update. Between slice switches it only compares a few numbers.</summary>
     public void Update()
     {
         if (_requested)
         {
             _requested = false;
-            if (_phase >= 0)
+            if (_slice >= 0)
             {
                 Stop("cancelled");
             }
@@ -101,7 +115,7 @@ internal sealed class PerfTest
             return;
         }
 
-        if (_phase < 0)
+        if (_slice < 0)
         {
             return;
         }
@@ -119,42 +133,44 @@ internal sealed class PerfTest
             return;
         }
 
-        var phase = Phases[_phase];
-        if (DynamicMap.mapMaximized != phase.FullMap)
+        var condition = PerfSchedule.Condition(_slice);
+        if (DynamicMap.mapMaximized != Conditions[condition].FullMap)
         {
             Stop("the map was opened or closed");
             return;
         }
 
-        var elapsed = Time.realtimeSinceStartup - _phaseStart;
-        var settle = _phase == 0 ? FirstSettleSeconds : SettleSeconds;
-        if (_performance.Phase == null)
+        var elapsed = Time.realtimeSinceStartup - _sliceStart;
+        var settle = SettleSeconds(_slice);
+        if (!_measuring)
         {
             if (elapsed >= settle)
             {
-                _stats.Clear();
-                _render.Clear();
-                _performance.Phase = _stats;
+                _measuring = true;
+                _render.BeginSlice();
+                ModTimings.TakeMs(_settlingMs); // the settling frames' times, dropped
+                _performance.Phase = _stats[condition];
             }
 
             return;
         }
 
-        _render.Sample();
-        if (elapsed < settle + MeasureSeconds)
+        _render.Sample(condition);
+        if (elapsed < settle + SliceSeconds)
         {
             return;
         }
 
         _performance.Phase = null;
-        _results.Add(new PerfPhase(phase.Name, _stats.Summarize(), phase.Baseline, _render.Summarize()));
-        if (_phase + 1 < Phases.Length)
+        ModTimings.TakeMs(_sectionMs[condition]);
+        _render.CountGraphics(condition);
+        if (_slice + 1 < PerfSchedule.SliceCount)
         {
-            StartPhase(_phase + 1);
+            StartSlice(_slice + 1);
         }
         else
         {
-            Finish(null);
+            Finish(Conditions.Length, null);
         }
     }
 
@@ -163,8 +179,9 @@ internal sealed class PerfTest
 
     private void DrawButton(ConfigEntryBase entry)
     {
-        var label = _phase >= 0
-            ? "Cancel perf test (phase " + (_phase + 1).ToString(CultureInfo.InvariantCulture) + " of " + Phases.Length.ToString(CultureInfo.InvariantCulture) + ")"
+        var label = _slice >= 0
+            ? "Cancel perf test (slice " + (_slice + 1).ToString(CultureInfo.InvariantCulture) + " of " +
+              PerfSchedule.SliceCount.ToString(CultureInfo.InvariantCulture) + ")"
             : "Run perf test";
         if (GUILayout.Button(label, GUILayout.ExpandWidth(true)))
         {
@@ -187,21 +204,49 @@ internal sealed class PerfTest
         _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
         _stress = null;
-        _results.Clear();
+        _showingStress = null;
+        foreach (var stats in _stats)
+        {
+            stats.Clear();
+        }
+
+        foreach (var sections in _sectionMs)
+        {
+            System.Array.Clear(sections, 0, sections.Length);
+        }
+
         _render.Start();
+        ModTimings.On = true;
         _log.LogInfo("Perf test started.");
         Tell("Perf test running for about 75 seconds. Close F1, and hold the view still.");
-        StartPhase(0);
+        StartSlice(0);
     }
 
-    private void StartPhase(int index)
+    /// <summary>Long enough for F1 to close or the full map to open, and none when the condition is the one just measured.</summary>
+    private static float SettleSeconds(int slice)
     {
-        _phase = index;
-        _phaseStart = Time.realtimeSinceStartup;
-        var phase = Phases[index];
-        if (phase.FullMap != DynamicMap.mapMaximized)
+        if (slice == 0)
         {
-            if (phase.FullMap)
+            return FirstSettleSeconds;
+        }
+
+        if (PerfSchedule.View(slice) != PerfSchedule.View(slice - 1))
+        {
+            return ViewSettleSeconds;
+        }
+
+        return PerfSchedule.Condition(slice) == PerfSchedule.Condition(slice - 1) ? 0f : SliceSettleSeconds;
+    }
+
+    private void StartSlice(int index)
+    {
+        _slice = index;
+        _sliceStart = Time.realtimeSinceStartup;
+        _measuring = false;
+        var condition = Conditions[PerfSchedule.Condition(index)];
+        if (condition.FullMap != DynamicMap.mapMaximized)
+        {
+            if (condition.FullMap)
             {
                 _map!.Maximize();
             }
@@ -211,32 +256,55 @@ internal sealed class PerfTest
             }
         }
 
-        if (phase.FullMap && !DynamicMap.mapMaximized)
+        if (condition.FullMap && !DynamicMap.mapMaximized)
         {
-            Finish("The game didn't open the full map (DynamicMap.AllowedToOpen was off), so only the minimap was measured.");
+            Finish(PerfSchedule.ConditionsPerView,
+                "The game didn't open the full map (DynamicMap.AllowedToOpen was off), so only the minimap was measured.");
             return;
         }
 
-        _context.Shapes.Reset();
-        if (phase.Stress)
+        if (condition.Stress != _showingStress)
         {
-            _stress ??= BuildStress(_map!);
-            foreach (var shape in _stress)
+            _showingStress = condition.Stress;
+            _context.Shapes.Reset();
+            if (condition.Stress)
             {
-                _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
-            }
+                _stress ??= BuildStress(_map!);
+                foreach (var shape in _stress)
+                {
+                    _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
+                }
 
-            _stressShown = _context.Shapes.Shapes.Count;
+                _stressShown = _context.Shapes.Shapes.Count;
+            }
         }
     }
 
-    private void Finish(string? note)
+    /// <summary>Reports the first <paramref name="measured"/> conditions, each over all its slices.</summary>
+    private void Finish(int measured, string? note)
     {
-        var drawings = string.Format(CultureInfo.InvariantCulture, "{0} shapes, anchored to {1} live units", _stressShown, _stressUnits);
-        var table = PerfReport.Table(_results, SettleSeconds, MeasureSeconds, drawings);
+        var results = new List<PerfPhase>();
+        for (var i = 0; i < measured; i++)
+        {
+            var summary = _stats[i].Summarize();
+            var sections = new float[ModTimings.Count];
+            for (var s = 0; s < sections.Length; s++)
+            {
+                sections[s] = summary.Frames > 0 ? (float)(_sectionMs[i][s] / summary.Frames) : 0f;
+            }
+
+            results.Add(new PerfPhase(Conditions[i].Name, summary, PerfSchedule.Baseline(i), _render.Summarize(i), sections));
+        }
+
+        var method = string.Format(CultureInfo.InvariantCulture,
+            "each condition measured in {0} slices of {1:0.0} s, taking turns with the others in its view, {2:0.0} s to settle after each switch",
+            PerfSchedule.Cycles, SliceSeconds, SliceSettleSeconds);
+        var drawings = string.Format(CultureInfo.InvariantCulture, "{0} shapes, anchored to {1} live units (at most {2})",
+            _stressShown, _stressUnits, MaxAnchors);
+        var table = PerfReport.Table(results, method, drawings);
         _log.LogInfo(note == null ? table : table + "\n" + note);
         Restore(moveMap: true);
-        Tell(PerfReport.Summary(_results));
+        Tell(PerfReport.Summary(results));
     }
 
     private void Stop(string reason)
@@ -248,13 +316,15 @@ internal sealed class PerfTest
 
     private void Restore(bool moveMap)
     {
-        if (_phase < 0)
+        if (_slice < 0)
         {
             return;
         }
 
-        _phase = -1;
+        _slice = -1;
+        _measuring = false;
         _performance.Phase = null;
+        ModTimings.On = false;
         _render.Stop();
         _settings.PerfTestShowsDrawings = false;
         var map = SceneSingleton<DynamicMap>.i;

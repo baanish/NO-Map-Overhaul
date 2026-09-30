@@ -5,10 +5,14 @@ using BaanishUiImprovements.MapTools.BearingRange;
 using BaanishUiImprovements.MapTools.Pen;
 using BaanishUiImprovements.MapTools.Waypoint;
 using static BaanishUiImprovements.Tests.Program;
+using static BaanishUiImprovements.Tests.FrameStatsTests;
 
 namespace BaanishUiImprovements.Tests;
 
-/// <summary>The perf test's Unity-free parts: the changes it reports against the mod-off phases, and its heavy drawings.</summary>
+/// <summary>
+/// The perf test's Unity-free parts: the order of its slices, the changes it reports against the mod-off conditions,
+/// the mod's time by part, and its heavy drawings.
+/// </summary>
 internal static class PerfTestTests
 {
     public static readonly (string Name, Action Test)[] All =
@@ -17,7 +21,89 @@ internal static class PerfTestTests
         ("the perf summary compares each phase with its baseline", SummaryComparesWithBaseline),
         ("render stats a build doesn't record read n/a", RenderStatsReadNaNAsUnavailable),
         ("the heavy drawings fill the caps and ride on units", HeavyDrawingsFillCapsAndRideOnUnits),
+        ("perf slices take turns within each view so drift cancels", SlicesTakeTurnsSoDriftCancels),
+        ("a condition's slices add up to one window", SlicesAddUpToOneWindow),
+        ("a timed section leaves out the sections inside it", TimedSectionLeavesOutNestedSections),
+        ("the per-part table puts the rest of the mod's frame in Other", PerPartTableShowsOther),
     };
+
+    private static void SlicesTakeTurnsSoDriftCancels()
+    {
+        Expect(PerfSchedule.SliceCount == PerfSchedule.Views * PerfSchedule.ConditionsPerView * PerfSchedule.Cycles, "expected every condition once per cycle");
+        var order = string.Join(",", Enumerable.Range(0, PerfSchedule.SlicesPerView).Select(PerfSchedule.Condition));
+        ExpectText(order, "0,1,2,2,1,0,0,1,2,2,1,0");
+        for (var condition = 0; condition < PerfSchedule.Views * PerfSchedule.ConditionsPerView; condition++)
+        {
+            var slices = Enumerable.Range(0, PerfSchedule.SliceCount).Where(slice => PerfSchedule.Condition(slice) == condition).ToList();
+            Expect(slices.Count == PerfSchedule.Cycles, $"expected condition {condition} in {PerfSchedule.Cycles} slices, got {slices.Count}");
+            var view = condition / PerfSchedule.ConditionsPerView;
+            Expect(slices.All(slice => PerfSchedule.View(slice) == view), $"expected condition {condition} only in view {view}");
+            // A steady drift adds the same to each condition when their slices sit at the same average time in the view.
+            var middle = slices.Average(slice => slice % PerfSchedule.SlicesPerView);
+            ExpectNear((float)middle, (PerfSchedule.SlicesPerView - 1) / 2f, $"condition {condition}'s average slice");
+        }
+
+        Expect(PerfSchedule.Baseline(0) == -1 && PerfSchedule.Baseline(2) == 0 && PerfSchedule.Baseline(3) == -1 && PerfSchedule.Baseline(5) == 3,
+            "expected each condition compared with the mod off in its own view");
+    }
+
+    /// <summary>One condition's stats gather every slice it had, so its averages and 1% low cover them all.</summary>
+    private static void SlicesAddUpToOneWindow()
+    {
+        var stats = new FrameStats();
+        for (var i = 0; i < 300; i++)
+        {
+            stats.AddFrame(10f, 0.1f, modOn: true); // an early slice at 100 fps
+        }
+
+        for (var i = 0; i < 100; i++)
+        {
+            stats.AddFrame(20f, 0.3f, modOn: true); // a later slice at 50 fps, after the frame rate drifted
+        }
+
+        var summary = stats.Summarize();
+        Expect(summary.Frames == 400, $"expected both slices' 400 frames, got {summary.Frames}");
+        ExpectNear(summary.FrameAvgMs, 12.5f, "frame average over both slices");
+        ExpectNear(summary.ModAvgMs, 0.15f, "mod average over both slices");
+        ExpectNear(summary.LowFps, 50f, "1% low over both slices");
+    }
+
+    private static void TimedSectionLeavesOutNestedSections()
+    {
+        var ms = new double[ModTimings.Count];
+        ModTimings.TakeMs(ms);
+        Array.Clear(ms, 0, ms.Length);
+        var outer = ModTimings.Start(1000L);
+        var inner = ModTimings.Start(1100L);
+        ModTimings.Stop(ModSection.WorldRings, inner, 1400L);
+        ModTimings.Stop(ModSection.WorldLabels, outer, 2000L);
+        var after = ModTimings.Start(3000L);
+        ModTimings.Stop(ModSection.ShapeDrawing, after, 3500L);
+        ModTimings.TakeMs(ms);
+        var perTick = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        ExpectNear((float)(ms[(int)ModSection.WorldRings] / perTick), 300f, "inner ticks");
+        ExpectNear((float)(ms[(int)ModSection.WorldLabels] / perTick), 700f, "outer ticks without the inner section");
+        ExpectNear((float)(ms[(int)ModSection.ShapeDrawing] / perTick), 500f, "a later section's ticks");
+
+        var again = new double[ModTimings.Count];
+        ModTimings.TakeMs(again);
+        Expect(again.All(value => value == 0), "expected TakeMs to start every section from zero");
+    }
+
+    private static void PerPartTableShowsOther()
+    {
+        var sections = new float[ModTimings.Count];
+        sections[(int)ModSection.ShapeDrawing] = 0.1f;
+        sections[(int)ModSection.LabelPlacement] = 0.2f;
+        sections[(int)ModSection.MeshRebuilds] = 0.5f; // in the canvas update, so not part of the mod's frame
+        var stats = new FrameStats();
+        stats.AddFrame(10f, 0.4f, modOn: true);
+        var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", stats.Summarize(), -1, default, sections) }, "slices", "71 shapes");
+        var row = System.Text.RegularExpressions.Regex.Replace(table.Split('\n').Last().TrimEnd(), " +", " ");
+        ExpectText(row, "Minimap, mod on 0.100 0.200 0.000 0.000 0.000 0.000 0.000 0.000 0.500 0.100");
+        Expect(!PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1) }, "slices", "71 shapes").Contains("by part"),
+            "expected no per-part table without timings");
+    }
 
     private static void PerfChangesReadInFpsAndPercent()
     {
@@ -36,13 +122,13 @@ internal static class PerfTestTests
         var lines = PerfReport.Summary(phases).Split('\n');
         Expect(lines.Length == 2, $"expected a header and one line, got {lines.Length}");
         ExpectText(lines[1].TrimEnd(), "Minimap, mod on: avg -20.0 (-20.0%), 1% low -20.0 (-20.0%)");
-        Expect(PerfReport.Table(phases, 2f, 10f, "71 shapes").Contains("baseline"), "expected the mod-off phase marked as the baseline");
+        Expect(PerfReport.Table(phases, "slices", "71 shapes").Contains("baseline"), "expected the mod-off phase marked as the baseline");
     }
 
     private static void RenderStatsReadNaNAsUnavailable()
     {
         var render = new RenderSummary(0.5f, float.NaN, float.NaN, 42f, 9f, 40f, 1234f, 30, 12);
-        var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1, render) }, 2f, 10f, "71 shapes");
+        var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1, render) }, "slices", "71 shapes");
         Expect(table.Contains("Heavy drawings: 71 shapes."), "expected the heavy drawings in the header");
         var row = table.Split('\n').Last().TrimEnd();
         ExpectText(System.Text.RegularExpressions.Regex.Replace(row, " +", " "), "Minimap, mod on 0.500 n/a n/a 42 9 40 1234 30/12");

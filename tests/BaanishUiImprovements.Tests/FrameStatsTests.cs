@@ -72,6 +72,6 @@ internal static class FrameStatsTests
         }
     }
 
-    private static void ExpectNear(float actual, float expected, string what) =>
+    internal static void ExpectNear(float actual, float expected, string what) =>
         Expect(MathF.Abs(actual - expected) < 0.001f, $"expected {what} {expected}, got {actual}");
 }

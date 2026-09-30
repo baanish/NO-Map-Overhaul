@@ -11,7 +11,7 @@ namespace BaanishUiImprovements.Drawing;
 /// Points are in the parent's space. <see cref="Apply"/> fits this graphic's rect around them: a RectMask2D culls a
 /// graphic by its rect, not its mesh, so a rect left at the default size would vanish once scrolled off.
 /// </summary>
-internal sealed class StrokeGraphic : MaskableGraphic
+internal sealed class StrokeGraphic : ModGraphic
 {
     /// <summary>
     /// VertexHelper throws at 65000 vertices, inside the canvas update where nothing catches it; strokes past this are

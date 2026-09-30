@@ -10,7 +10,7 @@ namespace BaanishUiImprovements.Drawing;
 /// moving, and fits its rect around the copies, since a RectMask2D culls a graphic by its rect.
 /// Glyphs the face takes from a fallback font live in its sub-meshes and get no rim.
 /// </summary>
-internal sealed class TextRim : MaskableGraphic
+internal sealed class TextRim : ModGraphic
 {
     private static readonly Vector2[] Offsets =
     {

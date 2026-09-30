@@ -10,7 +10,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\src\BaanishUiImprovements\Diagnostics\FrameStats.cs" Link="Diagnostics\FrameStats.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\Diagnostics\ModTimings.cs" Link="Diagnostics\ModTimings.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Diagnostics\PerfReport.cs" Link="Diagnostics\PerfReport.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\Diagnostics\PerfSchedule.cs" Link="Diagnostics\PerfSchedule.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\Diagnostics\StressDrawings.cs" Link="Diagnostics\StressDrawings.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\BearingRange\BearingRangeShape.cs" Link="MapTools\BearingRange\BearingRangeShape.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\BearingRange\BearingRangeTool.cs" Link="MapTools\BearingRange\BearingRangeTool.cs" />

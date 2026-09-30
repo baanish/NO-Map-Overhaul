@@ -9,7 +9,7 @@ namespace BaanishUiImprovements.Drawing;
 /// Unity to cull and batch instead of one per rectangle. Positions are in the parent's space. <see cref="Apply"/> fits
 /// this graphic's rect around them, since a RectMask2D culls a graphic by its rect.
 /// </summary>
-internal sealed class FeatheredRectBatch : MaskableGraphic
+internal sealed class FeatheredRectBatch : ModGraphic
 {
     private readonly List<Item> _items = new();
     private readonly (float Offset, Color32 Color)[] _profile = new (float, Color32)[EdgeProfile.MaxRings];
