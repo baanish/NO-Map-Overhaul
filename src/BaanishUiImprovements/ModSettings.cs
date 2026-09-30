@@ -69,11 +69,11 @@ internal sealed class ModSettings
         MapToolsKey = Bind(SettingSections.MapToolsKeysAndLimits, "ToolsKey", new KeyboardShortcut(KeyCode.H), "Tools key", "Open or close the tools rail while the full map is open, like clicking Tools. H isn't bound in the game's default controls.");
         MapToolUndoKey = Bind(SettingSections.MapToolsKeysAndLimits, "UndoKey", new KeyboardShortcut(KeyCode.Z), "Undo key", "Undo the last drawing change while the full map is open. Z isn't bound in the game's default controls.");
         MapToolRedoKey = Bind(SettingSections.MapToolsKeysAndLimits, "RedoKey", new KeyboardShortcut(KeyCode.Y), "Redo key", "Redo while the full map is open. Y isn't bound in the game's default controls.");
-        MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha1);
-        MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha2);
+        MapToolBearingRangeKey = BindToolKey("BearingRangeKey", "Bearing/range", KeyCode.Alpha1);
+        MapToolCircleKey = BindToolKey("CircleKey", "Circle", KeyCode.Alpha2);
         MapToolTextKey = BindToolKey("TextKey", "Text", KeyCode.Alpha3);
-        MapToolBearingRangeKey = BindToolKey("BearingRangeKey", "Bearing/range", KeyCode.Alpha4);
-        MapToolCircleKey = BindToolKey("CircleKey", "Circle", KeyCode.Alpha5);
+        MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha4);
+        MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha5);
         MapToolEraserKey = BindToolKey("EraserKey", "Eraser", KeyCode.Alpha6);
         MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 200, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000), advanced: true);
         MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 5000, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500), advanced: true);

@@ -94,6 +94,11 @@ public sealed class Plugin : BaseUnityPlugin
         {
             Logger.LogInfo($"Moved {moved} saved settings to their new sections.");
         }
+
+        if (SettingsMigration.MoveToolKeyDefaults(saved, (section, key) => new ConfigDefinition(section, key)))
+        {
+            Logger.LogInfo("Moved the map tool keys to their new default numbers.");
+        }
     }
 
     /// <summary>

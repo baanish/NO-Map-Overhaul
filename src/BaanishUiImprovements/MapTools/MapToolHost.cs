@@ -24,6 +24,9 @@ internal sealed class MapToolHost
     private readonly MapTool[] _tools;
     private readonly RailIcon[] _icons;
     private readonly ConfigEntry<KeyboardShortcut>[] _keys;
+
+    /// <summary>The tool the Tools button opens the rail on: Waypoint.</summary>
+    private readonly int _openingTool;
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
@@ -39,17 +42,18 @@ internal sealed class MapToolHost
         _context = new MapToolContext(settings, _store);
         _layer = new MapShapeLayer(settings, _context);
         _hitTest = new ShapeHitTest(_context, _layer);
-        // Rail order, each with its icon and the key that picks it; the rail opens on the first. Each tool lives in its own folder under MapTools.
+        // Rail order, each with its icon and the key that picks it, 1 to 6 by default. Each tool lives in its own folder under MapTools.
         var tools = new (MapTool Tool, RailIcon Icon, ConfigEntry<KeyboardShortcut> Key)[]
         {
-            (new WaypointTool(_context, settings), RailIcon.Waypoint, settings.MapToolWaypointKey),
-            (new PenTool(_context), RailIcon.Pen, settings.MapToolPenKey),
-            (new TextTool(_context), RailIcon.Text, settings.MapToolTextKey),
             (new BearingRangeTool(_context), RailIcon.BearingRange, settings.MapToolBearingRangeKey),
             (new CircleTool(_context), RailIcon.Circle, settings.MapToolCircleKey),
+            (new TextTool(_context), RailIcon.Text, settings.MapToolTextKey),
+            (new PenTool(_context), RailIcon.Pen, settings.MapToolPenKey),
+            (new WaypointTool(_context, settings), RailIcon.Waypoint, settings.MapToolWaypointKey),
             (new EraserTool(_context, _layer), RailIcon.Eraser, settings.MapToolEraserKey),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
+        _openingTool = System.Array.FindIndex(_tools, tool => tool is WaypointTool);
         _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
         _keys = System.Array.ConvertAll(tools, entry => entry.Key);
         _menu = new MapToolMenu(settings);
@@ -195,7 +199,7 @@ internal sealed class MapToolHost
         switch (command.Command)
         {
             case MenuCommand.Toggle:
-                Select(_active >= 0 ? -1 : 0);
+                Select(_active >= 0 ? -1 : _openingTool);
                 break;
             case MenuCommand.Tool:
                 Select(command.Index);

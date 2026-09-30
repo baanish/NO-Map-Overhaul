@@ -22,18 +22,18 @@ These work on the full map. The mouse, undo, and redo work while the tools rail 
 | Right click while drawing | Cancel what you're halfway through. |
 | Right click a drawing | Delete it. Undo brings it back. |
 | `H` | Open or close the rail, like clicking **Tools**. |
-| `1` to `6` | Pick Waypoint, Pen, Text, Bearing/range, Circle, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
+| `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Waypoint key** to **Eraser key**. Hover over a rail icon to see its key.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**. Hover over a rail icon to see its key.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 
 ## The rail
 
-The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool: Waypoint, Pen, Text, Bearing/range, Circle, and Eraser. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on Waypoint. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
 The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 
