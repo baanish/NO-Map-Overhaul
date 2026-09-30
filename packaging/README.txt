@@ -13,8 +13,9 @@ markers:
 An optional airbase boundary, off by default, shades each friendly airbase's
 landing zone: stop inside it after landing and the sortie counts as returned.
 
-Optional airbase names, off by default, label every airbase on the full map,
-friendly, enemy, and neutral, so a base called out on comms is easy to find.
+Optional airbase names, off by default, label your faction's airbases on the
+full map, so a base called out on comms is easy to find. Enemy and neutral
+airbases get names only with a second setting, so they aren't given away.
 
 A red arrow on the screen edge points toward each incoming missile outside
 your view, for any missile the game's missile warning already knows about.
