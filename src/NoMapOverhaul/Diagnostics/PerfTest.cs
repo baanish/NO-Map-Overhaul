@@ -65,10 +65,10 @@ internal sealed class PerfTest
     /// <summary>How many of each <see cref="DrawingSet"/>'s shapes the store took, by its value.</summary>
     private readonly int[] _shown = new int[3];
 
-    /// <summary>Each <see cref="DrawingSet"/>'s shapes, by its value, built at the first slice that shows drawings.</summary>
-    private List<MapShape>[]? _drawings;
+    /// <summary>The live units both sets ride on, picked at the first slice that shows drawings, and kept for the whole test.</summary>
+    private List<MapPoint>? _anchors;
 
-    private int _units;
+    private float _radius;
     private DrawingSet? _showing;
     private ShapeStore.Saved? _savedShapes;
     private DynamicMap? _map;
@@ -211,7 +211,7 @@ internal sealed class PerfTest
         _settings.PerfTestShowsDrawings = true;
         _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
-        _drawings = null;
+        _anchors = null;
         _showing = null;
         foreach (var stats in _stats)
         {
@@ -277,8 +277,7 @@ internal sealed class PerfTest
             _context.Shapes.Reset();
             if (condition.Drawings != DrawingSet.None)
             {
-                _drawings ??= BuildDrawings(_map!);
-                foreach (var shape in _drawings[(int)condition.Drawings])
+                foreach (var shape in BuildDrawings(_map!, condition.Drawings))
                 {
                     _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
                 }
@@ -307,9 +306,10 @@ internal sealed class PerfTest
         var method = string.Format(CultureInfo.InvariantCulture,
             "each condition measured in {0} slices of {1:0.0} s, taking turns with the others in its view, {2:0.0} s to settle after each switch",
             PerfSchedule.Cycles, SliceSeconds, SliceSettleSeconds);
+        var units = _anchors?.Count ?? 0;
         var drawings = string.Format(CultureInfo.InvariantCulture,
             "typical {0} shapes on {1} live units, heavy {2} shapes on {3} live units (at most {4})",
-            _shown[(int)DrawingSet.Typical], System.Math.Min(_units, StressDrawings.TypicalAnchors), _shown[(int)DrawingSet.Heavy], _units, MaxAnchors);
+            _shown[(int)DrawingSet.Typical], System.Math.Min(units, StressDrawings.TypicalAnchors), _shown[(int)DrawingSet.Heavy], units, MaxAnchors);
         var table = PerfReport.Table(results, method, drawings);
         _log.LogInfo(note == null ? table : table + "\n" + note);
         Restore(moveMap: true);
@@ -355,14 +355,15 @@ internal sealed class PerfTest
 
         _map = null;
         _savedShapes = null;
-        _drawings = null;
+        _anchors = null;
     }
 
     /// <summary>
-    /// Both sets, centred where the minimap is and sized to fit it, so every drawing is on screen on both maps, and
-    /// anchored to the same nearby units.
+    /// The set, centred where the minimap is now and sized to fit it, so every drawing is on screen on both maps. It's
+    /// built again at each switch to it, since the minimap follows the aircraft and fixed drawings built once would slide
+    /// out of it, leaving later slices less to draw. The units it rides on are the ones picked for the first set.
     /// </summary>
-    private List<MapShape>[] BuildDrawings(DynamicMap map)
+    private List<MapShape> BuildDrawings(DynamicMap map, DrawingSet set)
     {
         var aircraft = PlayerAircraft()!;
         var global = aircraft.GlobalPosition();
@@ -370,18 +371,20 @@ internal sealed class PerfTest
         var forward = new FlatVector(nose.x, nose.z);
         var center = new FlatVector(global.x, global.z) +
                      (forward.LengthSquared() > 0f ? FlatVector.Normalize(forward) * MinimapLead : FlatVector.Zero);
-        var radius = MinimapRadius(map);
-        var units = NearbyUnits(center, radius, aircraft.persistentID.Id);
-        _units = units.Count;
-        var typical = StressDrawings.BuildTypical(center, radius, units, _context.GroundElevation);
-        var heavy = StressDrawings.BuildHeavy(center, radius, units, _settings.MapToolMaxPenPoints.Value, _context.GroundElevation);
-        _log.LogInfo(string.Format(CultureInfo.InvariantCulture,
-            "Perf test drawings in {0:0.0} km around the minimap's centre: typical {1} shapes on {2} live units, heavy {3} shapes on {4}.",
-            radius / 1000f, typical.Count, System.Math.Min(units.Count, StressDrawings.TypicalAnchors), heavy.Count, units.Count));
-        return new[] { new List<MapShape>(), typical, heavy };
+        if (_anchors == null)
+        {
+            _radius = MinimapRadius(map);
+            _anchors = NearbyUnits(center, _radius, aircraft.persistentID.Id);
+            _log.LogInfo(string.Format(CultureInfo.InvariantCulture,
+                "Perf test drawings in {0:0.0} km around the minimap's centre, on {1} live units.", _radius / 1000f, _anchors.Count));
+        }
+
+        return set == DrawingSet.Typical
+            ? StressDrawings.BuildTypical(center, _radius, _anchors, _context.GroundElevation)
+            : StressDrawings.BuildHeavy(center, _radius, _anchors, _settings.MapToolMaxPenPoints.Value, _context.GroundElevation);
     }
 
-    /// <summary>What a condition draws, and the index of its shapes in <see cref="_drawings"/>.</summary>
+    /// <summary>What a condition draws, and the index of its count in <see cref="_shown"/>.</summary>
     private enum DrawingSet
     {
         None,
