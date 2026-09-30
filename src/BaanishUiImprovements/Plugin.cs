@@ -152,17 +152,27 @@ public sealed class Plugin : BaseUnityPlugin
         catch (System.Exception exception)
         {
             Logger.LogError($"Disabled after an error; the game is unaffected. {exception}");
-            OnDestroy();
             enabled = false;
+            try
+            {
+                Shutdown(gameQuitting: false);
+            }
+            catch (System.Exception cleanup)
+            {
+                Logger.LogError($"Couldn't undo everything after that error. {cleanup}");
+            }
         }
     }
 
-    private void OnDestroy()
+    private void OnDestroy() => Shutdown(gameQuitting: true);
+
+    /// <summary>As the game quits, its scene may be half torn down, so the perf test leaves the map alone.</summary>
+    private void Shutdown(bool gameQuitting)
     {
         DynamicMap.onMapChanged -= OnMapChanged;
         AutopilotRightClickPatch.Remove();
-        _perfTest.Shutdown();
         RemoveOverlays();
+        _perfTest.Shutdown(moveMap: !gameQuitting);
     }
 
     /// <summary>Each overlay rebuilds itself on its next render, so turning the mod back on needs nothing more.</summary>

@@ -104,7 +104,7 @@ internal sealed class MapShapeLayer : IMapCanvas
         IReadOnlyList<RectTransform> screenAreas, int screenLayout)
     {
         var fresh = EnsureLayer(map);
-        var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value;
+        var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value || _settings.PerfTestShowsDrawings;
         if (_layer!.gameObject.activeSelf != shown)
         {
             _layer.gameObject.SetActive(shown);

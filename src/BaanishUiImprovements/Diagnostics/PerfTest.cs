@@ -12,10 +12,11 @@ namespace BaanishUiImprovements.Diagnostics;
 /// The Run perf test button in F1. One press measures the whole game's frame rate in six phases: the minimap with the
 /// mod off, on, and on with <see cref="StressDrawings"/>, then the same on the full map. Each phase waits
 /// <see cref="SettleSeconds"/> before measuring, so the switch (graphics rebuilt, the map opened) stays out of the numbers.
-/// The mod-off phases override General.Enabled through <see cref="ModOn"/> instead of writing it, so a crash mid-test
-/// can't leave the mod switched off in the settings file. Afterwards the player's drawings come back with their undo
-/// history, along with the map and the two map tool settings the test turns on. Leaving the mission, losing the
-/// aircraft, opening or closing the map, or a second press stops it early and puts everything back the same way.
+/// The mod-off phases override General.Enabled through <see cref="ModOn"/>, and the drawings show through
+/// <see cref="ModSettings.PerfTestShowsDrawings"/>, instead of writing the settings, so a crash mid-test can't leave
+/// any of them saved. Afterwards the player's drawings come back with their undo history, along with the map.
+/// Leaving the mission, losing the aircraft, opening or closing the map, or a second press stops it early and puts
+/// everything back the same way.
 /// </summary>
 internal sealed class PerfTest
 {
@@ -56,8 +57,6 @@ internal sealed class PerfTest
     private ShapeStore.Saved? _savedShapes;
     private DynamicMap? _map;
     private bool _mapWasOpen;
-    private bool _showedTools;
-    private bool _showedOnMinimap;
     private int _phase = -1;
     private float _phaseStart;
     private bool _requested;
@@ -157,8 +156,8 @@ internal sealed class PerfTest
         }
     }
 
-    /// <summary>The plugin is shutting down: settings and drawings come back, but the map is left alone, since the game may be tearing it down.</summary>
-    public void Shutdown() => Restore(moveMap: false);
+    /// <summary>The plugin is shutting down: drawings, and with <paramref name="moveMap"/> the map, come back.</summary>
+    public void Shutdown(bool moveMap) => Restore(moveMap);
 
     private void DrawButton(ConfigEntryBase entry)
     {
@@ -182,10 +181,7 @@ internal sealed class PerfTest
 
         _map = map;
         _mapWasOpen = DynamicMap.mapMaximized;
-        _showedTools = _settings.ShowMapTools.Value;
-        _showedOnMinimap = _settings.MapToolShowOnMinimap.Value;
-        _settings.ShowMapTools.Value = true;
-        _settings.MapToolShowOnMinimap.Value = true;
+        _settings.PerfTestShowsDrawings = true;
         _savedShapes = _context.Shapes.Save();
         _stress = null;
         _results.Clear();
@@ -257,8 +253,7 @@ internal sealed class PerfTest
         _phase = -1;
         _performance.Phase = null;
         _render.Stop();
-        _settings.ShowMapTools.Value = _showedTools;
-        _settings.MapToolShowOnMinimap.Value = _showedOnMinimap;
+        _settings.PerfTestShowsDrawings = false;
         var map = SceneSingleton<DynamicMap>.i;
         if (map != null && ReferenceEquals(map, _map)) // a new mission starts with no drawings of its own
         {

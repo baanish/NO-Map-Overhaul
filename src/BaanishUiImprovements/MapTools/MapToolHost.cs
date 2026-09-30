@@ -68,7 +68,7 @@ internal sealed class MapToolHost
         FinishDeactivation();
         var map = SceneSingleton<DynamicMap>.i;
         TrackMission(map);
-        if (map == null || !_settings.ShowMapTools.Value)
+        if (map == null || !(_settings.ShowMapTools.Value || _settings.PerfTestShowsDrawings))
         {
             Reset();
             return;

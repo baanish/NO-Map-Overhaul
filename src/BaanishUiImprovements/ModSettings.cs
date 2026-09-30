@@ -118,6 +118,12 @@ internal sealed class ModSettings
 
     public ConfigEntry<bool> ShowMapTools { get; }
     public ConfigEntry<bool> MapToolShowOnMinimap { get; }
+
+    /// <summary>
+    /// True while the perf test runs: the map tools and their drawings show on both maps as if ShowTools and
+    /// ShowOnMinimap were on, without writing either, so a crash mid-test can't save them on.
+    /// </summary>
+    public bool PerfTestShowsDrawings { get; set; }
     public ConfigEntry<bool> MapToolCirclesIn3D { get; }
     public ConfigEntry<Color> MapToolColor { get; }
     public ConfigEntry<float> MapToolLineWidth { get; }
