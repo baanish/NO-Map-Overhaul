@@ -31,6 +31,7 @@ internal sealed class ModSettings
         ApproachLineWidth = config.Bind("Approach", "LineWidth", 1f, new ConfigDescription("Approach line width, in map icon units.", new AcceptableValueRange<float>(0.5f, 10f)));
 
         HudCallout = config.Bind("HUD", "ShowRunwayCallout", true, "Label the nearest runway end in the 3D view, for ATC calls.");
+        HudGearDownOnly = config.Bind("HUD", "OnlyWithGearDown", false, "Show the callout only while the landing gear is down.");
         HudAirbaseName = config.Bind("HUD", "IncludeAirbaseName", false, "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
         HudColor = config.Bind("HUD", "CalloutColor", new Color(0.2f, 1f, 0.2f, 1f), "Colour of the HUD runway callout.");
     }
@@ -58,6 +59,7 @@ internal sealed class ModSettings
     public ConfigEntry<float> ApproachLineWidth { get; }
 
     public ConfigEntry<bool> HudCallout { get; }
+    public ConfigEntry<bool> HudGearDownOnly { get; }
     public ConfigEntry<bool> HudAirbaseName { get; }
     public ConfigEntry<Color> HudColor { get; }
 }

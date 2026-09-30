@@ -30,6 +30,7 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Dashed approach line | Observed | Opal: dashes off the lined-up end at the approach width and opacity. |
 | Carriers excluded | Observed | No runway graphics on ships. |
 | HUD callout | Observed | `RWY xx` sits below the lined-up threshold, with and without IncludeAirbaseName. |
+| Callout with gear down only | Observed | With OnlyWithGearDown on, the label stays hidden with the gear up and shows once the gear lever is down. |
 | Approach follows the nearest end | Observed | The line and callout show off the nearest runway end, including on a base leg flown side-on to the runway. Earlier heading-based rules failed in game three times: a closed pattern switched ends, circling flip-flopped, and final-only hid the line during the turn onto final. |
 | Helicopter hides runways | Observed | A helicopter sees no strips, line, or callout; the Tarantula tiltrotor sees runways. |
 | Minimap rotation | Observed | Numbers stay upright while the heading-up minimap turns. |
