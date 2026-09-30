@@ -45,7 +45,7 @@ public static class StressDrawings
         for (var i = 0; i < Circles; i++)
         {
             var at = i % 2 == 0 && units.Count > 0 ? units[i / 2 % units.Count] : new MapPoint(OnRing(center, radius * 0.5f, i, Circles));
-            shapes.Add(new CircleShape(at, radius * (0.05f + 0.02f * i), Color(i)));
+            shapes.Add(new CircleShape(at, radius * (0.05f + 0.02f * i), at.IsAnchored ? 0f : elevation(at.Position), Color(i)));
         }
 
         for (var i = 0; i < Notes; i++)
