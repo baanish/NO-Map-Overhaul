@@ -1,3 +1,4 @@
+using BaanishUiImprovements.MapTools;
 using BepInEx.Configuration;
 using UnityEngine;
 
@@ -39,6 +40,16 @@ internal sealed class ModSettings
 
         ShowMissileArrows = config.Bind("Missile Arrows", "ShowArrows", true, "Point an arrow from the screen edge at each incoming missile outside the view. Only missiles the game's missile warning already knows about get one.");
         MissileArrowColor = config.Bind("Missile Arrows", "Color", new Color(1f, 0.25f, 0.2f, 1f), "Colour of the missile arrows.");
+
+        ShowMapTools = config.Bind("Map Tools", "ShowTools", true, "Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission.");
+        MapToolColor = config.Bind("Map Tools", "Color", (Color)new Color32(255, 221, 51, 255), "Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here.");
+        MapToolLineWidth = config.Bind("Map Tools", "LineWidth", 2f, new ConfigDescription("Width of drawn lines, in map icon units.", new AcceptableValueRange<float>(0.5f, 8f)));
+        MapToolTextSize = config.Bind("Map Tools", "TextSize", 10f, new ConfigDescription("Size of text the tools draw on the map.", new AcceptableValueRange<float>(4f, 64f)));
+        MapToolUnits = config.Bind("Map Tools", "DistanceUnits", UnitsSetting.Game, "Units for distances the tools show. Game follows the game's own setting: kilometres for metric, nautical miles for imperial.");
+        MapToolMaxShapes = config.Bind("Map Tools", "MaxShapes", 200, new ConfigDescription("Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000)));
+        MapToolMaxPenPoints = config.Bind("Map Tools", "MaxPenPoints", 5000, new ConfigDescription("Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500)));
+        MapToolUndoKey = config.Bind("Map Tools", "UndoKey", new KeyboardShortcut(KeyCode.Z), "Undo the last drawing change while the full map is open. Z isn't bound in the game's default controls.");
+        MapToolRedoKey = config.Bind("Map Tools", "RedoKey", new KeyboardShortcut(KeyCode.Y), "Redo while the full map is open. Y isn't bound in the game's default controls.");
     }
 
     public ConfigEntry<bool> Enabled { get; }
@@ -72,4 +83,14 @@ internal sealed class ModSettings
 
     public ConfigEntry<bool> ShowMissileArrows { get; }
     public ConfigEntry<Color> MissileArrowColor { get; }
+
+    public ConfigEntry<bool> ShowMapTools { get; }
+    public ConfigEntry<Color> MapToolColor { get; }
+    public ConfigEntry<float> MapToolLineWidth { get; }
+    public ConfigEntry<float> MapToolTextSize { get; }
+    public ConfigEntry<UnitsSetting> MapToolUnits { get; }
+    public ConfigEntry<int> MapToolMaxShapes { get; }
+    public ConfigEntry<int> MapToolMaxPenPoints { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolUndoKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolRedoKey { get; }
 }

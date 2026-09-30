@@ -8,13 +8,16 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-14 tests pass. They cover:
+30 tests pass. They cover:
 
 - nothing beyond range, and the closer end from either side, including over the runway;
 - a base leg flown side-on to the runway showing the approach end;
 - the nearest runway winning between parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
-- missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you.
+- missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you;
+- the map tools' drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, and the 100-step history;
+- bearing and distance text in each unit, and which unit the game's setting picks;
+- the eraser: hit testing lines, rings, and labels, the topmost shape winning, reach, and undoing an erase.
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, or game-version compatibility.
 

@@ -61,6 +61,16 @@ When a missile is incoming and outside your view, a red arrow on the screen edge
 
 Only missiles the game's missile warning already knows about get an arrow, so the arrows show nothing the game hasn't told you. The arrow is a copy of the game's own off-screen target arrow in a different colour.
 
+### Map tools
+
+On the full map, a **Tools** button in the top-left corner opens the tools menu: Waypoint, Pen, Text, Bearing/range, Circle, and Eraser. The menu opens on Waypoint. Click a tool to switch to it.
+
+While the menu is open, a left click on the map goes to the tool instead of selecting a unit, and unit tooltips wait until it closes. Dragging still pans the map, except with a tool that draws by dragging. Right clicks still belong to the game, so move orders for selected units and NOAutopilot's waypoints keep working. Click **Tools** again, or close the map, to give left clicks back to the game.
+
+With the Eraser, click on or near a drawing to delete it. The drawing under the cursor turns red first, so you can see what goes. Clear removes everything as one step, so Undo brings it all back. The Z and Y keys also undo and redo while the full map is open, but not while you type map text or chat. The colour swatches set the colour of new lines, arrows, and text.
+
+Drawings show on the minimap too. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
+
 ## How the runway end is chosen
 
 Within range, the mod picks the runway nearest to you, measured to the runway strip itself, and then whichever of its two ends is closer. Heading plays no part. The map line and the HUD label always show the same end.
@@ -98,6 +108,15 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | HUD | CalloutColor | `33FF33FF` | Label colour. |
 | Missile Arrows | ShowArrows | `true` | Point an arrow at each incoming missile outside the view. |
 | Missile Arrows | Color | `FF4033FF` | Arrow colour. |
+| Map Tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
+| Map Tools | Color | `FFDD33FF` | Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here. |
+| Map Tools | LineWidth | `2` | Width of drawn lines. |
+| Map Tools | TextSize | `10` | Size of text the tools draw on the map. |
+| Map Tools | DistanceUnits | `Game` | `Game` follows the game's unit setting. `NauticalMiles`, `Kilometres`, or `StatuteMiles` always use that unit. |
+| Map Tools | MaxShapes | `200` | Most drawings kept at once. |
+| Map Tools | MaxPenPoints | `5000` | Most freehand points kept across all pen strokes, so the map stays fast. At most `7500`. |
+| Map Tools | UndoKey | `Z` | Undo while the full map is open. |
+| Map Tools | RedoKey | `Y` | Redo while the full map is open. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 
@@ -133,3 +152,4 @@ So Dustbowl Highway Strip becomes `DSTBWL HWY STRP`.
 
 - Only runways at your own faction's airbases are shown.
 - The HUD label hides when the runway threshold is behind the camera. It doesn't pin to the screen edge.
+- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter.

@@ -12,22 +12,32 @@ internal static class EdgeProfile
     /// <summary>Edges fade over one map icon unit, about one screen pixel.</summary>
     public const float AntiAliasWidth = 1f;
 
+    /// <summary>The most rings a profile has.</summary>
+    public const int MaxRings = 4;
+
     /// <summary>Fill, then an optional rim outside the nominal edge, fading to transparent.</summary>
     public static (float Offset, Color32 Color)[] Build(Color32 fill, float rimWidth, Color32 rim, float feather)
     {
+        var rings = new (float Offset, Color32 Color)[MaxRings];
+        System.Array.Resize(ref rings, Write(rings, fill, rimWidth, rim, feather));
+        return rings;
+    }
+
+    /// <summary><see cref="Build"/> into a buffer of <see cref="MaxRings"/>, for meshes rebuilt often. Returns the ring count.</summary>
+    public static int Write((float Offset, Color32 Color)[] rings, Color32 fill, float rimWidth, Color32 rim, float feather)
+    {
         var half = feather * 0.5f;
+        rings[0] = (-half, fill);
         if (rimWidth <= 0f || rim.a == 0)
         {
-            return new[] { (-half, fill), (half, Transparent(fill)) };
+            rings[1] = (half, Transparent(fill));
+            return 2;
         }
 
-        return new[]
-        {
-            (-half, fill),
-            (half, rim),
-            (Mathf.Max(half, rimWidth - half), rim),
-            (rimWidth + half, Transparent(rim)),
-        };
+        rings[1] = (half, rim);
+        rings[2] = (Mathf.Max(half, rimWidth - half), rim);
+        rings[3] = (rimWidth + half, Transparent(rim));
+        return 4;
     }
 
     private static Color32 Transparent(Color32 color) => new(color.r, color.g, color.b, 0);

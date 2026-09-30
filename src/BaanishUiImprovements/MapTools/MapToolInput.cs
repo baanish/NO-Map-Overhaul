@@ -1,0 +1,232 @@
+using Rewired;
+using UnityEngine;
+using FlatVector = System.Numerics.Vector2;
+
+namespace BaanishUiImprovements.MapTools;
+
+/// <summary>
+/// Hands the left mouse button and, while a tool types, the keyboard to the active tool. Nothing is patched.
+/// <para>
+/// Clicks: the game has one left-click path on the map by default, the event system's click on a unit icon
+/// (<c>MapIcon.OnPointerClick</c>), and <see cref="MapPointerCatcher"/> covers the icons to take it. The game's other
+/// map selection, <c>DynamicMap.SelectFromMap</c>, runs on the Rewired "Select" action, which is bound to Enter, not
+/// the mouse. Right clicks stay with the game: move orders, and NOAutopilot's waypoints.
+/// </para>
+/// <para>
+/// Drags pan the map (<c>DynamicMap.MapControls</c> reads the mouse axes while the button is held), which a click-only
+/// tool keeps. For a tool that captures drags, the player's Rewired mouse maps are off until the button comes up.
+/// </para>
+/// <para>
+/// Typing: the keyboard maps and the Escape menu are off while the tool captures the keyboard, the way the game's chat
+/// box does it, and the chat's cursor flag is raised, which is what other mods (NOAutopilot) check before reading their
+/// hotkeys. All of it comes back once Enter and Escape are up, since Rewired would read a key still held as a fresh press.
+/// </para>
+/// </summary>
+internal sealed class MapToolInput
+{
+    /// <summary>A press that moves further than this, in screen pixels, pans the map rather than clicking.</summary>
+    private const float ClickSlop = 6f;
+
+    /// <summary>How near a unit's map icon the cursor must be to anchor to it, in icon units: a little past a typical icon's edge.</summary>
+    private const float UnitReach = 12f;
+
+    private readonly ControllerMapSuspension _mouse = new(ControllerType.Mouse);
+    private readonly ControllerMapSuspension _keyboard = new(ControllerType.Keyboard);
+    private bool _pressed;
+    private bool _panned;
+    private bool _dragging;
+    private Vector2 _pressAt;
+    private Vector2 _lastAt;
+    private bool _pauseKeybind;
+    private bool _chatFlag;
+
+    /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
+    public bool Typing => _keyboard.IsSuspended;
+
+    /// <summary>
+    /// Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any, and returns whether it got
+    /// one, so its overlay can redraw at once.
+    /// </summary>
+    public bool Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool)
+    {
+        if (tool == null || catcher == null)
+        {
+            EndPress();
+            ReleaseKeyboard(immediately: false);
+            return false;
+        }
+
+        var typed = UpdateKeyboard(tool);
+        return UpdatePointer(map, catcher, tool) || typed;
+    }
+
+    /// <summary>The tool is being switched off: forget its press. Its half-drawn work is its own to drop.</summary>
+    public void Cancel()
+    {
+        EndPress();
+        ReleaseKeyboard(immediately: false);
+    }
+
+    /// <summary>Teardown: gives the controls straight back, since no later frame may come to do it.</summary>
+    public void Reset()
+    {
+        EndPress();
+        ReleaseKeyboard(immediately: true);
+    }
+
+    private bool UpdatePointer(DynamicMap map, MapPointerCatcher catcher, MapTool tool)
+    {
+        Vector2 mouse = Input.mousePosition;
+        if (catcher.TakePress())
+        {
+            EndPress();
+            _pressed = true;
+            _panned = false;
+            _pressAt = _lastAt = mouse;
+            _dragging = tool.CapturesDrag;
+            if (_dragging)
+            {
+                _mouse.Suspend();
+                tool.OnPointerDown(Pointer(map, mouse));
+                return true;
+            }
+
+            return false;
+        }
+
+        if (_pressed)
+        {
+            _panned |= (mouse - _pressAt).sqrMagnitude > ClickSlop * ClickSlop;
+            if (Input.GetMouseButton(0))
+            {
+                if (!_dragging || mouse == _lastAt)
+                {
+                    return false;
+                }
+
+                _lastAt = mouse;
+                tool.OnPointerDrag(Pointer(map, mouse));
+                return true;
+            }
+
+            var dragging = _dragging;
+            EndPress();
+            if (dragging)
+            {
+                tool.OnPointerUp(Pointer(map, mouse));
+                return true;
+            }
+
+            if (_panned)
+            {
+                return false;
+            }
+
+            tool.OnClick(Pointer(map, _pressAt));
+            return true;
+        }
+
+        if (!catcher.Hovered || mouse == _lastAt)
+        {
+            return false;
+        }
+
+        _lastAt = mouse;
+        tool.OnPointerMove(Pointer(map, mouse));
+        return true;
+    }
+
+    private bool UpdateKeyboard(MapTool tool)
+    {
+        if (!tool.CapturesKeyboard)
+        {
+            ReleaseKeyboard(immediately: false);
+            return false;
+        }
+
+        if (!_keyboard.IsSuspended)
+        {
+            _keyboard.Suspend();
+            _pauseKeybind = GameplayUI.AllowPauseKeybind;
+            GameplayUI.AllowPauseKeybind = false;
+            _chatFlag = CursorManager.GetFlag(CursorFlags.Chat);
+            CursorManager.SetFlag(CursorFlags.Chat, true);
+        }
+
+        var typed = false;
+        foreach (var character in Input.inputString)
+        {
+            tool.OnTextInput(character == '\r' ? '\n' : character);
+            typed = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            tool.OnTextInput('\u001b');
+            typed = true;
+        }
+
+        return typed;
+    }
+
+    private void ReleaseKeyboard(bool immediately)
+    {
+        if (!_keyboard.IsSuspended ||
+            (!immediately && (Input.GetKey(KeyCode.Return) || Input.GetKey(KeyCode.KeypadEnter) || Input.GetKey(KeyCode.Escape))))
+        {
+            return;
+        }
+
+        _keyboard.Resume();
+        GameplayUI.AllowPauseKeybind = _pauseKeybind;
+        CursorManager.SetFlag(CursorFlags.Chat, _chatFlag);
+    }
+
+    private void EndPress()
+    {
+        _pressed = false;
+        _dragging = false;
+        _mouse.Resume();
+    }
+
+    /// <summary>
+    /// Screen to map through the icon layer, the same space the game places unit icons in and this mod draws in: map
+    /// units are meters times <c>mapDisplayFactor</c>. The unit is the nearest unit icon within reach.
+    /// </summary>
+    private static MapPointer Pointer(DynamicMap map, Vector2 screen)
+    {
+        var layer = map.iconLayer.transform;
+        return new MapPointer(ToMeters(map, layer, screen), NearestUnit(map, layer, screen));
+    }
+
+    private static MapPoint? NearestUnit(DynamicMap map, Transform layer, Vector2 screen)
+    {
+        var pixelsPerIconUnit = layer.lossyScale.x / map.mapImage.transform.localScale.x;
+        var nearest = UnitReach * pixelsPerIconUnit * (UnitReach * pixelsPerIconUnit);
+        UnitMapIcon? found = null;
+        var icons = map.mapIcons;
+        for (var i = 0; i < icons.Count; i++)
+        {
+            if (icons[i] is not UnitMapIcon icon || icon == null || icon.unit == null || !icon.isActiveAndEnabled ||
+                icon.iconImage == null || !icon.iconImage.enabled)
+            {
+                continue;
+            }
+
+            var distance = ((Vector2)icon.iconImage.transform.position - screen).sqrMagnitude;
+            if (distance < nearest)
+            {
+                nearest = distance;
+                found = icon;
+            }
+        }
+
+        return found == null ? null : new MapPoint(ToMeters(map, layer, found.iconImage.transform.position), found.unit.persistentID.Id);
+    }
+
+    private static FlatVector ToMeters(DynamicMap map, Transform layer, Vector2 screen)
+    {
+        var local = layer.InverseTransformPoint(new Vector3(screen.x, screen.y, 0f));
+        return new FlatVector(local.x, local.y) / map.mapDisplayFactor;
+    }
+}

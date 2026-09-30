@@ -16,7 +16,7 @@ internal static class Program
 
     private static int Main()
     {
-        var tests = new (string Name, Action Test)[]
+        var tests = new List<(string Name, Action Test)>
         {
             ("out of range selects nothing", OutOfRangeSelectsNothing),
             ("the closer end shows", CloserEndShows),
@@ -33,6 +33,7 @@ internal static class Program
             ("a missile behind and above points up", MissileBehindAbovePointsUp),
             ("a missile dead astern points down", MissileDeadAsternPointsDown),
         };
+        tests.AddRange(MapToolTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)
@@ -49,7 +50,7 @@ internal static class Program
             }
         }
 
-        Console.WriteLine(failed == 0 ? $"All {tests.Length} tests passed." : $"{failed} of {tests.Length} tests failed.");
+        Console.WriteLine(failed == 0 ? $"All {tests.Count} tests passed." : $"{failed} of {tests.Count} tests failed.");
         return failed == 0 ? 0 : 1;
     }
 
@@ -134,13 +135,13 @@ internal static class Program
     private static void ExpectEnd(ApproachChoice? choice, bool reverse) =>
         Expect(choice is { } c && c.Reverse == reverse, $"expected {(reverse ? "27" : "09")}, got {Describe(choice)}");
 
-    private static void ExpectText(string actual, string expected) =>
+    internal static void ExpectText(string actual, string expected) =>
         Expect(actual == expected, $"expected '{expected}', got '{actual}'");
 
     private static string Describe(ApproachChoice? choice) =>
         choice is { } c ? $"runway {c.RunwayIndex} reverse={c.Reverse}" : "none";
 
-    private static void Expect(bool condition, string message)
+    internal static void Expect(bool condition, string message)
     {
         if (!condition)
         {

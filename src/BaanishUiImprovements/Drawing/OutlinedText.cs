@@ -57,6 +57,24 @@ internal sealed class OutlinedText
         Style(_face, text, size, color, hudStyle);
     }
 
+    /// <summary>Which point of the text sits on <see cref="Rect"/>'s position, for a label that must clear what it names. Cheap when unchanged.</summary>
+    public void Align(Vector2 pivot, TextAlignmentOptions alignment)
+    {
+        if (_face.alignment == alignment && _face.rectTransform.pivot == pivot)
+        {
+            return;
+        }
+
+        foreach (var copy in _rims)
+        {
+            copy.rectTransform.pivot = pivot;
+            copy.alignment = alignment;
+        }
+
+        _face.rectTransform.pivot = pivot;
+        _face.alignment = alignment;
+    }
+
     public void Destroy() => Object.Destroy(Rect.gameObject);
 
     private static void Style(TextMeshProUGUI copy, string text, float size, Color color, TextMeshProUGUI? hudStyle)

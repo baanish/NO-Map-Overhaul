@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BaanishUiImprovements.Airbases;
+using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
 using BepInEx;
@@ -33,6 +34,7 @@ public sealed class Plugin : BaseUnityPlugin
     private AirbaseBoundaryOverlay _boundaryOverlay = null!;
     private AirbaseLabelOverlay _labelOverlay = null!;
     private IncomingMissileArrows _missileArrows = null!;
+    private MapToolHost _mapTools = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
@@ -47,6 +49,7 @@ public sealed class Plugin : BaseUnityPlugin
         _boundaryOverlay = new AirbaseBoundaryOverlay(_settings);
         _labelOverlay = new AirbaseLabelOverlay(_settings);
         _missileArrows = new IncomingMissileArrows(_settings);
+        _mapTools = new MapToolHost(_settings);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -61,7 +64,10 @@ public sealed class Plugin : BaseUnityPlugin
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
     }
 
-    /// <summary>Per frame: the HUD label and missile arrows follow the camera, and the numbers counter-rotate the heading-up minimap.</summary>
+    /// <summary>
+    /// Per frame: the HUD label and missile arrows follow the camera, the numbers counter-rotate the heading-up minimap,
+    /// and the map tools take input and redraw what changed.
+    /// </summary>
     private void LateUpdate() => Guard(() =>
     {
         if (!_settings.Enabled.Value)
@@ -79,6 +85,7 @@ public sealed class Plugin : BaseUnityPlugin
         _hudCallout.Render(_approach);
         _missileArrows.Render();
         _mapOverlay.KeepLabelsUpright();
+        _mapTools.Update(_hudCallout.HudStyle);
     });
 
     /// <summary>Raised from inside the game's DynamicMap.Update, so it must never throw back into the game.</summary>
@@ -118,6 +125,7 @@ public sealed class Plugin : BaseUnityPlugin
         _boundaryOverlay.Reset();
         _labelOverlay.Reset();
         _missileArrows.Reset();
+        _mapTools.Reset();
         _approach = null;
     }
 
