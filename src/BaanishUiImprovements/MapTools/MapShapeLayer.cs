@@ -36,6 +36,8 @@ internal sealed class MapShapeLayer : IMapCanvas
     private float _inverseScale;
     private (float Line, float Rim, Color RimColor, float Text) _style;
     private ShapeGraphics? _target;
+    private Quaternion _uprightFor;
+    private bool _redrawnSinceUpright;
 
     public MapShapeLayer(ModSettings settings, IMapView view, int toolCount)
     {
@@ -117,13 +119,25 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
     }
 
-    /// <summary>Per frame: the minimap turns every frame, so text and markers reset to upright between redraws.</summary>
+    /// <summary>
+    /// Per frame: the minimap turns every frame, so text and markers reset to upright between redraws. Nothing to do
+    /// while the map holds still, as the full map does, and no redraw has placed new ones.
+    /// </summary>
     public void KeepUpright()
     {
         if (_layer == null)
         {
             return; // destroyed with the old scene's map; the next render rebuilds everything
         }
+
+        var rotation = _layer.rotation;
+        if (!_redrawnSinceUpright && rotation.Equals(_uprightFor))
+        {
+            return; // exact comparison: Quaternion's == lets a slow turn creep by unnoticed
+        }
+
+        _uprightFor = rotation;
+        _redrawnSinceUpright = false;
 
         foreach (var graphics in _graphics.Values)
         {
@@ -311,6 +325,7 @@ internal sealed class MapShapeLayer : IMapCanvas
     {
         graphics.Begin();
         _target = graphics;
+        _redrawnSinceUpright = true;
     }
 
     private void End()
