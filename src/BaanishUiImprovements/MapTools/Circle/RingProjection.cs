@@ -51,6 +51,9 @@ public sealed class RingProjection
     /// <summary>Chords for a ring a few pixels across, far away.</summary>
     public const int MinSegments = 16;
 
+    /// <summary>Points <see cref="TrySample"/> takes around a ring: the corners of its smallest mesh.</summary>
+    public const int SampleCount = MinSegments;
+
     /// <summary>How far past the screen edge a cut line runs, so its faded end stays off screen.</summary>
     public const float GuardPixels = 32f;
 
@@ -175,6 +178,54 @@ public sealed class RingProjection
             _runs[last] = (_runs[last].Start, _points.Count - _runs[last].Start);
             open = exit >= 1f;
         }
+    }
+
+    /// <summary>
+    /// Screen points of <see cref="SampleCount"/> points evenly spaced around the ring, into <paramref name="points"/>,
+    /// for telling how far the ring has moved on screen without projecting all of it. False when any of them is out of
+    /// the guarded view.
+    /// </summary>
+    public static bool TrySample(Vector3 center, float radius, in ScreenCamera camera, Vector2[] points)
+    {
+        ToCamera(center, radius, camera, out var middle, out var east, out var north);
+        const int stride = Segments / SampleCount;
+        for (var i = 0; i < SampleCount; i++)
+        {
+            var sample = middle + east * Cosines[i * stride] + north * Sines[i * stride];
+            if (!Inside(sample, camera))
+            {
+                return false;
+            }
+
+            points[i] = ToScreen(sample, camera);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The shift that best carries a ring's samples from where they were, <paramref name="then"/>, to where they are,
+    /// <paramref name="now"/>: their mean movement. True when it brings every sample within <paramref name="tolerance"/>
+    /// pixels of its place, so moving the old mesh by it draws the ring as rebuilding it would, to that tolerance.
+    /// </summary>
+    public static bool TryShift(Vector2[] then, Vector2[] now, float tolerance, out Vector2 shift)
+    {
+        shift = Vector2.Zero;
+        for (var i = 0; i < SampleCount; i++)
+        {
+            shift += now[i] - then[i];
+        }
+
+        shift /= SampleCount;
+        for (var i = 0; i < SampleCount; i++)
+        {
+            if (Vector2.DistanceSquared(then[i] + shift, now[i]) > tolerance * tolerance)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

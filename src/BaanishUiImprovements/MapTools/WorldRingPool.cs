@@ -11,17 +11,27 @@ namespace BaanishUiImprovements.MapTools;
 /// <summary>
 /// Rings in the 3D view, which the Circle tool requests each frame through <see cref="WorldLabelPool"/>. Each ring is a
 /// flat <see cref="StrokeGraphic"/> on the HUD canvas, beside the 3D labels, so it hides with the HUD and while the map
-/// is open. <see cref="RingProjection"/> projects and clips it; a ring is rebuilt only when the camera, the circle, or
-/// the line width changed since its last frame. Nothing is projected while the HUD's canvas is switched off.
+/// is open. <see cref="RingProjection"/> projects and clips it. A ring whose mesh was the whole ring in view is moved
+/// rather than rebuilt while the camera only slides it across the screen (see <see cref="Add"/>). Nothing is projected
+/// while the HUD's canvas is switched off.
 /// </summary>
 internal sealed class WorldRingPool
 {
-    /// <summary>Rings drawn at once; requests past it are dropped. Each is a mesh of up to 128 chords, rebuilt as the camera moves.</summary>
+    /// <summary>Rings drawn at once; requests past it are dropped. Each is a mesh of up to 128 chords.</summary>
     private const int MaxRings = 16;
+
+    /// <summary>
+    /// How far, in pixels, any of a ring's <see cref="RingProjection.SampleCount"/> samples may land from where moving
+    /// the old mesh puts it before the ring is rebuilt. A ring's shape on screen changes smoothly around it, so between
+    /// the samples the moved mesh strays barely further from the rebuilt ring. That's about as far as the chords may
+    /// stray from the circle, and inside the line's one-pixel anti-aliased edge, so a moved ring looks like a rebuilt one.
+    /// </summary>
+    private const float MaxShiftError = 0.4f;
 
     private readonly ModSettings _settings;
     private readonly RingProjection _projection = new();
     private readonly List<Ring> _rings = new();
+    private readonly NumericsVector2[] _samples = new NumericsVector2[RingProjection.SampleCount];
     private RectTransform? _root;
     private Transform? _parent;
     private ScreenCamera _view;
@@ -75,6 +85,13 @@ internal sealed class WorldRingPool
             halfScreen.Y / Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad), camera.nearClipPlane);
     }
 
+    /// <summary>
+    /// Draws a ring this frame. One whose mesh is the whole ring in view is only moved while it keeps its shape on
+    /// screen: its samples, projected afresh, each land within <see cref="MaxShiftError"/> of where moving the mesh by
+    /// their mean shift puts them. A turn of the camera slides a ring across the screen with almost no change of shape,
+    /// so a ring far off is rebuilt only now and then in flight, and one the camera nears is rebuilt as it changes
+    /// shape. A ring cut by the screen's edge or the near plane is rebuilt whenever the camera moves.
+    /// </summary>
     /// <param name="center">Global meters, as <see cref="IWorldLabels.Ring"/> takes it.</param>
     public void Add(NumericsVector3 center, float radius, ShapeColor color)
     {
@@ -85,18 +102,38 @@ internal sealed class WorldRingPool
 
         var ring = Next();
         var local = new GlobalPosition(center.X, center.Y, center.Z).ToLocalPosition();
-        var key = new RingKey(new NumericsVector3(local.x, local.y, local.z), radius, color, _settings.MapToolLineWidth.Value, _scale, _view);
+        var key = new RingKey(new NumericsVector3(local.x, local.y, local.z), radius, color, _settings.MapToolLineWidth.Value, _scale);
         if (!ring.Graphic.enabled)
         {
             ring.Graphic.enabled = true;
+            // Switched back on, Unity rebuilds the mesh around where the graphic sits, which undoes any move.
+            ring.Key = null;
         }
 
         if (ring.Key is { } last && key.Equals(last))
         {
-            return;
+            if (ring.View.Equals(_view))
+            {
+                return;
+            }
+
+            ring.View = _view;
+            if (ring.Movable && RingProjection.TrySample(key.Center, radius, _view, _samples) &&
+                RingProjection.TryShift(ring.Samples, _samples, MaxShiftError, out var shift))
+            {
+                var rect = ring.Graphic.rectTransform;
+                var position = ring.BuiltAt + new Vector2(shift.X, shift.Y) / _scale;
+                if ((Vector2)rect.localPosition != position)
+                {
+                    rect.localPosition = position;
+                }
+
+                return;
+            }
         }
 
         ring.Key = key;
+        ring.View = _view;
         _projection.Project(key.Center, radius, _view);
         var graphic = ring.Graphic;
         var fill = color.ToColor32();
@@ -115,6 +152,8 @@ internal sealed class WorldRingPool
         }
 
         graphic.Apply();
+        ring.BuiltAt = graphic.rectTransform.localPosition;
+        ring.Movable = _projection.Closed && RingProjection.TrySample(key.Center, radius, _view, ring.Samples);
     }
 
     /// <summary>Hides the rings no circle asked for this frame.</summary>
@@ -176,19 +215,30 @@ internal sealed class WorldRingPool
 
         /// <summary>What the mesh was last built from, or null before the first build.</summary>
         public RingKey? Key { get; set; }
+
+        /// <summary>The camera of the last frame the ring was built or moved for.</summary>
+        public ScreenCamera View { get; set; }
+
+        /// <summary>Where the mesh sat when it was built, before any move.</summary>
+        public Vector2 BuiltAt { get; set; }
+
+        /// <summary>The mesh is the whole ring in view, so it may be moved rather than rebuilt.</summary>
+        public bool Movable { get; set; }
+
+        /// <summary>Where the ring's samples were on screen when it was built, while <see cref="Movable"/>.</summary>
+        public NumericsVector2[] Samples { get; } = new NumericsVector2[RingProjection.SampleCount];
     }
 
-    /// <summary>Everything a ring's mesh depends on, with the centre in Unity's scene space as the camera is.</summary>
+    /// <summary>Everything a ring's mesh depends on but the camera, with the centre in Unity's scene space as the camera is.</summary>
     private readonly struct RingKey : System.IEquatable<RingKey>
     {
-        public RingKey(NumericsVector3 center, float radius, ShapeColor color, float lineWidth, float scale, ScreenCamera view)
+        public RingKey(NumericsVector3 center, float radius, ShapeColor color, float lineWidth, float scale)
         {
             Center = center;
             Radius = radius;
             Color = color;
             LineWidth = lineWidth;
             Scale = scale;
-            View = view;
         }
 
         public NumericsVector3 Center { get; }
@@ -196,14 +246,13 @@ internal sealed class WorldRingPool
         public ShapeColor Color { get; }
         public float LineWidth { get; }
         public float Scale { get; }
-        public ScreenCamera View { get; }
 
         public bool Equals(RingKey other) =>
             Center == other.Center && Radius == other.Radius && Color == other.Color && LineWidth == other.LineWidth &&
-            Scale == other.Scale && View.Equals(other.View);
+            Scale == other.Scale;
 
         public override bool Equals(object? obj) => obj is RingKey other && Equals(other);
 
-        public override int GetHashCode() => System.HashCode.Combine(Center, Radius, Color, LineWidth, Scale, View);
+        public override int GetHashCode() => System.HashCode.Combine(Center, Radius, Color, LineWidth, Scale);
     }
 }

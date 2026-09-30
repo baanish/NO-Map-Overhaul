@@ -21,6 +21,9 @@ internal static class RingProjectionTests
         ("a chord past the screen side stops at the guard band", ChordStopsAtGuardBand),
         ("a ring gets fewer chords the smaller it shows", ChordsFollowScreenSize),
         ("a ring centred off screen that reaches into view still draws", RingReachingIntoViewDraws),
+        ("a small turn slides a ring's samples without reshaping it", TurnSlidesRing),
+        ("nearing a ring reshapes it past the shift tolerance", NearingReshapesRing),
+        ("a ring partly out of view gives no samples", RingPartlyOutOfViewGivesNoSamples),
     };
 
     private const float Focal = 540f;
@@ -138,6 +141,37 @@ internal static class RingProjectionTests
             ExpectWithinGuard(point);
         }
     }
+
+    /// <summary>Turning 0.2 degrees right moves a ring 1 km ahead left by the focal length times the turn's tangent.</summary>
+    private static void TurnSlidesRing()
+    {
+        var center = new Vector3(0, 0, 1000);
+        var then = new Vector2[RingProjection.SampleCount];
+        var now = new Vector2[RingProjection.SampleCount];
+        Expect(RingProjection.TrySample(center, 100f, Camera(new Vector3(0, 100, 0), Quaternion.Identity), then), "expected the ring in view");
+        var turn = 0.2f * MathF.PI / 180f;
+        var turned = Camera(new Vector3(0, 100, 0), Quaternion.CreateFromAxisAngle(Vector3.UnitY, turn));
+        Expect(RingProjection.TrySample(center, 100f, turned, now), "expected the ring in view after the turn");
+        var slid = RingProjection.TryShift(then, now, 0.4f, out var shift);
+        var expected = -Focal * MathF.Tan(turn);
+        Expect(slid && MathF.Abs(shift.X - expected) < 0.05f && MathF.Abs(shift.Y) < 0.05f,
+            $"expected a slide of {expected} px, got {shift} (within tolerance: {slid})");
+    }
+
+    /// <summary>50 m nearer a 100 m ring 1 km ahead, it spans 5% more of the screen: nearly 3 pixels wider.</summary>
+    private static void NearingReshapesRing()
+    {
+        var center = new Vector3(0, 0, 1000);
+        var then = new Vector2[RingProjection.SampleCount];
+        var now = new Vector2[RingProjection.SampleCount];
+        RingProjection.TrySample(center, 100f, Camera(new Vector3(0, 100, 0), Quaternion.Identity), then);
+        RingProjection.TrySample(center, 100f, Camera(new Vector3(0, 100, 50), Quaternion.Identity), now);
+        Expect(!RingProjection.TryShift(then, now, 0.4f, out _), "expected the nearer ring to need rebuilding");
+    }
+
+    private static void RingPartlyOutOfViewGivesNoSamples() =>
+        Expect(!RingProjection.TrySample(new Vector3(2600, 0, 1000), 500f, Camera(new Vector3(0, 100, 0), Quaternion.Identity), new Vector2[RingProjection.SampleCount]),
+            "expected no samples for a ring cut by the screen's edge");
 
     private static ScreenCamera Camera(Vector3 position, Quaternion rotation) => new(position, rotation, HalfScreen, Focal, 1f);
 
