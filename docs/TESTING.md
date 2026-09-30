@@ -8,7 +8,7 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 ```
 
-119 tests pass. They cover:
+121 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
@@ -19,7 +19,7 @@ dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 - the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, the numbered drawing, and the 3D label text;
 - the pen: point spacing, simplifying, the point budget, and undo and erase; text notes: typing, Escape, Backspace, the length cap, and placing;
 - bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, and the 3D labels and rings;
-- label placement: each kind's candidate slots, priority order, keeping a slot, leaders, and a label drawn twice;
+- label placement: each kind's candidate slots, priority order, keeping a slot, leaders, a label drawn twice, and the minimap's upright and relayout steps;
 - the perf test's frame statistics, report, slice order, per-part timings, and heavy drawings;
 - 3D ring projection: near-plane and screen-edge clipping, heading, and the chord count;
 - tracked positions: live, stale, first seen stale, and never known;

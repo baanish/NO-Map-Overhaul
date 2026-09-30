@@ -17,7 +17,7 @@ namespace BaanishUiImprovements.MapTools;
 /// anything live. Panning moves the layer with the map and rebuilds nothing. Unity re-batches a whole canvas when any
 /// graphic in it changes or moves, so the layer is two: the lines in the layer's own canvas, so rebuilding a shape doesn't
 /// re-batch the game's icons and icons moving every frame don't re-batch a long pen stroke, and the markers and labels in
-/// a canvas of their own, since the minimap turns them upright every frame.
+/// a canvas of their own, since the minimap turns them upright as it turns.
 /// Labels are placed after the shapes draw, by <see cref="LabelLayout"/>: on the full map clear of the game's icons and
 /// labels and of each other, whenever a drawing redraws and once the map comes to rest after a pan or zoom, and while it
 /// moves each label keeps its slot. On the minimap they keep clear of each other only, and move with it as it turns.
@@ -35,12 +35,6 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// BaanishAirbaseBoundaryLayer). They take the icon layer's first slots, so together they lead its children.
     /// </summary>
     private const string ModLayerPrefix = "Baanish";
-
-    /// <summary>
-    /// How far the minimap turns before its labels step clear of each other again. In between each keeps its slot, so a
-    /// dense set of labels isn't laid out every frame as the aircraft turns.
-    /// </summary>
-    private const float MinimapRespaceDegrees = 5f;
 
     /// <summary>The minimap's obstacles: its labels keep clear of each other, but the game's labels there aren't collected.</summary>
     private static readonly LabelBox[] NoObstacles = System.Array.Empty<LabelBox>();
@@ -74,9 +68,10 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     private float _inverseScale;
     private (float Line, Color RimColor, float Text, DistanceUnit Units) _style;
     private ShapeGraphics? _target;
-    private Quaternion _uprightFor;
+    /// <summary>The map's rotation when its labels and markers last stood upright, which the labels are placed for.</summary>
+    private Quaternion _uprightFor = Quaternion.identity;
     private Quaternion _placedForRotation;
-    private Quaternion _spacedForRotation;
+    private float _spacedHeading;
     private bool _labelsDrawn;
     private Vector3 _viewPosition;
     private float _viewScale;
@@ -177,17 +172,21 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
 
         ModTimings.Stop(ModSection.ShapeDrawing, drawing);
+        var upright = ModTimings.Start();
+        KeepUpright();
+        ModTimings.Stop(ModSection.UprightTurning, upright);
         var placing = ModTimings.Start();
         PlaceLabels(map, screenAreas, screenLayout);
         ModTimings.Stop(ModSection.LabelPlacement, placing);
     }
 
     /// <summary>
-    /// Places every label when one was drawn, the map came to rest or turned, the full map opened or closed, or the
-    /// menu changed shape. On the full map at rest, labels step clear of the game's icons and labels and of each other;
-    /// while it moves they keep their slots. On the minimap they step clear of each other only, when one was drawn and
-    /// every <see cref="MinimapRespaceDegrees"/> of turn. The layout works in the frame the labels stand upright in, which
-    /// the heading-up minimap turns against the map every frame, so a turn moves every label even when it keeps its slot.
+    /// Places every label when one was drawn, the map came to rest, the labels were turned upright again, the full map
+    /// opened or closed, or the menu changed shape. On the full map at rest, labels step clear of the game's icons and
+    /// labels and of each other; while it moves they keep their slots. On the minimap they step clear of each other
+    /// only, when one was drawn and every <see cref="MinimapHeading.RespaceStepDegrees"/> of turn. The layout works in
+    /// the frame the labels stand upright in, which the heading-up minimap turns against the map, so each upright step
+    /// moves every label even when it keeps its slot.
     /// </summary>
     private void PlaceLabels(DynamicMap map, IReadOnlyList<RectTransform> screenAreas, int screenLayout)
     {
@@ -199,8 +198,8 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _viewScale = scale;
         _viewMoving = moving;
         var fullMap = DynamicMap.mapMaximized;
-        var toUpright = _labelRoot!.rotation;
-        var turned = !toUpright.Equals(_placedForRotation); // exact, as in KeepUpright
+        var toUpright = _uprightFor;
+        var turned = !toUpright.Equals(_placedForRotation); // exact: KeepUpright steps it
         if (!_labelsDrawn && !cameToRest && !turned && fullMap == _placedOnFullMap && screenLayout == _placedForScreenLayout)
         {
             return;
@@ -242,10 +241,11 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             _obstacleFinder.Collect(map, _layer, _inverseScale, screenAreas, _obstacles);
             obstacles = _obstacles;
         }
-        else if (!fullMap && (drawn || switchedMap || Quaternion.Angle(toUpright, _spacedForRotation) > MinimapRespaceDegrees))
+        else if (!fullMap && (drawn || switchedMap ||
+                              MinimapHeading.Turned(_spacedHeading, toUpright.eulerAngles.z, MinimapHeading.RespaceStepDegrees)))
         {
             obstacles = NoObstacles;
-            _spacedForRotation = toUpright;
+            _spacedHeading = toUpright.eulerAngles.z;
         }
 
         _labelLayout.Place(_placements, obstacles);
@@ -262,21 +262,19 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     }
 
     /// <summary>
-    /// Per frame: the minimap turns every frame, so text and markers reset to upright; the labels were placed for the
-    /// turn already. Nothing to do while the map holds still, as the full map does: each label and marker is made
-    /// upright when it's created, and stays so until the map turns.
+    /// Stands text and markers upright again once the heading-up minimap has turned <see cref="MinimapHeading.UprightStepDegrees"/>
+    /// since they last were, and the labels are then placed for that turn. In between they turn with the map, by less
+    /// than a degree, and nothing moves: every transform written would have Unity re-batch the canvas. Each label and
+    /// marker is made upright when it's created. The full map holds still, so there any change counts, such as the
+    /// minimap's last turn when the full map opens.
     /// </summary>
-    public void KeepUpright()
+    private void KeepUpright()
     {
-        if (_layer == null || !_layer.gameObject.activeSelf)
+        var rotation = _layer!.rotation;
+        var step = DynamicMap.mapMaximized ? 0f : MinimapHeading.UprightStepDegrees;
+        if (!MinimapHeading.Turned(_uprightFor.eulerAngles.z, rotation.eulerAngles.z, step))
         {
-            return; // destroyed with the old scene's map, or hidden from the minimap; the next render rebuilds everything
-        }
-
-        var rotation = _layer.rotation;
-        if (rotation.Equals(_uprightFor))
-        {
-            return; // exact comparison: Quaternion's == lets a slow turn creep by unnoticed
+            return;
         }
 
         _uprightFor = rotation;
@@ -307,6 +305,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         System.Array.Clear(_overlays, 0, _overlays.Length);
         _storeVersion = -1;
         _placedForScreenLayout = -1;
+        _uprightFor = Quaternion.identity; // how every label and marker is made
     }
 
     /// <summary>Only on the full map, the one map the tools take clicks on.</summary>

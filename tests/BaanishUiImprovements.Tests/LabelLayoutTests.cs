@@ -23,7 +23,31 @@ internal static class LabelLayoutTests
         ("a label keeps its slot while it stays clear", LabelKeepsClearSlot),
         ("without obstacles labels keep their slots", NoObstaclesKeepsSlots),
         ("a label drawn twice takes the first one's slot", MirrorTakesOriginalSlot),
+        ("minimap labels turn upright again only after a degree of turn", UprightStepsByADegree),
+        ("minimap turns count across north", TurnsCountAcrossNorth),
     };
+
+    private static void UprightStepsByADegree()
+    {
+        var step = MinimapHeading.UprightStepDegrees;
+        Expect(!MinimapHeading.Turned(10f, 10.9f, step), "expected no turn under a degree");
+        Expect(!MinimapHeading.Turned(10f, 9.1f, step), "expected no turn under a degree the other way");
+        Expect(MinimapHeading.Turned(10f, 11f, step), "expected a turn at a degree");
+        Expect(MinimapHeading.Turned(10f, 8.5f, step), "expected a turn past a degree the other way");
+        Expect(!MinimapHeading.Turned(10f, 14.9f, MinimapHeading.RespaceStepDegrees), "expected no relayout under five degrees");
+        Expect(MinimapHeading.Turned(10f, 15f, MinimapHeading.RespaceStepDegrees), "expected a relayout at five degrees");
+        Expect(!MinimapHeading.Turned(10f, 10f, 0f), "expected a step of 0 to ignore no change");
+        Expect(MinimapHeading.Turned(10f, 10.001f, 0f), "expected a step of 0 to count any change");
+    }
+
+    private static void TurnsCountAcrossNorth()
+    {
+        Expect(!MinimapHeading.Turned(359.6f, 0.3f, 1f), "expected 0.7 degrees across north to be no step");
+        Expect(MinimapHeading.Turned(359.5f, 0.6f, 1f), "expected 1.1 degrees across north to be a step");
+        Expect(MinimapHeading.Turned(0.4f, 359f, 1f), "expected 1.4 degrees back across north to be a step");
+        Expect(MathF.Abs(MinimapHeading.Delta(350f, 10f) - 20f) < 1e-3f, "expected the short way round");
+        Expect(MathF.Abs(MinimapHeading.Delta(10f, 350f) + 20f) < 1e-3f, "expected the short way round, turning left");
+    }
 
     private static readonly Vector2 Half = new(20, 8);
 

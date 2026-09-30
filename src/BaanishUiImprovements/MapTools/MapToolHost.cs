@@ -120,9 +120,6 @@ internal sealed class MapToolHost
         _worldLabels.End();
         ModTimings.Stop(ModSection.WorldLabels, world);
         _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion);
-        var upright = ModTimings.Start();
-        _layer.KeepUpright();
-        ModTimings.Stop(ModSection.UprightTurning, upright);
     }
 
     /// <summary>

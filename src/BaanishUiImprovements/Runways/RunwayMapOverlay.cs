@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BaanishUiImprovements.Drawing;
+using BaanishUiImprovements.MapTools;
 using TMPro;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ internal sealed class RunwayMapOverlay
     private readonly List<Airbase.Runway> _stale = new();
     private RectTransform? _layer;
     private readonly List<FeatheredRect> _approachDashes = new();
-    private Quaternion _uprightFor;
+    private Quaternion _uprightFor = Quaternion.identity;
 
     public RunwayMapOverlay(ModSettings settings) => _settings = settings;
 
@@ -69,8 +70,9 @@ internal sealed class RunwayMapOverlay
     }
 
     /// <summary>
-    /// Per frame: the minimap turns every frame, so numbers reset to upright between the 10 Hz map refreshes. Nothing to
-    /// do while the map holds still, as the full map does, since each number is made upright when it's created.
+    /// Per frame: numbers stand upright again once the heading-up minimap has turned <see cref="MinimapHeading.UprightStepDegrees"/>
+    /// since they last did; a smaller tilt doesn't show, and every transform written has Unity re-batch the layer. Nothing
+    /// to do while the map holds still, as the full map does, since each number is made upright when it's created.
     /// </summary>
     public void KeepLabelsUpright()
     {
@@ -80,9 +82,10 @@ internal sealed class RunwayMapOverlay
         }
 
         var rotation = _layer.rotation;
-        if (rotation.Equals(_uprightFor))
+        var step = DynamicMap.mapMaximized ? 0f : MinimapHeading.UprightStepDegrees;
+        if (!MinimapHeading.Turned(_uprightFor.eulerAngles.z, rotation.eulerAngles.z, step))
         {
-            return; // exact comparison: Quaternion's == lets a slow turn creep by unnoticed
+            return;
         }
 
         _uprightFor = rotation;
@@ -102,6 +105,7 @@ internal sealed class RunwayMapOverlay
         _layer = null;
         _approachDashes.Clear();
         _graphics.Clear();
+        _uprightFor = Quaternion.identity; // how every number is made
     }
 
     /// <summary>A scene change destroys the map and our layer with it, so a missing layer means every cached graphic is gone too.</summary>
