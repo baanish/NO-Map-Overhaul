@@ -40,6 +40,7 @@ internal static class Program
         tests.AddRange(MeasureToolTests.All);
         tests.AddRange(LabelLayoutTests.All);
         tests.AddRange(FrameStatsTests.All);
+        tests.AddRange(PerfTestTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)

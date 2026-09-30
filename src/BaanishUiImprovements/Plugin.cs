@@ -37,6 +37,7 @@ public sealed class Plugin : BaseUnityPlugin
     private IncomingMissileArrows _missileArrows = null!;
     private MapToolHost _mapTools = null!;
     private PerformanceLog _performance = null!;
+    private PerfTest _perfTest = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
@@ -53,6 +54,7 @@ public sealed class Plugin : BaseUnityPlugin
         _missileArrows = new IncomingMissileArrows(_settings);
         _mapTools = new MapToolHost(_settings);
         _performance = new PerformanceLog(_settings, Logger);
+        _perfTest = new PerfTest(_settings, _performance, _mapTools.Context, Logger);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -76,7 +78,8 @@ public sealed class Plugin : BaseUnityPlugin
         var start = _performance.Start();
         Guard(() =>
         {
-            if (!_settings.Enabled.Value)
+            _perfTest.Update();
+            if (!ModOn)
             {
                 // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
                 RemoveOverlays();
@@ -93,8 +96,11 @@ public sealed class Plugin : BaseUnityPlugin
             _mapOverlay.KeepLabelsUpright();
             _mapTools.Update(_hudCallout.HudStyle);
         });
-        _performance.AddFrame(start, _settings.Enabled.Value);
+        _performance.AddFrame(start, ModOn);
     }
+
+    /// <summary>General.Enabled, unless the perf test is switching the mod on and off.</summary>
+    private bool ModOn => _perfTest.ModOn ?? _settings.Enabled.Value;
 
     /// <summary>Raised from inside the game's DynamicMap.Update, so it must never throw back into the game.</summary>
     private void OnMapChanged()
@@ -127,6 +133,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         DynamicMap.onMapChanged -= OnMapChanged;
+        _perfTest.Shutdown();
         RemoveOverlays();
     }
 
@@ -145,7 +152,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void RefreshMap()
     {
         var map = SceneSingleton<DynamicMap>.i;
-        if (map == null || !_settings.Enabled.Value)
+        if (map == null || !ModOn)
         {
             return;
         }

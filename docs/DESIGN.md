@@ -61,6 +61,12 @@ The mod never calls `AirbaseOverlay`'s landing methods, because they send networ
 
 `ApproachSelector` works on flat 2D runway lines (`RunwayLine`, meters, X east, Y north) and knows nothing about Unity, so the tests run without the game. It picks the nearest runway within range, measured to the strip, and the end of it closer to the pilot. It ignores heading on purpose: the line exists to judge the turn onto final, so it must show while the pilot is still side-on to the runway. Every heading-based rule tried before this (pattern-leg inference, then final-only) either picked the wrong end while manoeuvring or hid the line when it was needed.
 
+## Measuring cost
+
+Everything under `Diagnostics/` is off unless the player asks for it. `PerformanceLog` times `Plugin.LateUpdate` and the `onMapChanged` handler with `Stopwatch` timestamps, next to `Time.unscaledDeltaTime`, and hands each sample to a `FrameStats`. That's Unity-free and preallocated: running sums and worsts, plus a ring of 4096 frame times sorted once per window for the 1% low (`FrameStatsTests`). The mod's own times cover its scripts only. Canvas rebuilds and draw calls for its graphics show up in the frame time alone, so the honest comparison is frame time with the mod on and off.
+
+`PerfTest` runs that comparison from an F1 button. The button is a `ConfigurationManagerAttributes.CustomDrawer`, which ConfigurationManager finds by the class's name, so the mod needs no reference to it. The test switches the mod through `Plugin.ModOn`, never by writing General.Enabled, so no crash can save the mod as off. It opens and closes the full map with `DynamicMap.Maximize` and `Minimize`, the calls the game's own map key makes. It swaps the player's drawings out with `ShapeStore.Save` and `Restore`, which keep the undo history and add no step. `StressDrawings` builds the heavy set from plain shapes, sized to the minimap: the rect's world width over one map meter in world units (`mapDisplayFactor` times the icon layer's scale).
+
 ## Map tools
 
 A Tools button on the full map opens a menu of drawing tools: a rail of icons and a strip beside it. What they draw shows on both maps and, for some shapes, in the 3D view. Everything lives under `src/BaanishUiImprovements/MapTools/`, and `MapToolHost` ties it together:

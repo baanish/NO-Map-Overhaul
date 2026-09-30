@@ -49,6 +49,9 @@ internal sealed class MapToolHost
         _layer = new MapShapeLayer(settings, _context, _tools.Length);
     }
 
+    /// <summary>The drawings and the game lookups the tools use, for the perf test's generated drawings.</summary>
+    public MapToolContext Context => _context;
+
     /// <summary>Per frame, after the HUD callout has found its label.</summary>
     public void Update(TextMeshProUGUI? hudStyle)
     {

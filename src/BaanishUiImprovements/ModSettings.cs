@@ -11,6 +11,7 @@ internal sealed class ModSettings
     {
         Enabled = config.Bind("General", "Enabled", true, "Off hides everything this mod draws, as if it were not installed. Useful for checking whether a problem comes from the mod or the game.");
         LogPerformance = config.Bind("General", "LogPerformance", false, "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.");
+        PerfTest = config.Bind("General", "PerfTest", false, new ConfigDescription("In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a heavy set of drawings, on the minimap and the full map, then puts everything back. About 75 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", null, PerfTestButton));
 
         MapRunways = config.Bind("Map", "ShowRunways", true, "Draw friendly runways and their numbers on the minimap and full map.");
         RunwayColor = config.Bind("Map", "RunwayColor", new Color(0f, 0.85f, 0f, 0.85f), "Fill colour of runway strips.");
@@ -60,6 +61,12 @@ internal sealed class ModSettings
 
     public ConfigEntry<bool> Enabled { get; }
     public ConfigEntry<bool> LogPerformance { get; }
+
+    /// <summary>Drawn as a button in F1, which starts or cancels the test; set true any other way, it does the same and resets.</summary>
+    public ConfigEntry<bool> PerfTest { get; }
+
+    /// <summary>The F1 button's look. <see cref="Diagnostics.PerfTest"/> sets its drawer.</summary>
+    public Diagnostics.ConfigurationManagerAttributes PerfTestButton { get; } = new() { HideDefaultButton = true };
 
     public ConfigEntry<bool> MapRunways { get; }
     public ConfigEntry<Color> RunwayColor { get; }

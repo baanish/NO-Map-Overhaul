@@ -20,6 +20,7 @@ internal static class MapToolTests
         ("the point cap counts every shape", PointCapCountsEveryShape),
         ("replace keeps the id and the draw order", ReplaceKeepsIdAndOrder),
         ("reset forgets the history", ResetForgetsHistory),
+        ("restore brings back the shapes and the history", RestoreBringsBackShapesAndHistory),
         ("history keeps the last 100 steps", HistoryKeepsLastSteps),
         ("bearings are three digits true", BearingsAreThreeDigitsTrue),
         ("distances round per unit", DistancesRoundPerUnit),
@@ -130,6 +131,25 @@ internal static class MapToolTests
         store.Reset();
         ExpectShapes(store);
         Expect(!store.CanUndo && !store.CanRedo, "expected no history after a reset");
+    }
+
+    /// <summary>The perf test swaps its own drawings in and must hand back the player's, undo and redo included.</summary>
+    private static void RestoreBringsBackShapesAndHistory()
+    {
+        var store = new ShapeStore();
+        var a = Line(0, 0, 100, 0);
+        var b = Line(0, 100, 100, 100);
+        store.Add(a);
+        store.Add(b);
+        store.Undo();
+        var saved = store.Save();
+        store.Reset();
+        store.Add(Line(0, 200, 100, 200));
+        store.Restore(saved);
+        ExpectShapes(store, a);
+        Expect(store.Redo(), "expected the redo step back");
+        ExpectShapes(store, a, b);
+        Expect(store.Undo() && store.Undo() && !store.CanUndo, "expected exactly the saved undo steps");
     }
 
     private static void HistoryKeepsLastSteps()

@@ -147,6 +147,18 @@ public sealed class ShapeStore
         Version++;
     }
 
+    /// <summary>The shapes and the whole undo history, for <see cref="Restore"/>. Snapshots share shapes, so this copies only the list.</summary>
+    public Saved Save() => new(_history.ToArray(), _current);
+
+    /// <summary>Puts back a <see cref="Save"/>, history included, without adding an undo step.</summary>
+    public void Restore(Saved saved)
+    {
+        _history.Clear();
+        _history.AddRange(saved.History);
+        _current = saved.Current;
+        Version++;
+    }
+
     private void Commit(MapShape[] next)
     {
         _history.RemoveRange(_current + 1, _history.Count - _current - 1);
@@ -158,5 +170,18 @@ public sealed class ShapeStore
 
         _current = _history.Count - 1;
         Version++;
+    }
+
+    public sealed class Saved
+    {
+        internal Saved(MapShape[][] history, int current)
+        {
+            History = history;
+            Current = current;
+        }
+
+        internal MapShape[][] History { get; }
+
+        internal int Current { get; }
     }
 }

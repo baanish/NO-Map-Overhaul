@@ -103,6 +103,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | --- | --- | --- | --- |
 | General | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
 | General | LogPerformance | `false` | Log the frame rate and the mod's own time every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
+| General | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |
 | Map | ShowRunways | `true` | Draw runways and their numbers. |
 | Map | RunwayColor | `00D900D9` | Strip fill. |
 | Map | RunwayLabelColor | `99FF99FF` | Runway number colour. |
@@ -163,6 +164,30 @@ To compare with and without the mod in one session:
 4. Turn Enabled back on and LogPerformance off.
 
 Compare the **mod on** lines with the **mod off** lines, skipping any line that reads **on and off**. The difference in fps avg and 1% low is the mod's full cost. With Enabled off, the mod's own times read near zero.
+
+### The perf test
+
+The perf test does the comparison for you, including a heavy load of map drawings. It takes about 75 seconds.
+
+1. Load the preset Escalation mission and spawn in an aircraft.
+2. Fly straight and level, or sit still on the runway, in the cockpit view. The game shows the minimap only in the cockpit view.
+3. Open F1 and press **General → Run perf test**. Close F1 within 5 seconds, since its window costs frames too.
+4. Don't touch the camera or the map until the result appears. The test opens and closes the full map itself.
+
+It measures six phases of 10 seconds, each after 2 seconds for the switch to settle: the minimap with the mod off, with it on, and with it on plus heavy drawings, then the same three on the full map. The heavy drawings fill the minimap: ten long pen lines using 90% of **MaxPenPoints**, a full 99-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on units the map shows nearby, when there are any, so they move with them like drawings on real targets.
+
+When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each phase, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full table, with each phase's fps, 1% low, and the mod's own time per frame and per map refresh:
+
+```text
+[Info   :Baanish UI Improvements] Perf test: 10 s per phase after 2 s to settle. Changes are against the same view with the mod off.
+Phase                                 Avg fps   1% low Mod ms avg/max   Refresh ms avg/max   Avg fps change    1% low change
+Minimap, mod off                        140.7    118.2    0.001/0.004     0.001/0.003 100x         baseline         baseline
+Minimap, mod on                         138.8    116.9    0.080/0.312     0.300/0.910 100x     -1.9 (-1.4%)     -1.3 (-1.1%)
+Minimap, mod on, heavy drawings         129.6    104.0    0.210/0.655     1.200/2.410 100x    -11.1 (-7.9%)    -14.2 (-12.0%)
+...
+```
+
+Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Either way, your own drawings come back with their undo history, and so do the map and the ShowTools and ShowOnMinimap settings, which the test turns on while it runs. A route you were flying starts again from waypoint 1; use **Skip** to move it on. The test switches the mod off and on without changing **Enabled**, so the mod can't be left off.
 
 ## Airbase abbreviations
 
