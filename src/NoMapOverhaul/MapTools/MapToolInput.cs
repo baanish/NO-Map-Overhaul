@@ -44,6 +44,9 @@ internal sealed class MapToolInput
     /// <summary>How near a unit's map icon the cursor must be to anchor to it, in icon units: a little past a typical icon's edge.</summary>
     private const float UnitReach = 12f;
 
+    /// <summary>How far, in screen pixels, the map may carry the last reported point from under a still cursor before the tool hears of it again.</summary>
+    private const float MapDrift = 1f;
+
     private ControllerMapSuspension _mouse = new(ControllerType.Mouse);
     private readonly ControllerMapSuspension _keyboard = new(ControllerType.Keyboard);
     private bool _pressed;
@@ -51,6 +54,7 @@ internal sealed class MapToolInput
     private bool _dragging;
     private Vector2 _pressAt;
     private Vector2 _lastAt;
+    private FlatVector _lastMeters;
 
     /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
     public bool Typing => _keyboard.IsSuspended;
@@ -105,7 +109,7 @@ internal sealed class MapToolInput
             if (_dragging)
             {
                 _mouse.Suspend();
-                tool.OnPointerDown(Pointer(map, mouse));
+                tool.OnPointerDown(TrackPointer(map, mouse));
             }
 
             return;
@@ -121,13 +125,12 @@ internal sealed class MapToolInput
                     _mouse.KeepSuspended();
                 }
 
-                if (!_dragging || mouse == _lastAt)
+                if (!_dragging || !PointerMoved(map, mouse))
                 {
                     return;
                 }
 
-                _lastAt = mouse;
-                tool.OnPointerDrag(Pointer(map, mouse));
+                tool.OnPointerDrag(TrackPointer(map, mouse));
                 return;
             }
 
@@ -148,13 +151,37 @@ internal sealed class MapToolInput
             return;
         }
 
-        if (!catcher.Hovered || mouse == _lastAt)
+        if (!catcher.Hovered || !PointerMoved(map, mouse))
         {
             return;
         }
 
+        tool.OnPointerMove(TrackPointer(map, mouse));
+    }
+
+    /// <summary>
+    /// Whether the cursor is somewhere else on the map than the tool last heard: the mouse moved, or the map moved under
+    /// a still mouse, as the full map does while it follows the aircraft. A tool keeps the last point it heard (the
+    /// eraser hit-tests it every frame), so it would otherwise act on ground that has slid away from the cursor.
+    /// </summary>
+    private bool PointerMoved(DynamicMap map, Vector2 mouse)
+    {
+        if (mouse != _lastAt)
+        {
+            return true;
+        }
+
+        var factor = map.mapDisplayFactor;
+        Vector2 lastOnScreen = map.iconLayer.transform.TransformPoint(new Vector3(_lastMeters.X * factor, _lastMeters.Y * factor, 0f));
+        return (lastOnScreen - mouse).sqrMagnitude > MapDrift * MapDrift;
+    }
+
+    private MapPointer TrackPointer(DynamicMap map, Vector2 mouse)
+    {
+        var pointer = Pointer(map, mouse);
         _lastAt = mouse;
-        tool.OnPointerMove(Pointer(map, mouse));
+        _lastMeters = pointer.Position;
+        return pointer;
     }
 
     private void UpdateKeyboard(MapTool tool)

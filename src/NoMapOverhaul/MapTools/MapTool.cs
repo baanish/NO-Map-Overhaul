@@ -159,7 +159,7 @@ public abstract class MapTool
     {
     }
 
-    /// <summary>The cursor moved over the map with no button held.</summary>
+    /// <summary>The cursor moved over the map, or the map moved under it, with no button held.</summary>
     public virtual void OnPointerMove(MapPointer pointer)
     {
     }
