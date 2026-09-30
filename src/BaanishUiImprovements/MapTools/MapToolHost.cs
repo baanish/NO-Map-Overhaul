@@ -25,7 +25,7 @@ internal sealed class MapToolHost
     private readonly RailIcon[] _icons;
     private readonly ConfigEntry<KeyboardShortcut>[] _keys;
 
-    /// <summary>The tool the Tools button opens the rail on: Waypoint.</summary>
+    /// <summary>The tool the Tools button opens the rail on: Bearing/range, tool 1.</summary>
     private readonly int _openingTool;
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
@@ -53,7 +53,7 @@ internal sealed class MapToolHost
             (new EraserTool(_context, _layer), RailIcon.Eraser, settings.MapToolEraserKey),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
-        _openingTool = System.Array.FindIndex(_tools, tool => tool is WaypointTool);
+        _openingTool = System.Array.FindIndex(_tools, tool => tool is BearingRange.BearingRangeTool);
         _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
         _keys = System.Array.ConvertAll(tools, entry => entry.Key);
         _menu = new MapToolMenu(settings);
