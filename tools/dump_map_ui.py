@@ -5,7 +5,9 @@ Usage (any Python with UnityPy and TypeTreeGeneratorAPI installed):
 
 For each object it prints the RectTransform (anchors, anchored position, size, pivot, scale) and its components, with
 the canvases' sort order and CanvasScaler settings and DynamicMap's map sizes. MenuLayout.HudBoxes in the mod holds the
-speed, altitude, and attitude readouts and the MFD button columns this prints; rerun it after a game update to check them.
+speed, altitude, and attitude readouts, the mission clock, and the MFD button columns this prints; rerun it after a game
+update to check them. The clock's panel sizes itself to its text at runtime, so its box comes from the text's width and
+the panel's layout padding.
 """
 
 import sys
@@ -16,7 +18,7 @@ from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
 UNITY_VERSION = "2022.3.62f1"
 ROOTS = {"MaximizedMapCanvas": 1, "VirtualMFD": 1, "TopInstruments": 2}
-MARKERS = (("m_UiScaleMode", "CanvasScaler"), ("m_Softness", "RectMask2D"), ("m_BlockingObjects", "GraphicRaycaster"),
+MARKERS = (("m_fontSize", "Text"), ("m_HorizontalFit", "ContentSizeFitter"), ("m_UiScaleMode", "CanvasScaler"), ("m_Softness", "RectMask2D"), ("m_BlockingObjects", "GraphicRaycaster"),
            ("maximizedMapCanvas", "DynamicMap"), ("leftButtons", "VirtualMFD"), ("m_Spacing", "LayoutGroup"), ("m_Sprite", "Image"))
 
 
@@ -45,6 +47,11 @@ def component(obj):
                 f"match {tree['m_MatchWidthOrHeight']})")
     if kind == "DynamicMap":
         return f"DynamicMap(maximized {tree['mapScaleMaximized']}, minimized {tree['mapScaleMinimized']})"
+    if kind == "Text":
+        return f"Text({tree['m_text']!r}, size {tree['m_fontSize']:g})"
+    if kind == "LayoutGroup":
+        padding = tree["m_Padding"]
+        return f"LayoutGroup(padding {padding['m_Left']} {padding['m_Right']} {padding['m_Top']} {padding['m_Bottom']})"
     return kind
 
 

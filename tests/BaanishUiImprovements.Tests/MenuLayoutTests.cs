@@ -106,14 +106,24 @@ internal static class MenuLayoutTests
         Expect(strip.Outside, "expected the strip outside");
     }
 
-    /// <summary>Something in the stretch left of the attitude ball moves the strip right of it; something there too moves it inside.</summary>
+    /// <summary>
+    /// Something in the stretch left of the mission clock shrinks the strip, or where it leaves too little room, moves it
+    /// right of the clock; something there too moves it inside.
+    /// </summary>
     private static void StripTakesFirstWideStretch()
     {
-        var hud = new List<PixelBox>(MenuLayout.GameHud(2560, 1440, 4f / 3f)) { new(1100f, 60f, 40f, 40f) };
+        var hud = new List<PixelBox>(MenuLayout.GameHud(2560, 1440, 4f / 3f)) { new(1150f, 60f, 40f, 40f) };
         var (rail, strip) = MenuLayout.Place(2560, 1440, Map(2560, 1440, 900f), 1f, hud, Tools, Swatches);
+        Expect(strip.Outside, "expected the strip outside");
+        ExpectNear(strip.X, 88f, "strip x, still right of the speed readout");
+        ExpectNear(strip.MaxWidth, 1142f - 768f, "strip width, up to 8 px short of the box");
+
+        hud[hud.Count - 1] = new PixelBox(1100f, 60f, 40f, 40f);
+        (rail, strip) = MenuLayout.Place(2560, 1440, Map(2560, 1440, 900f), 1f, hud, Tools, Swatches);
         Expect(rail.Outside, "expected the rail outside");
         Expect(strip.Outside, "expected the strip outside");
-        ExpectNear(strip.X, 1321.33f - 680f, "strip x, right of the attitude ball");
+        ExpectNear(strip.X, 1361.33f - 680f, "strip x, right of the mission clock");
+        ExpectNear(strip.MaxWidth, 430.67f, "strip width, up to the altitude readout");
 
         hud.Add(new PixelBox(1500f, 60f, 40f, 40f));
         (rail, strip) = MenuLayout.Place(2560, 1440, Map(2560, 1440, 900f), 1f, hud, Tools, Swatches);
@@ -150,7 +160,7 @@ internal static class MenuLayoutTests
 
     /// <summary>
     /// The rail: three columns, 8 px left of the map, its top level with the map's, clear of the MFD buttons below. The
-    /// strip: 8 px above the map, from 8 px right of the speed readout to 8 px short of the attitude ball, free to grow up
+    /// strip: 8 px above the map, from 8 px right of the speed readout to 8 px short of the mission clock, free to grow up
     /// to 8 px below the screen's top.
     /// </summary>
     private static void ExpectOutside(int width, int height, float tagRoom)
@@ -163,7 +173,7 @@ internal static class MenuLayoutTests
         Expect(strip.Outside, "expected the strip outside");
         ExpectNear(strip.X, 88f, "strip x");
         ExpectNear(strip.Y, -8f, "strip bottom");
-        ExpectNear(strip.MaxWidth, 470.67f, "strip width");
+        ExpectNear(strip.MaxWidth, 430.67f, "strip width");
         ExpectNear(strip.MaxHeight, 104f, "strip height");
     }
 

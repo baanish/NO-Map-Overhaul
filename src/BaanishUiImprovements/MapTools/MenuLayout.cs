@@ -240,25 +240,27 @@ internal static class MenuLayout
     public const float MinHintWidth = 160f;
 
     /// <summary>
-    /// The narrowest strip outside the map: the widest tool's name and buttons, the waypoint's SKIP and RESTART, beside a
-    /// hint wrapped to its narrowest.
+    /// The narrowest strip outside the map: the widest tool's name beside a hint wrapped to its narrowest, with the
+    /// buttons on a second row. It fits the 430 pixels between the speed readout and the mission clock.
     /// </summary>
-    public const float MinOutsideStripWidth = 448f;
+    public const float MinOutsideStripWidth = 360f;
 
     /// <summary>Inside the map a hint wraps onto two lines at most, since the strip may be as wide as <see cref="StripMaxWidth"/>.</summary>
     public const float InsideStripMaxHeight = 2f * RailGrid.HeadHeight;
 
     /// <summary>
-    /// The game's HUD around the full map: the speed, altitude, and attitude readouts along the top, and the columns of MFD
-    /// buttons down both sides, from the game's VirtualMFD in its level1 scene (tools/dump_map_ui.py prints them). Centres
-    /// and sizes in the canvas units of a 1920x1080 screen, from the screen's centre, Y up. Its canvas scales with the
-    /// screen's height, as the map's does, so these keep their place beside the map at any resolution.
+    /// The game's HUD around the full map: the speed, altitude, and attitude readouts along the top, the mission clock the
+    /// game shows there instead while the player has no aircraft, and the columns of MFD buttons down both sides, from the
+    /// game's VirtualMFD in its level1 scene (tools/dump_map_ui.py prints them). Centres and sizes in the canvas units of a
+    /// 1920x1080 screen, from the screen's centre, Y up. Its canvas scales with the screen's height, as the map's does, so
+    /// these keep their place beside the map at any resolution.
     /// </summary>
     private static readonly (float X, float Y, float Width, float Height)[] HudBoxes =
     {
         (-450f, 490f, 120f, 35f),
         (450f, 490f, 120f, 35f),
         (0f, 490f, 50f, 50f),
+        (0f, 490f, 110f, 32f), // clockPanel fits its text, "00:00:12" 91 wide plus 5 either side, with room for wider digits
         (-480f, 0f, 50f, 550f),
         (480f, 0f, 50f, 550f),
     };

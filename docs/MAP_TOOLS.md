@@ -35,7 +35,7 @@ A selected friendly unit keeps its right click: with one selected, right click g
 
 The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool: Waypoint, Pen, Text, Bearing/range, Circle, and Eraser. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
-The strip above the map, between the speed readout and the attitude ball, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
+The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 
 When the screen leaves no room outside the map, such as on a nearly square screen, the rail or the strip moves inside the map's top-left corner instead, as a single column with the strip beside the **Tools** button.
 
