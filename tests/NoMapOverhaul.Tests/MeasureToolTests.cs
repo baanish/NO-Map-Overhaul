@@ -33,6 +33,7 @@ internal static class MeasureToolTests
         ("a circle's edge stays at the cursor beside a unit", CircleEdgeIgnoresUnits),
         ("a circle's 3D ring sits level with its centre", CircleRingsSitLevelWithCentre),
         ("the eraser and undo take measurements and circles", EraserAndUndoTakeBoth),
+        ("the eraser's highlight moves off a measurement whose unit moves away", EraserHighlightFollowsMovingUnit),
         ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
         ("a placed start, centre, or preset is in progress until dropped", PlacedPointsAreInProgress),
     };
@@ -324,6 +325,33 @@ internal static class MeasureToolTests
         map.Shapes.Undo();
         map.Shapes.Undo();
         Expect(map.Shapes.Shapes.Count == 2, "expected undo to bring both back");
+    }
+
+    /// <summary>The cursor sits 40 m from an arrow to a unit and 60 m from a fixed one, then the unit flies off.</summary>
+    private static void EraserHighlightFollowsMovingUnit()
+    {
+        var map = new FakeMap();
+        map.Positions[7] = new Vector3(0, 0, 1000);
+        var measure = new BearingRangeTool(map);
+        measure.OnClick(At(0, 0));
+        measure.OnClick(OnUnit(map, 7));
+        measure.OnClick(At(100, 0));
+        measure.OnClick(At(100, 1000));
+
+        var eraser = new EraserTool(map);
+        eraser.OnPointerMove(At(40, 500));
+        eraser.OnFrame(new RecordingLabels());
+        var highlight = new RecordingCanvas(map);
+        eraser.DrawOverlay(highlight);
+        Expect(highlight.Arrows is [{ To: { X: 0f, Y: 1000f } }], "expected the arrow to the unit highlighted");
+        TakeOverlayInvalid(eraser);
+
+        map.Positions[7] = new Vector3(1000, 0, 1000);
+        eraser.OnFrame(new RecordingLabels());
+        Expect(TakeOverlayInvalid(eraser), "expected the highlight to change with the cursor still");
+        highlight = new RecordingCanvas(map);
+        eraser.DrawOverlay(highlight);
+        Expect(highlight.Arrows is [{ To: { X: 100f, Y: 1000f } }], "expected the fixed arrow now under the cursor highlighted");
     }
 
     private static void PreviewsFollowCursorOnceStarted()

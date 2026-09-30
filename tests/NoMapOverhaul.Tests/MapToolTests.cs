@@ -320,12 +320,19 @@ internal static class MapToolTests
         var context = new FakeContext();
         context.Shapes.Add(Line(0, 0, 1000, 0));
         var eraser = new EraserTool(context);
-        eraser.OnPointerMove(new MapPointer(new Vector2(100, 10), null));
+        Hover(eraser, 100, 10);
         Expect(TakeOverlayInvalid(eraser), "expected hovering a shape to redraw the highlight");
-        eraser.OnPointerMove(new MapPointer(new Vector2(600, 20), null));
+        Hover(eraser, 600, 20);
         Expect(!TakeOverlayInvalid(eraser), "expected moving along the same shape to redraw nothing");
-        eraser.OnPointerMove(new MapPointer(new Vector2(600, 500), null));
+        Hover(eraser, 600, 500);
         Expect(TakeOverlayInvalid(eraser), "expected leaving the shape to clear the highlight");
+    }
+
+    /// <summary>The cursor moves, then the frame runs. The eraser shows no 3D labels.</summary>
+    private static void Hover(EraserTool eraser, float x, float y)
+    {
+        eraser.OnPointerMove(new MapPointer(new Vector2(x, y), null));
+        eraser.OnFrame(null!);
     }
 
     private static LineShape Line(float x1, float y1, float x2, float y2, int points = 0) =>

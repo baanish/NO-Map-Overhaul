@@ -18,6 +18,7 @@ public sealed class EraserTool : MapTool
     private readonly ShapeHitTest _hitTest;
     private readonly RecolorCanvas _highlight = new();
     private MapShape? _hovered;
+    private Vector2? _cursor;
 
     public EraserTool(IMapToolContext context, ILabelPlacements? placements = null)
         : base(context) =>
@@ -27,11 +28,15 @@ public sealed class EraserTool : MapTool
 
     public override string Status => "Click a drawing to delete it.";
 
-    public override void OnDeactivate() => _hovered = null;
+    public override void OnDeactivate()
+    {
+        _hovered = null;
+        _cursor = null;
+    }
 
     public override void OnClick(MapPointer pointer)
     {
-        if (Find(pointer) is { } shape)
+        if (Find(pointer.Position) is { } shape)
         {
             Context.Shapes.Remove(shape);
         }
@@ -40,10 +45,21 @@ public sealed class EraserTool : MapTool
         InvalidateOverlay();
     }
 
-    /// <summary>Redraws the highlight only when the cursor moves onto a different shape: a long pen stroke is costly to redraw.</summary>
-    public override void OnPointerMove(MapPointer pointer)
+    public override void OnPointerMove(MapPointer pointer) => _cursor = pointer.Position;
+
+    /// <summary>
+    /// Finds the shape under the cursor every frame, not only when the cursor moves: a drawing on a unit moves under a
+    /// still cursor, and the highlight must show what a click would take. Redraws the highlight only when that's a
+    /// different shape, since a long pen stroke is costly to redraw.
+    /// </summary>
+    public override void OnFrame(IWorldLabels labels)
     {
-        var hovered = Find(pointer);
+        if (_cursor is not { } cursor)
+        {
+            return;
+        }
+
+        var hovered = Find(cursor);
         if (!ReferenceEquals(hovered, _hovered))
         {
             _hovered = hovered;
@@ -60,8 +76,7 @@ public sealed class EraserTool : MapTool
         }
     }
 
-    private MapShape? Find(MapPointer pointer) =>
-        _hitTest.Find(Context.Shapes.Shapes, pointer.Position, Reach * Context.MetersPerIconUnit);
+    private MapShape? Find(Vector2 position) => _hitTest.Find(Context.Shapes.Shapes, position, Reach * Context.MetersPerIconUnit);
 
     /// <summary>Passes draw calls through with one colour, to draw a shape again as a highlight.</summary>
     private sealed class RecolorCanvas : IMapCanvas
