@@ -84,10 +84,10 @@ A Tools button beside the full map, or the Tools key, opens a menu of drawing to
 ```text
 Plugin.LateUpdate → MapToolHost.Update   (every frame)
   ├─ mission check     a different DynamicMap, or none, clears the ShapeStore
+  ├─ Tools, tool, undo, and redo keys, while the full map is open
   ├─ MapToolMenu       the rail and strip on the full map; a click records a MenuCommand
   ├─ MapToolInput      left clicks, drags, and typing to the active MapTool
   ├─ right click       cancels the active tool's drawing or deletes one (RightClickRule)
-  ├─ Tools, tool, undo, and redo keys, while the full map is open
   ├─ MapTool.OnFrame   every tool, every frame: live state, 3D labels and rings (WorldLabelPool)
   └─ MapShapeLayer     redraws what changed; live shapes and live overlays on the 10 Hz refresh
        └─ LabelLayout  places the labels when one changes, or once the full map comes to rest

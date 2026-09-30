@@ -89,6 +89,35 @@ internal sealed class MapToolHost
         if (open)
         {
             Apply(_menu.TakeCommand());
+            // Keys before the render, which switches the pointer catcher on or off, so the next click goes where the rail now says.
+            if (!_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
+                !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
+            {
+                if (_settings.MapToolUndoKey.Value.IsDown())
+                {
+                    _store.Undo();
+                }
+                else if (_settings.MapToolRedoKey.Value.IsDown())
+                {
+                    _store.Redo();
+                }
+                else if (_settings.MapToolsKey.Value.IsDown())
+                {
+                    Apply((MenuCommand.Toggle, 0));
+                }
+                else
+                {
+                    for (var i = 0; i < _keys.Length; i++)
+                    {
+                        if (_keys[i].Value.IsDown())
+                        {
+                            Apply((MenuCommand.Tool, i)); // opens the rail on that tool if it's closed
+                            break;
+                        }
+                    }
+                }
+            }
+
             _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, hudStyle);
         }
         else
@@ -101,34 +130,6 @@ internal sealed class MapToolHost
         if (_active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
         {
             RightClick(map, _tools[_active], rightClick);
-        }
-
-        if (open && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
-            !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
-        {
-            if (_settings.MapToolUndoKey.Value.IsDown())
-            {
-                _store.Undo();
-            }
-            else if (_settings.MapToolRedoKey.Value.IsDown())
-            {
-                _store.Redo();
-            }
-            else if (_settings.MapToolsKey.Value.IsDown())
-            {
-                Apply((MenuCommand.Toggle, 0));
-            }
-            else
-            {
-                for (var i = 0; i < _keys.Length; i++)
-                {
-                    if (_keys[i].Value.IsDown())
-                    {
-                        Apply((MenuCommand.Tool, i)); // opens the rail on that tool if it's closed
-                        break;
-                    }
-                }
-            }
         }
 
         ModTimings.Stop(ModSection.InputAndMenu, input);
