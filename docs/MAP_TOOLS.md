@@ -99,7 +99,7 @@ With the Eraser, the drawing under the cursor turns red, and a click deletes it.
 
 ## What drawings know
 
-Drawings only use what your side knows. A drawing on a unit follows it only where the game shows that unit to you, at the altitude your side knows, and you can only tie a drawing to a unit whose icon is on your map. When nothing on your side has spotted the unit for 4 seconds, or it's destroyed, the unit is lost: the drawing stops where the unit was last known, its label reads `lost`, and its bearing and range stop changing except as you move. If your side spots the unit again, the drawing follows it again. A note on a unit goes when the unit is destroyed, at the moment the game takes the unit's icon off your map. The missile arrows work the same way: each points where the game's HUD marks that missile.
+Drawings only use what your side knows. A drawing on a unit follows it only where the game shows that unit to you, at the altitude your side knows, and you can only tie a drawing to a unit whose icon is on your map. When nothing on your side has spotted the unit for 4 seconds, or it's destroyed, the unit is lost: the drawing stops where the unit was last known, its label reads `lost`, and its bearing and range stop changing except as you move. If your side spots the unit again, the drawing follows it again. A note on a unit goes when the unit is destroyed, at the moment the game takes the unit's icon off your map.
 
 ## Where drawings show
 

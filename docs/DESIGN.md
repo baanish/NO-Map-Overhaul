@@ -16,11 +16,10 @@ Plugin.LateUpdate   (every frame)
   ├─ PerfTest.Update                    idle unless the player started the perf test
   ├─ RunwayHudCallout.Render            "RWY 27" follows the camera
   ├─ RunwayMapOverlay.KeepLabelsUpright numbers counter-rotate the minimap
-  ├─ IncomingMissileArrows.Render       arrows toward missiles off screen
   └─ MapToolHost.Update                 the map tools (see Map tools)
 ```
 
-`DynamicMap.onMapChanged` is the event the game raises from its own map update, the same 10 Hz cadence that refreshes its airbase icons. It also fires every frame while the player pans or zooms the full map, which keeps zoom-dependent sizes current. The handler runs inside the game's update, so every exception is caught there and disables the plugin rather than breaking the map. The rest runs every frame in `LateUpdate`: the HUD label and missile arrows, which track the camera, the check that stands the numbers upright again as the heading-up minimap turns, and the map tools. Runways are re-read on every refresh, so captured airbases need no event wiring.
+`DynamicMap.onMapChanged` is the event the game raises from its own map update, the same 10 Hz cadence that refreshes its airbase icons. It also fires every frame while the player pans or zooms the full map, which keeps zoom-dependent sizes current. The handler runs inside the game's update, so every exception is caught there and disables the plugin rather than breaking the map. The rest runs every frame in `LateUpdate`: the HUD label, which tracks the camera, the check that stands the numbers upright again as the heading-up minimap turns, and the map tools. Runways are re-read on every refresh, so captured airbases need no event wiring.
 
 ## Game data it reads
 
@@ -59,10 +58,6 @@ The game's `AirbaseMapIcon` exists only for `DynamicMap.HQ.GetAirbases()`, the l
 `AirbaseOverlay` is the game's landing guide. Its private `airbaseLabel` field, read by reflection, is the "Taxi to Runway 21" text. The callout clones that label into the same parent, so it inherits the HUD canvas, font, and visibility. The callout projects the threshold with `CameraStateManager.mainCamera.WorldToScreenPoint`. It looks for the overlay at most once a second, including inactive objects, so the map numbers can get the font before the HUD is visible.
 
 The mod never calls `AirbaseOverlay`'s landing methods, because they send network commands and change runway usage.
-
-## Missile arrows
-
-`IncomingMissileArrows` draws one arrow per missile in the aircraft's `MissileWarning.knownMissiles`, the list the game's missile warning fills. Each arrow is a copy of `CombatHUD`'s private `targetArrow`, read by reflection, so it shares the HUD canvas, sprite, and visibility. It points where the game's flashing HUD marker for that missile sits: at the missile while the marker is current, and at `FactionHQ.TryGetKnownPosition` once the marker is outdated, when the arrow fades to half as the marker does. `ScreenEdge.Pin` places the arrow from the missile's position in camera space rather than through `WorldToScreenPoint`, which mirrors points behind the camera, so a missile closing from behind gets its arrow on the side it's on. `ScreenEdge` is Unity-free and unit-tested.
 
 ## Choosing the approach
 
@@ -188,7 +183,6 @@ What the game shows the player, in `Assembly-CSharp`:
 - **Enemies whose track is stale**: after 4 s without a spot, `GetPosition` returns `lastKnownPosition` and stops updating. The map icon stays there and stops turning (`UnitMapIcon.UpdateIcon`), and the HUD marker switches to its outdated sprite at half opacity, pinned to `FactionHQ.TryGetKnownPosition` (`HUDUnitMarker.UpdatePosition` and `SetOutdated`).
 - **Enemies never tracked**: nothing. There's no icon or marker, and `TryGetKnownPosition` fails.
 - **Destroyed units**: the icon and marker go (`UnitMapIcon_OnUnitDisabled`, `HUDIcon_OnDisableUnit`), and so does the track (`FactionHQ.DeregisterTrackedUnit`).
-- **Incoming missiles**: once `MissileWarning` moves a missile into `knownMissiles`, `ThreatList` flashes its HUD marker (`CombatHUD.FlashMarker`) and its map icon (`DynamicMap.FlagIncomingMissile`). Both follow the rules above, so they show the missile where it is unless the side holds a stale track on it.
 
 What the mod reads, and why each is fair:
 
@@ -199,7 +193,6 @@ What the mod reads, and why each is fair:
 | A note on a destroyed unit going | `IMapToolContext.IsUnitGone`: `Unit.disabled`, or the unit gone from `UnitRegistry` | Setting `disabled` (synced to every client) or destroying the unit raises `Unit.onDisableUnit`, which removes its map icon (`UnitMapIcon_OnUnitDisabled`) and its track (`FactionHQ.DeregisterTrackedUnit`), so the note goes as the icon does |
 | The unit a click lands on | Active `UnitMapIcon`s in `DynamicMap.mapIcons`, at their on-screen position | Only units whose icon the player can see |
 | Your aircraft | `CombatHUD.aircraft` | Your own |
-| Missile arrows | `MissileWarning.knownMissiles`, then the missile's `HUDUnitMarker`: the missile while current, `TryGetKnownPosition` once `outdated` | Points where the game's own marker is, faded when the marker is |
 | Ground height under a fixed point | A ray down that passes through units | Terrain and sea only, so a hidden ship or building doesn't lift a label |
 | Runways, boundaries, the HUD callout | `DynamicMap.HQ.GetAirbases()`, carriers skipped | Your side's airbases, which the game already marks |
 | Airbase names | `DynamicMap.HQ.GetAirbases()`, carriers skipped | Your side's airbases, which the game already marks |

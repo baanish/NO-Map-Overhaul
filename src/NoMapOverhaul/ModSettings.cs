@@ -51,9 +51,6 @@ internal sealed class ModSettings
         HudAirbaseName = Bind(SettingSections.HudRunwayCallout, "IncludeAirbaseName", false, "Include airbase name", "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
         HudColor = Bind(SettingSections.HudRunwayCallout, "CalloutColor", new Color(0.2f, 1f, 0.2f, 1f), "Callout colour", "Colour of the HUD runway callout.");
 
-        ShowMissileArrows = Bind(SettingSections.HudMissileArrows, "ShowArrows", true, "Show missile arrows", "Point an arrow from the screen edge at each incoming missile outside the view. Only missiles the game's missile warning already knows about get one.");
-        MissileArrowColor = Bind(SettingSections.HudMissileArrows, "Color", new Color(1f, 0.25f, 0.2f, 1f), "Arrow colour", "Colour of the missile arrows.");
-
         ShowMapTools = Bind(SettingSections.MapToolsGeneral, "ShowTools", true, "Show map tools", "Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission.");
         MapToolShowOnMinimap = Bind(SettingSections.MapToolsGeneral, "ShowOnMinimap", true, "Show on minimap", "Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them.");
         MapToolCirclesIn3D = Bind(SettingSections.MapToolsGeneral, "ShowCirclesIn3D", true, "Circles in 3D view", "Draw each circle in the 3D view as well, as a thin ring level with its centre: a unit's altitude, or the ground under a fixed point.");
@@ -117,9 +114,6 @@ internal sealed class ModSettings
     public ConfigEntry<bool> HudGearDownOnly { get; }
     public ConfigEntry<bool> HudAirbaseName { get; }
     public ConfigEntry<Color> HudColor { get; }
-
-    public ConfigEntry<bool> ShowMissileArrows { get; }
-    public ConfigEntry<Color> MissileArrowColor { get; }
 
     public ConfigEntry<bool> ShowMapTools { get; }
     public ConfigEntry<bool> MapToolShowOnMinimap { get; }

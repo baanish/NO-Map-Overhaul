@@ -23,9 +23,6 @@ public enum ModSection
     /// <summary>The tools menu, mouse and keyboard routing, and the undo keys.</summary>
     InputAndMenu,
 
-    /// <summary>Incoming missile arrows.</summary>
-    MissileArrows,
-
     /// <summary>The HUD runway callout and the runway numbers kept upright.</summary>
     RunwayOverlays,
 

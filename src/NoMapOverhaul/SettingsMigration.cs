@@ -39,8 +39,6 @@ internal static class SettingsMigration
         ("HUD", "OnlyWithGearDown", SettingSections.HudRunwayCallout),
         ("HUD", "IncludeAirbaseName", SettingSections.HudRunwayCallout),
         ("HUD", "CalloutColor", SettingSections.HudRunwayCallout),
-        ("Missile Arrows", "ShowArrows", SettingSections.HudMissileArrows),
-        ("Missile Arrows", "Color", SettingSections.HudMissileArrows),
         ("Map Tools", "ShowTools", SettingSections.MapToolsGeneral),
         ("Map Tools", "ShowOnMinimap", SettingSections.MapToolsGeneral),
         ("Map Tools", "ShowCirclesIn3D", SettingSections.MapToolsGeneral),
@@ -58,12 +56,17 @@ internal static class SettingsMigration
 
     /// <summary>
     /// Settings that are gone, in every section they were saved under. Airbase names are your own side's only since
-    /// 0.5.0: enemy and neutral ones showed where bases are that the game doesn't mark.
+    /// 0.5.0: enemy and neutral ones showed where bases are that the game doesn't mark. The missile arrows moved to
+    /// their own mod, NO Missile Indicators.
     /// </summary>
     internal static readonly (string Section, string Key)[] Removed =
     {
         ("Airbase Names", "ShowEnemyAndNeutral"),
         (SettingSections.MapAirbaseNames, "ShowEnemyAndNeutral"),
+        ("Missile Arrows", "ShowArrows"),
+        ("Missile Arrows", "Color"),
+        ("HUD / Missile Arrows", "ShowArrows"),
+        ("HUD / Missile Arrows", "Color"),
     };
 
     /// <summary>

@@ -14,10 +14,6 @@ Runway markers:
   airbase's landing zone: stop inside it after landing and the sortie counts
   as returned.
 
-Missile arrows: a red arrow on the screen edge points toward each incoming
-missile outside your view, for any missile the game's missile warning
-already knows about.
-
 Map tools: on the full map, click Tools or press H to open a rail of
 planning tools. Keys 1 to 6 pick Bearing/range, Circle, Text, Pen,
 Waypoint, and Eraser; Z and Y undo and redo. Measure bearing, range, and a

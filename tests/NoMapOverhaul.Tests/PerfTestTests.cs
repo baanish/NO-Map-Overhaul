@@ -102,7 +102,7 @@ internal static class PerfTestTests
         stats.AddFrame(10f, 0.4f, modOn: true);
         var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", stats.Summarize(), -1, default, sections) }, "slices", "71 shapes");
         var row = System.Text.RegularExpressions.Regex.Replace(table.Split('\n').Last().TrimEnd(), " +", " ");
-        ExpectText(row, "Minimap, mod on 0.100 0.200 0.000 0.000 0.000 0.000 0.000 0.000 0.500 0.100");
+        ExpectText(row, "Minimap, mod on 0.100 0.200 0.000 0.000 0.000 0.000 0.000 0.500 0.100");
         Expect(!PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1) }, "slices", "71 shapes").Contains("by part"),
             "expected no per-part table without timings");
     }

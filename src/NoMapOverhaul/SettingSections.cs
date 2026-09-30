@@ -14,7 +14,6 @@ internal static class SettingSections
     public const string MapAirbaseBoundary = "Map / Airbase Boundary";
     public const string MapOutline = "Map / Outline";
     public const string HudRunwayCallout = "HUD / Runway Callout";
-    public const string HudMissileArrows = "HUD / Missile Arrows";
     public const string MapToolsGeneral = "Map Tools / General";
     public const string MapToolsDrawing = "Map Tools / Drawing";
     public const string MapToolsWaypoints = "Map Tools / Waypoints";

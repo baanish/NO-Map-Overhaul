@@ -1,6 +1,6 @@
 # NO Map Overhaul
 
-My Nuclear Option mod for map and HUD navigation aids: numbered runways with an approach line, arrows toward incoming missiles, planning tools on the full map, and airbase names.
+My Nuclear Option mod for map and HUD navigation aids: numbered runways with an approach line, planning tools on the full map, and airbase names.
 
 It only draws on your screen. It doesn't patch the game and sends nothing over the network, so nobody else sees what it draws. I've tested it in single-player missions, and version 0.4.0 in a multiplayer session. The map tools haven't been flown in multiplayer yet. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
@@ -12,10 +12,6 @@ It only draws on your screen. It doesn't patch the game and sends nothing over t
 - **Airbase boundary**, off by default. A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
 
 It doesn't guess which way you'll land: it always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
-
-## Missile arrows
-
-When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. A missile behind you gets its arrow on the side it's on. Only missiles the game's missile warning already knows about get one, in every aircraft.
 
 ## Map tools
 

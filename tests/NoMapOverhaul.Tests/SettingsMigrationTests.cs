@@ -31,8 +31,10 @@ internal static class SettingsMigrationTests
             Expect(after.TryGetValue((newSection, key), out var value) && value == before[(oldSection, key)], $"expected {newSection}/{key} to keep {before[(oldSection, key)]}");
         }
 
-        Expect(!after.ContainsKey(("Airbase Names", "ShowEnemyAndNeutral")), "expected the removed enemy and neutral airbase names setting dropped");
-        Expect(after.Count == before.Count - 1, $"expected {before.Count - 1} settings after the move, got {after.Count}");
+        var removed = SettingsMigration.Removed.Count(before.ContainsKey);
+        Expect(removed == 3, $"expected the fixture's enemy and neutral names setting and two missile arrow settings, got {removed}");
+        Expect(!SettingsMigration.Removed.Any(after.ContainsKey), "expected the removed settings dropped");
+        Expect(after.Count == before.Count - removed, $"expected {before.Count - removed} settings after the move, got {after.Count}");
         var left = after.Keys.Where(k => !SettingsMigration.Moves.Any(m => m.NewSection == k.Item1 && m.Key == k.Item2)).ToList();
         Expect(left.SequenceEqual(new[] { ("General", "Enabled") }), $"expected only General/Enabled left in place, got {string.Join(", ", left)}");
         ExpectText(after[(SettingSections.MapAirbaseBoundary, "FillOpacity")], "0.009577462");

@@ -77,7 +77,7 @@ public static class PerfReport
     }
 
     /// <summary>Column heads of the third table, one per <see cref="ModSection"/>, then the rest of the mod's frame.</summary>
-    private static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Missiles", "Runways", "Meshes", "Other" };
+    private static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Runways", "Meshes", "Other" };
 
     /// <param name="method">How the phases were measured, for the header.</param>
     /// <param name="drawings">What the typical and heavy phases drew, for the header.</param>

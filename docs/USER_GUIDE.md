@@ -55,12 +55,6 @@ The circle is the game's own rule. An aircraft that counts as landed inside it (
 
 Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, just under where the game draws their icon. Every airbase the game gives your side an icon for gets a name: the map's own, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them, and carriers get none either, since the ship's icon marks the deck. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
 
-### Missile arrows
-
-When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. Each missile gets its own arrow. A missile behind you gets an arrow on the side it's on, so a missile behind and to your left gets an arrow on the left edge. Once the missile is on screen, its arrow goes away.
-
-Only missiles the game's missile warning already knows about get an arrow, and each arrow points where the game's flashing HUD marker for that missile is, so the arrows show nothing the game hasn't told you. When the game marks a missile's position as outdated, its arrow stays pointing at the last known position and fades to half, as the game's marker does. The arrow is a copy of the game's own off-screen target arrow in a different colour.
-
 ### Map tools
 
 On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
@@ -104,8 +98,6 @@ The table lists the sections in the order F1 shows them.
 | HUD / Runway Callout | Only with gear down | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
 | HUD / Runway Callout | Include airbase name | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
 | HUD / Runway Callout | Callout colour | CalloutColor | `33FF33FF` | Label colour. |
-| HUD / Missile Arrows | Show missile arrows | ShowArrows | `true` | Point an arrow at each incoming missile outside the view. |
-| HUD / Missile Arrows | Arrow colour | Color | `FF4033FF` | Arrow colour. |
 | Map Tools / General | Show map tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
 | Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
 | Map Tools / General | Circles in 3D view | ShowCirclesIn3D | `true` | Draw each circle in the 3D view as well, as a thin ring level with its centre. |
@@ -180,14 +172,14 @@ Phase                                 Canvas ms  BuildBatch ms  WillRender ms  B
 Minimap, mod off                          0.310            n/a            n/a      212       64        240     410233               0/0
 ...
 Mod ms per frame by part. Meshes is the mod's graphics rebuilding their meshes, which counts in Canvas ms, not Mod ms. Other is the rest of Mod ms.
-Phase                                     Draw    Labels   Upright   3D text  3D rings     Input  Missiles   Runways    Meshes     Other
-Minimap, mod on                          0.004     0.002     0.001     0.003     0.000     0.004     0.002     0.010     0.004     0.012
+Phase                                     Draw    Labels   Upright   3D text  3D rings     Input   Runways    Meshes     Other
+Minimap, mod on                          0.004     0.002     0.001     0.003     0.000     0.004     0.010     0.004     0.014
 ...
 ```
 
 The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the condition's last slice, and how many of them are TextMeshPro text.
 
-The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, **Missiles** the missile arrows, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
+The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
 
 Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
 

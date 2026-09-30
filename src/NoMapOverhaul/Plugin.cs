@@ -3,7 +3,6 @@ using System.Reflection;
 using NoMapOverhaul.Airbases;
 using NoMapOverhaul.Diagnostics;
 using NoMapOverhaul.MapTools;
-using NoMapOverhaul.Missiles;
 using NoMapOverhaul.Runways;
 using BepInEx;
 using BepInEx.Configuration;
@@ -38,7 +37,6 @@ public sealed class Plugin : BaseUnityPlugin
     private RunwayHudCallout _hudCallout = null!;
     private AirbaseBoundaryOverlay _boundaryOverlay = null!;
     private AirbaseLabelOverlay _labelOverlay = null!;
-    private IncomingMissileArrows _missileArrows = null!;
     private MapToolHost _mapTools = null!;
     private PerformanceLog _performance = null!;
     private PerfTest _perfTest = null!;
@@ -56,7 +54,6 @@ public sealed class Plugin : BaseUnityPlugin
         _hudCallout = new RunwayHudCallout(_settings);
         _boundaryOverlay = new AirbaseBoundaryOverlay(_settings);
         _labelOverlay = new AirbaseLabelOverlay(_settings);
-        _missileArrows = new IncomingMissileArrows(_settings);
         _mapTools = new MapToolHost(_settings);
         _performance = new PerformanceLog(_settings, Logger);
         _perfTest = new PerfTest(_settings, _performance, _mapTools, Logger);
@@ -64,11 +61,6 @@ public sealed class Plugin : BaseUnityPlugin
         if (!RunwayHudCallout.LabelFieldFound)
         {
             Logger.LogWarning("AirbaseOverlay.airbaseLabel is missing in this game version: no HUD runway callout, and map numbers use the default font.");
-        }
-
-        if (!IncomingMissileArrows.ArrowFieldFound)
-        {
-            Logger.LogWarning("CombatHUD.targetArrow is missing in this game version: no missile arrows.");
         }
 
         AutopilotRightClickPatch.Apply(_mapTools, Logger);
@@ -102,7 +94,7 @@ public sealed class Plugin : BaseUnityPlugin
     }
 
     /// <summary>
-    /// Per frame: the HUD label and missile arrows follow the camera, the numbers counter-rotate the heading-up minimap,
+    /// Per frame: the HUD label follows the camera, the numbers counter-rotate the heading-up minimap,
     /// and the map tools take input and redraw what changed.
     /// </summary>
     private void LateUpdate()
@@ -127,9 +119,6 @@ public sealed class Plugin : BaseUnityPlugin
             _hudCallout.Render(_approach);
             _mapOverlay.KeepLabelsUpright();
             ModTimings.Stop(ModSection.RunwayOverlays, runways);
-            var missiles = ModTimings.Start();
-            _missileArrows.Render();
-            ModTimings.Stop(ModSection.MissileArrows, missiles);
             _mapTools.Update(_hudCallout.HudStyle);
         });
         _performance.AddFrame(start, ModOn);
@@ -191,7 +180,6 @@ public sealed class Plugin : BaseUnityPlugin
         _hudCallout.Reset();
         _boundaryOverlay.Reset();
         _labelOverlay.Reset();
-        _missileArrows.Reset();
         _mapTools.Reset();
         _approach = null;
     }

@@ -8,11 +8,10 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-152 tests pass. They cover:
+147 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
-- missile arrow placement: none on screen, the matching edge off screen, and the correct side for a missile behind you;
 - the drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, save and restore, and the 100-step history;
 - bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels (where the map placed them), the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
@@ -31,7 +30,7 @@ The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, 
 
 ## In-game status for v0.5.0
 
-Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, missile arrows, the map tools and their keys, the settings layout, and the perf test. Everything below was confirmed in game by the author.
+Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, the map tools and their keys, the settings layout, and the perf test. Everything below was confirmed in game by the author.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
@@ -44,7 +43,6 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Carriers excluded | Observed | No runway graphics on ships. |
 | HUD callout | Observed | `RWY xx` sits below the lined-up threshold, with and without IncludeAirbaseName. |
 | Callout with gear down only | Observed | With OnlyWithGearDown on, the label stays hidden with the gear up and shows once the gear lever is down. |
-| Missile arrows | Partly observed | An arrow points at an incoming missile off screen and follows the game's own HUD marker for it. Getting shot down once disabled the mod, a bug since fixed. A missile behind you and two missiles at once weren't recorded as separate checks. |
 | Map tools rail | Observed | Every tool, swatch, Undo, Redo, and Clear work; left clicks go to the tool and not to unit selection; a Pen drag doesn't pan the map. |
 | Rail and strip placement | Observed | The rail stands left of the map and the strip above it, both outside the map, and the strip stays clear of the mission clock; each hover tag shows beside the cell it names. |
 | Map tool keys | Observed | `H` opens and closes the rail; `1` to `6` pick Bearing/range, Circle, Text, Pen, Waypoint, and Eraser, opening the rail when it's closed. |

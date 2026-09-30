@@ -40,7 +40,6 @@
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Pen\StrokeSimplifier.cs" Link="MapTools\Pen\StrokeSimplifier.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Text\TextNote.cs" Link="MapTools\Text\TextNote.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Text\TextTool.cs" Link="MapTools\Text\TextTool.cs" />
-    <Compile Include="..\..\src\NoMapOverhaul\Missiles\ScreenEdge.cs" Link="Missiles\ScreenEdge.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Runways\ApproachSelector.cs" Link="Runways\ApproachSelector.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Runways\RunwayNames.cs" Link="Runways\RunwayNames.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Tracking\KnownPositions.cs" Link="Tracking\KnownPositions.cs" />
