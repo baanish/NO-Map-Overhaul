@@ -40,6 +40,8 @@ On the full map, click **Tools** or press `H` to open a rail of planning tools b
 5. **Waypoint** builds a numbered route, with the next two waypoints labelled in the 3D view.
 6. **Eraser** deletes a drawing.
 
+![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](docs/images/tool-rail.jpg)
+
 <table>
 <tr>
 <td><img src="docs/images/bra.jpg" alt="A bearing and range arrow to an enemy, labelled 189° 2.4nm 1.5k ft"></td>
