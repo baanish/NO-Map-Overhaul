@@ -27,9 +27,9 @@ dotnet run --project tests/BaanishUiImprovements.Tests -c Release
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, the perf test switching the mod and map, or game-version compatibility.
 
-## In-game status for v0.4.0
+## In-game status for v0.5.0
 
-Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight, with other client mods loaded. Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, and missile arrows. Everything below was confirmed in game by the author.
+Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, missile arrows, the map tools, the settings layout, and the perf test. Everything below was confirmed in game by the author.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
@@ -42,7 +42,17 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Carriers excluded | Observed | No runway graphics on ships. |
 | HUD callout | Observed | `RWY xx` sits below the lined-up threshold, with and without IncludeAirbaseName. |
 | Callout with gear down only | Observed | With OnlyWithGearDown on, the label stays hidden with the gear up and shows once the gear lever is down. |
-| Missile arrows | Partly observed | An arrow appeared for an incoming missile off screen. Getting shot down then disabled the mod, a bug since fixed. Surviving a shoot-down and respawn, a missile behind you, and two missiles at once aren't checked in game yet. |
+| Missile arrows | Partly observed | An arrow points at an incoming missile off screen and follows the game's own HUD marker for it. Getting shot down once disabled the mod, a bug since fixed. A missile behind you and two missiles at once weren't recorded as separate checks. |
+| Map tools rail | Observed | The Tools button and rail (design C) sit clear of the grid labels; every tool, swatch, Undo, Redo, and Clear work; left clicks go to the tool and not to unit selection; a Pen drag doesn't pan the map. |
+| Waypoint route | Observed | Numbered route with the next two waypoints labelled in the 3D view; the route moves on as waypoints are flown; Restart goes back to waypoint 1 without skipping waypoints behind; undo back to an erased route resumes its progress; markers clip at the minimap edge. |
+| Text notes and typing | Observed | Typing a note with W, A, S, D, and M leaves the aircraft alone, and the controls, the Escape pause menu, and NOAutopilot's hotkeys work again after Enter. |
+| Bearing, circle, and 3D rings | Observed | Arrows, circles, and labels draw flat and thin in the default green; a circle's radius stays at the cursor when dragged over a unit; circles show as rings in the 3D view. |
+| Right click | Observed | With the rail open, right click cancels a drawing in progress or deletes a drawing, and NOAutopilot places no waypoint; with a friendly unit selected, the game's move order wins; with the rail closed, NOAutopilot's right click works. |
+| Map labels on the turning minimap | Observed | Bearings, radii, and close waypoint numbers stay upright, clear of each other and of their arrowheads while the minimap turns; plated text renders sharp. |
+| Fair play | Observed | An arrow tied to an enemy freezes and reads `lost` about 4 s after the radar track breaks, and resumes on reacquiring it. |
+| Airbase names, friendly only | Observed | Only your own side's airbases get names, including captured and mission-added ones. |
+| Settings layout | Observed | F1 shows the grouped sections in order, with the advanced rows behind "Advanced settings"; saved values carried over to the new sections. |
+| Perf test | Observed | Escalation, level flight, interleaved slices. Frame rate against the mod off: no drawings -1.3% (minimap) and -0.6% (full map); typical drawings, 11 shapes, -6.3% and +2.5% (within noise); heavy drawings, 71 shapes, -17.8% and -6.3%. |
 | Approach follows the nearest end | Observed | The line and callout show off the nearest runway end, including on a base leg flown side-on to the runway. Earlier heading-based rules failed in game three times: a closed pattern switched ends, circling flip-flopped, and final-only hid the line during the turn onto final. |
 | Helicopter hides runways | Observed | A helicopter sees no strips, line, or callout; the Tarantula tiltrotor sees runways. |
 | Minimap rotation | Observed | Numbers stay upright while the heading-up minimap turns. |
@@ -52,6 +62,6 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Feldspar painted numbers | Observed | Ignus: 16/34 on the crossing runway, and the free-flight mission's duplicate airbases carry the same numbers. Other fields' paint hasn't been compared. |
 | Airbase names | Observed | Full map with ShowNames on: one name per airbase under its centre, clear of the friendly icon, and Ignus free flight's three Feldspar airbases share one label. |
 | Map text rim | Observed | Runway numbers and airbase names at size 8 read over bright map linework with the 1-unit dark rim. |
-| Multiplayer | Observed | A multiplayer session showed no problems. Join direction and lobby size weren't recorded. |
+| Multiplayer | Observed for v0.4.0 | A multiplayer session showed no problems. Join direction and lobby size weren't recorded. The v0.5.0 map tools haven't been flown in multiplayer yet. |
 
 "Observed" means seen in game during manual testing. It doesn't mean an automated test covers it.
