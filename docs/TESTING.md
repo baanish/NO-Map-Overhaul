@@ -35,9 +35,9 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
-| Plugin loads | Observed before the rename | `Baanish UI Improvements <version> loaded.` in `LogOutput.log`. The `NO Map Overhaul 0.5.0 loaded.` line hasn't been checked yet. |
+| Plugin loads | Observed | `NO Map Overhaul 0.5.0 loaded.` in `LogOutput.log`. |
 | Fresh install | Not yet tested | The plugin-only archive extracted into a game with no earlier install loads, and creates `com.baanish.nuclearoption.mapoverhaul.cfg`. |
-| Upgrade from Baanish UI Improvements | Not yet tested | With the old folder deleted, the first start logs `Carried ... saved settings over`, and F1 shows the old values without the missile arrows. |
+| Upgrade from Baanish UI Improvements | Observed | With the old folder removed by the install script, the first start logged `Carried 45 saved settings over`, and F1 showed the old values without the missile arrows. |
 | Old install left beside it | Not yet tested | With `BepInEx/plugins/BaanishUiImprovements` still there, the log warns to delete it, and runways, names, and the Tools button draw once. |
 | Master switch | Observed | Turning General → Enabled off in F1 removes the runways, approach line, and HUD label. Turning it back on restores them. Airbase names and the boundary weren't turned on for this check. |
 | Strip alignment | Observed | North Boscali (Heartland): strips sit on the runway outlines painted on the map, both runways. |
