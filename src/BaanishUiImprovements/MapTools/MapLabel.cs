@@ -54,7 +54,13 @@ internal sealed class MapLabel
     public void Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
     {
         var plated = anchor.Kind != LabelKind.Note;
-        Rect.localScale = Vector3.one * inverseScale;
+        // Unity counts any transform write as a change that re-batches the canvas, and live labels redraw ten times a second.
+        var scale = Vector3.one * inverseScale;
+        if (Rect.localScale != scale)
+        {
+            Rect.localScale = scale;
+        }
+
         _text.Rimmed = !plated;
         _text.Set(text, size, color, rim, hudStyle);
         var font = hudStyle != null ? hudStyle.font : null;
@@ -86,7 +92,11 @@ internal sealed class MapLabel
     {
         var origin = ToUnity(Placement.Origin);
         var offset = ToUnity(Placement.Center) - origin;
-        Rect.localPosition = origin * inverseScale;
+        var position = (Vector3)(origin * inverseScale);
+        if (Rect.localPosition != position)
+        {
+            Rect.localPosition = position;
+        }
         _text.Align(new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center, offset);
         if (_plate != null && _plate.enabled)
         {
