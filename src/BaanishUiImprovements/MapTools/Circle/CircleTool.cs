@@ -170,10 +170,24 @@ public sealed class CircleTool : MapTool
         }
     }
 
+    /// <summary>Each circle in the 3D view too, newest first, so the rings past the pool's cap are the oldest.</summary>
+    public override void OnFrame(IWorldLabels labels)
+    {
+        var shapes = Context.Shapes.Shapes;
+        for (var i = shapes.Count - 1; i >= 0; i--)
+        {
+            if (shapes[i] is CircleShape circle)
+            {
+                circle.AddWorldRing(Context, labels);
+            }
+        }
+    }
+
     /// <summary>The cursor stays, so a picked preset's preview shows where the mouse last was on the map.</summary>
     private void Add(MapPoint center, float radius)
     {
-        Context.Shapes.Add(new CircleShape(center, radius, Context.Color));
+        var elevation = center.IsAnchored ? 0f : Context.GroundElevation(center.Position);
+        Context.Shapes.Add(new CircleShape(center, radius, elevation, Context.Color));
         _center = null;
         _preset = -1;
     }

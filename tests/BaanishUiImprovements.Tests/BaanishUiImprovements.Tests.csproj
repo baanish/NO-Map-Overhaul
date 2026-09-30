@@ -17,6 +17,7 @@
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\BearingRange\MeasureLabel.cs" Link="MapTools\BearingRange\MeasureLabel.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Circle\CircleShape.cs" Link="MapTools\Circle\CircleShape.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Circle\CircleTool.cs" Link="MapTools\Circle\CircleTool.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Circle\RingProjection.cs" Link="MapTools\Circle\RingProjection.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\Eraser\EraserTool.cs" Link="MapTools\Eraser\EraserTool.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\IMapCanvas.cs" Link="MapTools\IMapCanvas.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\LabelLayout.cs" Link="MapTools\LabelLayout.cs" />

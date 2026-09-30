@@ -27,6 +27,7 @@ internal static class MeasureToolTests
         ("clicking the centre again cancels a circle", ClickingCenterAgainCancels),
         ("a preset radius finishes a centre or places the next", PresetRadius),
         ("a circle's centre follows its unit and freezes when lost", CircleFollowsUnit),
+        ("a circle's 3D ring sits level with its centre", CircleRingsSitLevelWithCentre),
         ("the eraser and undo take measurements and circles", EraserAndUndoTakeBoth),
         ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
     };
@@ -206,6 +207,23 @@ internal static class MeasureToolTests
         ExpectText(Draw(map).Labels[0].Text, "5.0km\nlost");
     }
 
+    private static void CircleRingsSitLevelWithCentre()
+    {
+        var map = new FakeMap();
+        map.Positions[9] = new Vector3(1000, 4000, 1000);
+        var tool = new CircleTool(map);
+        Click(tool, At(0, 0));
+        Click(tool, At(3000, 0));
+        Click(tool, OnUnit(map, 9));
+        Click(tool, At(1000, 3000));
+
+        var labels = new RecordingLabels();
+        tool.OnFrame(labels);
+        Expect(labels.Rings.Count == 2, $"expected a 3D ring per circle, got {labels.Rings.Count}");
+        Expect(labels.Rings[0] == (new Vector3(1000, 4000, 1000), 2000f), "expected the newest ring first, at its unit's altitude");
+        Expect(labels.Rings[1] == (new Vector3(0, 120, 0), 3000f), "expected a fixed centre's ring on the ground");
+    }
+
     private static void EraserAndUndoTakeBoth()
     {
         var map = new FakeMap();
@@ -343,7 +361,9 @@ internal static class MeasureToolTests
     private sealed class RecordingLabels : IWorldLabels
     {
         public List<(Vector3 Position, string Text)> Added { get; } = new();
+        public List<(Vector3 Center, float Radius)> Rings { get; } = new();
 
         public void Add(Vector3 position, string text, ShapeColor color) => Added.Add((position, text));
+        public void Ring(Vector3 center, float radius, ShapeColor color) => Rings.Add((center, radius));
     }
 }

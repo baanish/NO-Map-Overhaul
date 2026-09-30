@@ -9,7 +9,7 @@ namespace BaanishUiImprovements.MapTools;
 /// Labels pinned to points in the 3D view, which tools request each frame. Each label is a copy of the HUD runway
 /// callout, itself a copy of the game's own airbase label, so it shares the HUD canvas, font, and visibility: it hides
 /// with the HUD and while the map is open. Placed through the camera like the callout, and hidden when the point is
-/// behind it.
+/// behind it. Rings go to a <see cref="WorldRingPool"/> under the same parent.
 /// </summary>
 internal sealed class WorldLabelPool : IWorldLabels
 {
@@ -17,9 +17,12 @@ internal sealed class WorldLabelPool : IWorldLabels
     private const int MaxLabels = 32;
 
     private readonly List<TextMeshProUGUI> _labels = new();
+    private readonly WorldRingPool _rings;
     private TextMeshProUGUI? _source;
     private Camera? _camera;
     private int _used;
+
+    public WorldLabelPool(ModSettings settings) => _rings = new WorldRingPool(settings);
 
     /// <summary>
     /// Starts a frame's requests. A new HUD means a new source label, and leaving the mission destroys the old HUD with
@@ -36,6 +39,7 @@ internal sealed class WorldLabelPool : IWorldLabels
         var camera = SceneSingleton<CameraStateManager>.i?.mainCamera;
         _camera = _source != null && camera != null ? camera : null;
         _used = 0;
+        _rings.Begin(_source != null ? _source.transform.parent : null, _camera);
     }
 
     public void Add(NumericsVector3 position, string text, ShapeColor color)
@@ -59,13 +63,17 @@ internal sealed class WorldLabelPool : IWorldLabels
         label.enabled = true;
     }
 
-    /// <summary>Hides the labels no tool asked for this frame.</summary>
+    public void Ring(NumericsVector3 center, float radius, ShapeColor color) => _rings.Add(center, radius, color);
+
+    /// <summary>Hides the labels and rings no tool asked for this frame.</summary>
     public void End()
     {
         for (var i = _used; i < _labels.Count; i++)
         {
             _labels[i].enabled = false;
         }
+
+        _rings.End();
     }
 
     public void Reset()
@@ -79,6 +87,7 @@ internal sealed class WorldLabelPool : IWorldLabels
         }
 
         _labels.Clear();
+        _rings.Reset();
         _source = null;
         _camera = null;
         _used = 0;
