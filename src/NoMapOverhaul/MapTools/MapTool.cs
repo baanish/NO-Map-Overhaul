@@ -32,6 +32,9 @@ public interface IMapToolContext : IMapView
     /// <summary>The colour picked in the menu, for new shapes.</summary>
     ShapeColor Color { get; }
 
+    /// <summary>Width of drawn lines, in icon units: the LineWidth setting. Arrowheads grow with it.</summary>
+    float LineWidth { get; }
+
     /// <summary>
     /// Ground or sea height at a point, in meters above sea level, found the way the game's own map jump finds it but
     /// passing through units, so a label never rests on a ship or building the player can't see. It casts a ray, so

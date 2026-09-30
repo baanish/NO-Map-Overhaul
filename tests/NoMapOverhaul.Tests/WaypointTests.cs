@@ -255,6 +255,7 @@ internal static class WaypointTests
     {
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => White;
+        public float LineWidth => 1.5f;
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;
         public float TextSize => 10f;

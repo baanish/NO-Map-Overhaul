@@ -30,6 +30,8 @@ internal sealed class MapToolContext : IMapToolContext
 
     public float TextSize => _settings.MapToolTextSize.Value;
 
+    public float LineWidth => _settings.MapToolLineWidth.Value;
+
     /// <summary>Map units are meters times <c>mapDisplayFactor</c>; the game sizes its icons by the inverse map scale in map units.</summary>
     public float MetersPerIconUnit
     {

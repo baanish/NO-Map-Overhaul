@@ -28,6 +28,7 @@ internal static class MapToolTests
         ("the game's unit system picks the unit", GameUnitSystemPicksUnit),
         ("the hit test measures lines, rings, and labels", HitTestMeasuresShapes),
         ("the hit test finds a label where the map placed it", HitTestFindsPlacedLabel),
+        ("the hit test reaches a wide arrow's barbs", HitTestReachesArrowBarbs),
         ("the topmost of overlapping shapes is hit", TopmostShapeIsHit),
         ("the eraser takes the nearest shape in reach", EraserTakesNearestInReach),
         ("the eraser misses beyond reach", EraserMissesBeyondReach),
@@ -253,6 +254,20 @@ internal static class MapToolTests
         Expect(hitTest.Find(note, new Vector2(5000, 0), 80f) is null, "expected a click where the label would first go to miss");
     }
 
+    /// <summary>
+    /// At the widest line, 8 units, the head is 40 units (400 m) long and its barbs end 169 m either side of the shaft, at
+    /// about (637, ±169). A click near a barb's end is 160 m from the shaft, twice the eraser's reach.
+    /// </summary>
+    private static void HitTestReachesArrowBarbs()
+    {
+        var arrow = new MapShape[] { new Arrow(Vector2.Zero, new Vector2(1000, 0)) };
+        var hitTest = new ShapeHitTest(new FakeContext { LineWidth = 8f });
+        Expect(hitTest.Find(arrow, new Vector2(650, 160), 80f) is not null, "expected a click on the upper barb to hit");
+        Expect(hitTest.Find(arrow, new Vector2(650, -160), 80f) is not null, "expected a click on the lower barb to hit");
+        Expect(new ShapeHitTest(new FakeContext()).Find(arrow, new Vector2(650, 160), 80f) is null,
+            "expected the same click to miss the short head of a default line");
+    }
+
     /// <summary>NOAutopilot is held back exactly when the tools take the click, so the two can't both act on it.</summary>
     private static void RightClickIsGamesUnlessMenuOpen()
     {
@@ -383,6 +398,21 @@ internal static class MapToolTests
         public override void Draw(IMapCanvas canvas) => canvas.Circle(_center, _radius, Color);
     }
 
+    private sealed class Arrow : MapShape
+    {
+        private readonly Vector2 _from;
+        private readonly Vector2 _to;
+
+        public Arrow(Vector2 from, Vector2 to)
+            : base(White)
+        {
+            _from = from;
+            _to = to;
+        }
+
+        public override void Draw(IMapCanvas canvas) => canvas.Arrow(_from, _to, Color);
+    }
+
     private sealed class Note : MapShape
     {
         private readonly Vector2 _position;
@@ -416,6 +446,7 @@ internal static class MapToolTests
     {
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => White;
+        public float LineWidth { get; set; } = 1.5f;
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;
         public float TextSize => 10f;

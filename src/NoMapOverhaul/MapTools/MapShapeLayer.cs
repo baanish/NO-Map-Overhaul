@@ -25,12 +25,6 @@ namespace NoMapOverhaul.MapTools;
 /// </summary>
 internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 {
-    /// <summary>Half the angle between an arrowhead's two barbs.</summary>
-    private const float ArrowBarbDegrees = 25f;
-
-    /// <summary>An arrowhead's length as a multiple of the line width, so the head keeps its shape at any LineWidth.</summary>
-    private const float ArrowHeadPerLineWidth = 5f;
-
     /// <summary>
     /// How the mod's other map layers are named (BaanishRunwayLayer, BaanishAirbaseLabelLayer,
     /// BaanishAirbaseBoundaryLayer). They take the icon layer's first slots, so together they lead its children.
@@ -403,12 +397,12 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             return;
         }
 
-        var head = ArrowHeadPerLineWidth * _settings.MapToolLineWidth.Value * _inverseScale;
+        var head = MapCanvasMetrics.ArrowHeadPerLineWidth * _settings.MapToolLineWidth.Value * _inverseScale;
         var back = -shaft.normalized * Mathf.Min(head, shaft.magnitude);
         var strokes = _target!.Strokes;
-        strokes.AddPoint(tip + (Vector2)(Quaternion.Euler(0f, 0f, ArrowBarbDegrees) * back));
+        strokes.AddPoint(tip + (Vector2)(Quaternion.Euler(0f, 0f, MapCanvasMetrics.ArrowBarbDegrees) * back));
         strokes.AddPoint(tip);
-        strokes.AddPoint(tip + (Vector2)(Quaternion.Euler(0f, 0f, -ArrowBarbDegrees) * back));
+        strokes.AddPoint(tip + (Vector2)(Quaternion.Euler(0f, 0f, -MapCanvasMetrics.ArrowBarbDegrees) * back));
         EndStroke(color, closed: false);
     }
 

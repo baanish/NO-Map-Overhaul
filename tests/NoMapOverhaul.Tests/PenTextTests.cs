@@ -458,6 +458,7 @@ internal static class PenTextTests
         public HashSet<uint> Gone { get; } = new();
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => Yellow;
+        public float LineWidth => 1.5f;
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;
         public float TextSize => 10f;

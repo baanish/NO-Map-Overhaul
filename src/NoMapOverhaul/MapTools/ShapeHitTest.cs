@@ -20,14 +20,17 @@ public interface ILabelPlacements
 /// </summary>
 public sealed class ShapeHitTest : IMapCanvas
 {
-    private readonly IMapView _view;
+    private static readonly float BarbCos = MathF.Cos(MapCanvasMetrics.ArrowBarbDegrees * MathF.PI / 180f);
+    private static readonly float BarbSin = MathF.Sin(MapCanvasMetrics.ArrowBarbDegrees * MathF.PI / 180f);
+
+    private readonly IMapToolContext _view;
     private readonly ILabelPlacements? _placements;
     private Vector2 _point;
     private float _nearest;
     private MapShape? _shape;
     private int _labelIndex;
 
-    public ShapeHitTest(IMapView view, ILabelPlacements? placements = null)
+    public ShapeHitTest(IMapToolContext view, ILabelPlacements? placements = null)
     {
         _view = view;
         _placements = placements;
@@ -67,7 +70,21 @@ public sealed class ShapeHitTest : IMapCanvas
 
     public void Line(Vector2 from, Vector2 to, ShapeColor color) => Measure(SegmentDistance(from, to));
 
-    public void Arrow(Vector2 from, Vector2 to, ShapeColor color) => Measure(SegmentDistance(from, to));
+    /// <summary>The shaft and both barbs, sized as the map draws them: the barbs of a wide line reach well past the eraser's reach from the shaft.</summary>
+    public void Arrow(Vector2 from, Vector2 to, ShapeColor color)
+    {
+        Measure(SegmentDistance(from, to));
+        var shaft = to - from;
+        var length = shaft.Length();
+        if (length <= 0f)
+        {
+            return;
+        }
+
+        var back = -shaft / length * MathF.Min(MapCanvasMetrics.ArrowHeadPerLineWidth * _view.LineWidth * MetersPerIconUnit, length);
+        Measure(SegmentDistance(to, to + new Vector2(back.X * BarbCos - back.Y * BarbSin, back.X * BarbSin + back.Y * BarbCos)));
+        Measure(SegmentDistance(to, to + new Vector2(back.X * BarbCos + back.Y * BarbSin, back.Y * BarbCos - back.X * BarbSin)));
+    }
 
     public void Polyline(IReadOnlyList<Vector2> points, ShapeColor color)
     {

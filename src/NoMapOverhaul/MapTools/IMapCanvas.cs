@@ -145,4 +145,10 @@ public static class MapCanvasMetrics
 
     /// <summary>A character's rough width as a fraction of the text size. The hit test has no font, so it boxes labels with this.</summary>
     public const float CharWidth = 0.6f;
+
+    /// <summary>Half the angle between an arrowhead's two barbs.</summary>
+    public const float ArrowBarbDegrees = 25f;
+
+    /// <summary>An arrowhead's length as a multiple of the line width, so the head keeps its shape at any LineWidth.</summary>
+    public const float ArrowHeadPerLineWidth = 5f;
 }
