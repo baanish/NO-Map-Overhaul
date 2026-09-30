@@ -21,7 +21,7 @@ namespace BaanishUiImprovements.MapTools;
 /// labels and of each other, whenever a drawing redraws and once the map comes to rest after a pan or zoom. While the
 /// map moves, and on the minimap, each label keeps its slot.
 /// </summary>
-internal sealed class MapShapeLayer : IMapCanvas
+internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 {
     /// <summary>Half the angle between an arrowhead's two barbs.</summary>
     private const float ArrowBarbDegrees = 25f;
@@ -40,7 +40,7 @@ internal sealed class MapShapeLayer : IMapCanvas
     private readonly Dictionary<MapShape, ShapeGraphics> _graphics = new();
     private readonly HashSet<MapShape> _seen = new();
     private readonly List<MapShape> _stale = new();
-    private readonly ShapeGraphics?[] _overlays;
+    private ShapeGraphics?[] _overlays = System.Array.Empty<ShapeGraphics?>();
     private readonly LabelLayout _labelLayout = new();
     private readonly LabelObstacles _obstacleFinder = new();
     private readonly List<LabelBox> _obstacles = new();
@@ -72,11 +72,10 @@ internal sealed class MapShapeLayer : IMapCanvas
     private bool _placedOnFullMap;
     private int _placedForScreenLayout = -1;
 
-    public MapShapeLayer(ModSettings settings, IMapView view, int toolCount)
+    public MapShapeLayer(ModSettings settings, IMapView view)
     {
         _settings = settings;
         _view = view;
-        _overlays = new ShapeGraphics?[toolCount];
     }
 
     public DistanceUnit Units => _view.Units;
@@ -103,7 +102,7 @@ internal sealed class MapShapeLayer : IMapCanvas
     public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle,
         IReadOnlyList<RectTransform> screenAreas, int screenLayout)
     {
-        var fresh = EnsureLayer(map);
+        var fresh = EnsureLayer(map, tools.Count);
         var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value || _settings.PerfTestShowsDrawings;
         if (_layer!.gameObject.activeSelf != shown)
         {
@@ -290,6 +289,19 @@ internal sealed class MapShapeLayer : IMapCanvas
         _placedForScreenLayout = -1;
     }
 
+    /// <summary>Only on the full map, the one map the tools take clicks on.</summary>
+    public bool TryGetBox(MapShape shape, int index, out LabelBox box)
+    {
+        if (_placedOnFullMap && _graphics.TryGetValue(shape, out var graphics) && graphics.TryGetPlacement(index) is { Slot: >= 0 } placement)
+        {
+            box = placement.Box;
+            return true;
+        }
+
+        box = default;
+        return false;
+    }
+
     public bool TryResolve(MapPoint point, out FlatVector position)
     {
         if (point.IsAnchored)
@@ -386,7 +398,7 @@ internal sealed class MapShapeLayer : IMapCanvas
             _settings.OutlineColor.Value, _hudStyle, _inverseScale);
 
     /// <summary>A scene change destroys the map and our layer with it, so a missing layer means every cached graphic is gone too.</summary>
-    private bool EnsureLayer(DynamicMap map)
+    private bool EnsureLayer(DynamicMap map, int toolCount)
     {
         if (_layer != null && _layer.parent == map.iconLayer.transform)
         {
@@ -394,6 +406,11 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
 
         Reset();
+        if (_overlays.Length != toolCount)
+        {
+            _overlays = new ShapeGraphics?[toolCount];
+        }
+
         _layer = NewRect("BaanishMapToolsLayer", map.iconLayer.transform);
         _layer.gameObject.AddComponent<Canvas>();
         _labelRoot = NewRect("Labels", _layer);
@@ -616,6 +633,9 @@ internal sealed class MapShapeLayer : IMapCanvas
             label.Visible = true;
             return label;
         }
+
+        /// <summary>Where this draw's label at <paramref name="index"/> was placed, or null if the draw had fewer labels.</summary>
+        public PlacedLabel? TryGetPlacement(int index) => index < _labelsUsed ? _labels[index].Placement : null;
 
         /// <summary>This draw's labels, for the layer to place.</summary>
         public void AddLabels(List<MapLabel> into, int order, bool overlay)

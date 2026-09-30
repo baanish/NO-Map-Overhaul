@@ -26,6 +26,7 @@ internal static class MapToolTests
         ("distances round per unit", DistancesRoundPerUnit),
         ("the game's unit system picks the unit", GameUnitSystemPicksUnit),
         ("the hit test measures lines, rings, and labels", HitTestMeasuresShapes),
+        ("the hit test finds a label where the map placed it", HitTestFindsPlacedLabel),
         ("the topmost of overlapping shapes is hit", TopmostShapeIsHit),
         ("the eraser takes the nearest shape in reach", EraserTakesNearestInReach),
         ("the eraser misses beyond reach", EraserMissesBeyondReach),
@@ -225,6 +226,15 @@ internal static class MapToolTests
         Expect(hitTest.Find(note, new Vector2(5250, 0), 80f) is null, "expected a click 130 m past the text to miss");
     }
 
+    /// <summary>The map moved the label 40 icon units (400 m) north of its point, as it does onto a leader.</summary>
+    private static void HitTestFindsPlacedLabel()
+    {
+        var note = new MapShape[] { new Note(new Vector2(5000, 0), "ABCD") };
+        var hitTest = new ShapeHitTest(new FakeContext(), new OnePlacement(LabelBox.Around(new Vector2(500, 40), new Vector2(13, 6))));
+        Expect(hitTest.Find(note, new Vector2(5100, 430), 0f) is not null, "expected a click on the placed label to hit");
+        Expect(hitTest.Find(note, new Vector2(5000, 0), 80f) is null, "expected a click where the label would first go to miss");
+    }
+
     /// <summary>NOAutopilot is held back exactly when the tools take the click, so the two can't both act on it.</summary>
     private static void RightClickIsGamesUnlessMenuOpen()
     {
@@ -361,6 +371,20 @@ internal static class MapToolTests
         }
 
         public override void Draw(IMapCanvas canvas) => canvas.Label(LabelAnchor.Note(_position), _text, Color);
+    }
+
+    /// <summary>Every shape's first label placed in one box.</summary>
+    private sealed class OnePlacement : ILabelPlacements
+    {
+        private readonly LabelBox _box;
+
+        public OnePlacement(LabelBox box) => _box = box;
+
+        public bool TryGetBox(MapShape shape, int index, out LabelBox box)
+        {
+            box = _box;
+            return index == 0;
+        }
     }
 
     private sealed class FakeContext : IMapToolContext

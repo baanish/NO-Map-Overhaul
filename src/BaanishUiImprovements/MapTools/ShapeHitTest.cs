@@ -4,6 +4,16 @@ using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools;
 
+/// <summary>Where the map placed the labels of the shapes in the store, which may be a slot or a leader away from their first.</summary>
+public interface ILabelPlacements
+{
+    /// <summary>
+    /// The box of <paramref name="shape"/>'s label at <paramref name="index"/>, counted in the order its draw adds
+    /// labels, in icon units. False if the map hasn't placed it.
+    /// </summary>
+    bool TryGetBox(MapShape shape, int index, out LabelBox box);
+}
+
 /// <summary>
 /// Finds the shape under a click by drawing each shape into itself and measuring how close every stroke passes, so any
 /// shape a tool can draw can be picked without the picker knowing its type. Distances are meters.
@@ -11,10 +21,17 @@ namespace BaanishUiImprovements.MapTools;
 public sealed class ShapeHitTest : IMapCanvas
 {
     private readonly IMapView _view;
+    private readonly ILabelPlacements? _placements;
     private Vector2 _point;
     private float _nearest;
+    private MapShape? _shape;
+    private int _labelIndex;
 
-    public ShapeHitTest(IMapView view) => _view = view;
+    public ShapeHitTest(IMapView view, ILabelPlacements? placements = null)
+    {
+        _view = view;
+        _placements = placements;
+    }
 
     public DistanceUnit Units => _view.Units;
     public float MetersPerIconUnit => _view.MetersPerIconUnit;
@@ -30,7 +47,9 @@ public sealed class ShapeHitTest : IMapCanvas
         for (var i = shapes.Count - 1; i >= 0; i--)
         {
             _nearest = float.MaxValue;
-            shapes[i].Draw(this);
+            _shape = shapes[i];
+            _labelIndex = 0;
+            _shape.Draw(this);
             if (_nearest <= reach && _nearest < bestDistance)
             {
                 best = shapes[i];
@@ -38,6 +57,7 @@ public sealed class ShapeHitTest : IMapCanvas
             }
         }
 
+        _shape = null;
         return best;
     }
 
@@ -67,16 +87,22 @@ public sealed class ShapeHitTest : IMapCanvas
         Measure(MathF.Max(0f, Vector2.Distance(_point, position) - MapCanvasMetrics.MarkerRadius * MetersPerIconUnit));
 
     /// <summary>
-    /// Boxes the text by its longest line and its line count, in the label's first slot: a click anywhere on the words
-    /// counts. The map may have moved a label clear of the game's; a click on the line still takes the drawing.
+    /// The label's box where the map placed it, so a click anywhere on the plate counts. A label the map hasn't placed
+    /// is boxed by its longest line and its line count, in its first slot.
     /// </summary>
     public void Label(LabelAnchor anchor, string text, ShapeColor color)
     {
-        var (columns, lines) = TextExtent(text);
         var unit = MetersPerIconUnit;
-        var half = LabelLayout.HalfSize(anchor.Kind, new Vector2(columns * TextSize * MapCanvasMetrics.CharWidth, lines * TextSize), TextSize);
-        LabelLayout.Candidate(anchor.Scaled(1f / unit), half, 0, out _, out var center);
-        Measure(Vector2.Max(Vector2.Abs(_point - center * unit) - half * unit, Vector2.Zero).Length());
+        if (_placements == null || _shape == null || !_placements.TryGetBox(_shape, _labelIndex++, out var box))
+        {
+            var (columns, lines) = TextExtent(text);
+            var half = LabelLayout.HalfSize(anchor.Kind, new Vector2(columns * TextSize * MapCanvasMetrics.CharWidth, lines * TextSize), TextSize);
+            LabelLayout.Candidate(anchor.Scaled(1f / unit), half, 0, out _, out var center);
+            box = LabelBox.Around(center, half);
+        }
+
+        var point = _point / unit;
+        Measure(Vector2.Distance(box.Nearest(point), point) * unit);
     }
 
     private static (int Columns, int Lines) TextExtent(string text)

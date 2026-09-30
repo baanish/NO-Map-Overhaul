@@ -19,9 +19,9 @@ public sealed class EraserTool : MapTool
     private readonly RecolorCanvas _highlight = new();
     private MapShape? _hovered;
 
-    public EraserTool(IMapToolContext context)
+    public EraserTool(IMapToolContext context, ILabelPlacements? placements = null)
         : base(context) =>
-        _hitTest = new ShapeHitTest(context);
+        _hitTest = new ShapeHitTest(context, placements);
 
     public override string Name => "Eraser";
 

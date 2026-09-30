@@ -34,6 +34,8 @@ internal sealed class MapToolHost
     {
         _settings = settings;
         _context = new MapToolContext(settings, _store);
+        _layer = new MapShapeLayer(settings, _context);
+        _hitTest = new ShapeHitTest(_context, _layer);
         // Rail order, each with its icon; the rail opens on the first. Each tool lives in its own folder under MapTools.
         var tools = new (MapTool Tool, RailIcon Icon)[]
         {
@@ -42,14 +44,12 @@ internal sealed class MapToolHost
             (new TextTool(_context), RailIcon.Text),
             (new BearingRangeTool(_context), RailIcon.BearingRange),
             (new CircleTool(_context), RailIcon.Circle),
-            (new EraserTool(_context), RailIcon.Eraser),
+            (new EraserTool(_context, _layer), RailIcon.Eraser),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
         _icons = System.Array.ConvertAll(tools, entry => entry.Icon);
         _menu = new MapToolMenu(settings);
-        _layer = new MapShapeLayer(settings, _context, _tools.Length);
         _worldLabels = new WorldLabelPool(settings);
-        _hitTest = new ShapeHitTest(_context);
     }
 
     /// <summary>The drawings and the game lookups the tools use, for the perf test's generated drawings.</summary>
