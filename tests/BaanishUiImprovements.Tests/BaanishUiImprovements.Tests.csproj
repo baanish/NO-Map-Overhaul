@@ -24,6 +24,7 @@
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\MapShape.cs" Link="MapTools\MapShape.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\MapTool.cs" Link="MapTools\MapTool.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\NavFormat.cs" Link="MapTools\NavFormat.cs" />
+    <Compile Include="..\..\src\BaanishUiImprovements\MapTools\RightClickRule.cs" Link="MapTools\RightClickRule.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeColor.cs" Link="MapTools\ShapeColor.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeHitTest.cs" Link="MapTools\ShapeHitTest.cs" />
     <Compile Include="..\..\src\BaanishUiImprovements\MapTools\ShapeStore.cs" Link="MapTools\ShapeStore.cs" />

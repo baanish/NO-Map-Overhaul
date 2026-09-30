@@ -5,12 +5,14 @@ using FlatVector = System.Numerics.Vector2;
 namespace BaanishUiImprovements.MapTools;
 
 /// <summary>
-/// Hands the left mouse button and, while a tool types, the keyboard to the active tool. Nothing is patched.
+/// Hands the left mouse button and, while a tool types, the keyboard to the active tool, and right clicks on the map to
+/// the host. Nothing in the game is patched.
 /// <para>
 /// Clicks: the game has one left-click path on the map by default, the event system's click on a unit icon
 /// (<c>MapIcon.OnPointerClick</c>), and <see cref="MapPointerCatcher"/> covers the icons to take it. The game's other
 /// map selection, <c>DynamicMap.SelectFromMap</c>, runs on the Rewired "Select" action, which is bound to Enter, not
-/// the mouse. Right clicks stay with the game: move orders, and NOAutopilot's waypoints.
+/// the mouse. The game reads right clicks itself for move orders, so the host decides whether one is the tools' (see
+/// <see cref="RightClickRule"/>).
 /// </para>
 /// <para>
 /// Drags pan the map (<c>DynamicMap.MapControls</c> reads the mouse axes while the button is held), which a click-only
@@ -63,6 +65,10 @@ internal sealed class MapToolInput
         UpdateKeyboard(tool);
         UpdatePointer(map, catcher, tool);
     }
+
+    /// <summary>Where a right press on the map landed this frame, if there was one. A press on the menu doesn't count.</summary>
+    public MapPointer? TakeRightClick(DynamicMap map, MapPointerCatcher? catcher) =>
+        catcher != null && catcher.TakeRightPress() ? Pointer(map, Input.mousePosition) : null;
 
     /// <summary>The tool is being switched off: forget its press. Its half-drawn work is its own to drop.</summary>
     public void Cancel()

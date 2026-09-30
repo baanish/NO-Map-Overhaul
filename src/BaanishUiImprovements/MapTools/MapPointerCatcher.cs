@@ -12,6 +12,7 @@ namespace BaanishUiImprovements.MapTools;
 internal sealed class MapPointerCatcher : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IPointerExitHandler
 {
     private bool _pressed;
+    private bool _rightPressed;
 
     /// <summary>The cursor is over the map, not over the menu or another panel on top of it.</summary>
     public bool Hovered { get; private set; }
@@ -24,7 +25,19 @@ internal sealed class MapPointerCatcher : MonoBehaviour, IPointerDownHandler, IP
         return pressed;
     }
 
-    void IPointerDownHandler.OnPointerDown(PointerEventData eventData) => _pressed |= eventData.button == PointerEventData.InputButton.Left;
+    /// <summary>True once per right press on the map. One on the menu never gets here, so the menu ignores right clicks.</summary>
+    public bool TakeRightPress()
+    {
+        var pressed = _rightPressed;
+        _rightPressed = false;
+        return pressed;
+    }
+
+    void IPointerDownHandler.OnPointerDown(PointerEventData eventData)
+    {
+        _pressed |= eventData.button == PointerEventData.InputButton.Left;
+        _rightPressed |= eventData.button == PointerEventData.InputButton.Right;
+    }
 
     void IPointerEnterHandler.OnPointerEnter(PointerEventData eventData) => Hovered = true;
 
@@ -35,5 +48,6 @@ internal sealed class MapPointerCatcher : MonoBehaviour, IPointerDownHandler, IP
     {
         Hovered = false;
         _pressed = false;
+        _rightPressed = false;
     }
 }

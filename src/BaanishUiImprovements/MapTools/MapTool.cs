@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools;
 
-/// <summary>A left-button event on the full map, in meters.</summary>
+/// <summary>A mouse event on the full map, in meters.</summary>
 public readonly struct MapPointer
 {
     public MapPointer(Vector2 position, MapPoint? unit)
@@ -64,8 +64,8 @@ public interface IWorldLabels
 /// <summary>
 /// One entry in the map tools menu. Unity-free, so a tool can be tested with a fake context. Everything is called from
 /// the plugin's guarded update, so a throw disables the mod rather than the game.
-/// While the tool is active, left clicks on the full map come here instead of the game. Right clicks always stay with
-/// the game (move orders, and NOAutopilot's waypoints).
+/// While the tool is active, left clicks on the full map come here instead of the game. Right clicks go to the host,
+/// which cancels <see cref="InProgress"/> work or deletes a drawing (see <see cref="RightClickRule"/>).
 /// </summary>
 public abstract class MapTool
 {
@@ -86,6 +86,9 @@ public abstract class MapTool
     /// its Escape menu, and the undo and redo keys are off, the way the game's chat box silences them.
     /// </summary>
     public virtual bool CapturesKeyboard => false;
+
+    /// <summary>True while something is half-drawn, such as a placed start or a held stroke. A right-click then drops it through <see cref="OnDeactivate"/>.</summary>
+    public virtual bool InProgress => false;
 
     /// <summary>The hint in the menu's strip while active, such as the next step or why nothing happened. Return a cached string: the menu reads it every frame.</summary>
     public virtual string Status => string.Empty;
@@ -115,7 +118,7 @@ public abstract class MapTool
     {
     }
 
-    /// <summary>Another tool was picked, or the menu or map closed. Drop anything half-drawn.</summary>
+    /// <summary>Another tool was picked, the menu or map closed, or a right-click cancelled. Drop anything half-drawn.</summary>
     public virtual void OnDeactivate()
     {
     }

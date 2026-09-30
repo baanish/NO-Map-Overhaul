@@ -29,6 +29,8 @@ public sealed class BearingRangeTool : MapTool
     /// <summary>Empty at the shape cap, so the menu says why nothing is added.</summary>
     public override string Status => Context.Shapes.IsFull ? string.Empty : _start is null ? PickStart : PickEnd;
 
+    public override bool InProgress => _start is not null;
+
     public override void OnDeactivate() => Forget();
 
     public override void OnMissionStart() => Forget();

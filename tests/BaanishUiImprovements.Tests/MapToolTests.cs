@@ -31,6 +31,8 @@ internal static class MapToolTests
         ("the eraser misses beyond reach", EraserMissesBeyondReach),
         ("an erased shape comes back with undo", ErasedShapeComesBackWithUndo),
         ("the eraser redraws its highlight only for a different shape", EraserHighlightRedrawsOnlyForDifferentShape),
+        ("right-click is the game's unless the menu is open with no unit to order", RightClickIsGamesUnlessMenuOpen),
+        ("right-click cancels mid-draw, else deletes a drawing", RightClickCancelsElseDeletes),
     };
 
     private static readonly ShapeColor White = new(255, 255, 255);
@@ -221,6 +223,28 @@ internal static class MapToolTests
         var note = new MapShape[] { new Note(new Vector2(5000, 0), "ABCD") };
         Expect(hitTest.Find(note, new Vector2(5100, 30), 0f) is not null, "expected a click on the text to hit");
         Expect(hitTest.Find(note, new Vector2(5250, 0), 80f) is null, "expected a click 130 m past the text to miss");
+    }
+
+    /// <summary>NOAutopilot is held back exactly when the tools take the click, so the two can't both act on it.</summary>
+    private static void RightClickIsGamesUnlessMenuOpen()
+    {
+        Expect(RightClickRule.Decide(menuOpen: false, unitOrdered: false, inProgress: true, onDrawing: true) == RightClickAction.Game,
+            "expected the menu closed to leave right-click alone");
+        Expect(RightClickRule.Decide(menuOpen: true, unitOrdered: true, inProgress: true, onDrawing: true) == RightClickAction.Game,
+            "expected a unit's move order to win over the tools");
+        Expect(!RightClickRule.ToolsTake(menuOpen: false, unitOrdered: false) && !RightClickRule.ToolsTake(menuOpen: true, unitOrdered: true),
+            "expected NOAutopilot to keep the click whenever the game or nobody has it");
+        Expect(RightClickRule.ToolsTake(menuOpen: true, unitOrdered: false), "expected the tools to take it from NOAutopilot with the menu open");
+    }
+
+    private static void RightClickCancelsElseDeletes()
+    {
+        Expect(RightClickRule.Decide(menuOpen: true, unitOrdered: false, inProgress: true, onDrawing: true) == RightClickAction.Cancel,
+            "expected a half-drawn shape to be cancelled rather than a drawing under it deleted");
+        Expect(RightClickRule.Decide(menuOpen: true, unitOrdered: false, inProgress: false, onDrawing: true) == RightClickAction.Delete,
+            "expected a drawing to be deleted");
+        Expect(RightClickRule.Decide(menuOpen: true, unitOrdered: false, inProgress: false, onDrawing: false) == RightClickAction.Nothing,
+            "expected empty map to do nothing");
     }
 
     private static void TopmostShapeIsHit()

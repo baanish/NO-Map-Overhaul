@@ -30,6 +30,7 @@ internal static class MeasureToolTests
         ("a circle's 3D ring sits level with its centre", CircleRingsSitLevelWithCentre),
         ("the eraser and undo take measurements and circles", EraserAndUndoTakeBoth),
         ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
+        ("a placed start, centre, or preset is in progress until dropped", PlacedPointsAreInProgress),
     };
 
     private const float Nm = NavFormat.MetersPerNauticalMile;
@@ -261,6 +262,26 @@ internal static class MeasureToolTests
         circle.OnOption(0);
         circle.OnPointerMove(At(500, 0));
         Expect(TakeOverlayInvalid(circle), "expected the preset circle preview to follow the cursor");
+    }
+
+    /// <summary>What a right-click cancels: the host drops it through OnDeactivate.</summary>
+    private static void PlacedPointsAreInProgress()
+    {
+        var map = new FakeMap();
+        var measure = new BearingRangeTool(map);
+        measure.OnClick(At(0, 0));
+        Expect(measure.InProgress, "expected a placed start to be in progress");
+        measure.OnDeactivate();
+        Expect(!measure.InProgress, "expected a dropped start to be gone");
+
+        var circle = new CircleTool(map);
+        Click(circle, At(0, 0));
+        Expect(circle.InProgress, "expected a placed centre to be in progress");
+        circle.OnDeactivate();
+        circle.OnOption(0);
+        Expect(circle.InProgress, "expected an armed preset to be in progress");
+        circle.OnDeactivate();
+        Expect(!circle.InProgress && circle.PickedOption == -1, "expected a dropped preset to be gone");
     }
 
     private static MapPointer At(float x, float y) => new(new Vector2(x, y), null);

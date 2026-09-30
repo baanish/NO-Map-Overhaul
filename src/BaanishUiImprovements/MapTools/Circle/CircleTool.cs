@@ -47,6 +47,9 @@ public sealed class CircleTool : MapTool
 
     public override bool CapturesDrag => true;
 
+    /// <summary>A centre placed, or a preset armed for the next click.</summary>
+    public override bool InProgress => _center is not null || _preset >= 0;
+
     public override IReadOnlyList<string> Options => PresetLabels;
 
     /// <summary>The preset armed for the next click, shown picked in the menu.</summary>

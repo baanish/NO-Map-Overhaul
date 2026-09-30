@@ -25,6 +25,7 @@ internal sealed class MapToolHost
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
     private readonly WorldLabelPool _worldLabels;
+    private readonly ShapeHitTest _hitTest;
     private DynamicMap? _map;
     private int _active = -1;
     private int _unfinished = -1;
@@ -48,6 +49,7 @@ internal sealed class MapToolHost
         _menu = new MapToolMenu(settings);
         _layer = new MapShapeLayer(settings, _context, _tools.Length);
         _worldLabels = new WorldLabelPool(settings);
+        _hitTest = new ShapeHitTest(_context);
     }
 
     /// <summary>The drawings and the game lookups the tools use, for the perf test's generated drawings.</summary>
@@ -80,6 +82,11 @@ internal sealed class MapToolHost
         }
 
         _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null);
+        if (_active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
+        {
+            RightClick(map, _tools[_active], rightClick);
+        }
+
         if (open && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
             !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
         {
@@ -185,6 +192,40 @@ internal sealed class MapToolHost
         }
     }
 
+    /// <summary>
+    /// A right-click on the map with the menu open, from any tool: cancels what's half-drawn, else deletes the drawing
+    /// in the eraser's reach. The game reads the same click for a move order, which wins (see <see cref="RightClickRule"/>).
+    /// </summary>
+    private void RightClick(DynamicMap map, MapTool tool, MapPointer pointer)
+    {
+        var shape = _hitTest.Find(_store.Shapes, pointer.Position, EraserTool.Reach * _context.MetersPerIconUnit);
+        switch (RightClickRule.Decide(menuOpen: true, GameOrdersRightClick(map), tool.InProgress, shape != null))
+        {
+            case RightClickAction.Cancel:
+                Drop(tool);
+                break;
+            case RightClickAction.Delete:
+                _store.Remove(shape!);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The test <c>DynamicMap.MapControls</c> makes before a right-click move order: the first selected icon is a
+    /// friendly unit that takes commands, outside the mission editor.
+    /// </summary>
+    private static bool GameOrdersRightClick(DynamicMap map) =>
+        GameManager.gameState != GameState.Editor && map.selectedIcons.Count > 0 &&
+        map.selectedIcons[0] is UnitMapIcon icon && icon.unit != null && icon.unit is ICommandable &&
+        DynamicMap.GetFactionMode(icon.unit.NetworkHQ) == FactionMode.Friendly;
+
+    private void Drop(MapTool tool)
+    {
+        _input.Cancel();
+        tool.OnDeactivate();
+        tool.InvalidateOverlay();
+    }
+
     private void Select(int tool)
     {
         if (tool == _active)
@@ -194,9 +235,7 @@ internal sealed class MapToolHost
 
         if (_active >= 0)
         {
-            _input.Cancel();
-            _tools[_active].OnDeactivate();
-            _tools[_active].InvalidateOverlay();
+            Drop(_tools[_active]);
         }
 
         _active = tool;

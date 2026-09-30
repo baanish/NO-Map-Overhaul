@@ -35,6 +35,8 @@ public sealed class TextTool : MapTool
 
     public override bool CapturesKeyboard => _typing;
 
+    public override bool InProgress => _typing;
+
     /// <summary>Empty at the shape cap, so the menu shows its own limit message.</summary>
     public override string Status => _typing ? TypingStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
 

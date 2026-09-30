@@ -32,6 +32,7 @@ internal static class PenTextTests
         ("clicking elsewhere places the note and starts the next", ClickElsewherePlacesNote),
         ("a note labels the 3D view at ground height", NoteLabelsThreeDView),
         ("a text note undoes and erases", TextNoteUndoesAndErases),
+        ("a held stroke and typed text are in progress until dropped", StrokeAndTextAreInProgress),
     };
 
     private static readonly ShapeColor Yellow = new(255, 221, 51);
@@ -264,6 +265,23 @@ internal static class PenTextTests
     }
 
     /// <summary>Up and down 50 m every 30 m for 300 m: 11 points that all survive thinning and simplifying.</summary>
+    /// <summary>What a right-click cancels: the host drops it through OnDeactivate.</summary>
+    private static void StrokeAndTextAreInProgress()
+    {
+        var context = new FakeContext();
+        var pen = new PenTool(context);
+        pen.OnPointerDown(At(0, 0));
+        Expect(pen.InProgress, "expected a held stroke to be in progress");
+        pen.OnDeactivate();
+        Expect(!pen.InProgress, "expected a dropped stroke to be gone");
+
+        var text = new TextTool(context);
+        text.OnClick(At(0, 0));
+        Expect(text.InProgress, "expected typing to be in progress");
+        text.OnDeactivate();
+        Expect(!text.InProgress && !text.CapturesKeyboard, "expected dropped text to give the keyboard back");
+    }
+
     private static void DrawZigzag(PenTool pen, float y)
     {
         pen.OnPointerDown(At(0, y));

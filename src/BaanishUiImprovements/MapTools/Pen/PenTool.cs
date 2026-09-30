@@ -38,6 +38,8 @@ public sealed class PenTool : MapTool
 
     public override bool CapturesDrag => true;
 
+    public override bool InProgress => _drawing;
+
     /// <summary>
     /// Empty at the shape cap, so the menu shows its own limit message. The pen's own limit message lasts until the
     /// drawings change, since an erase or undo may have made room.
