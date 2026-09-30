@@ -10,6 +10,7 @@ internal sealed class ModSettings
     public ModSettings(ConfigFile config)
     {
         Enabled = config.Bind("General", "Enabled", true, "Off hides everything this mod draws, as if it were not installed. Useful for checking whether a problem comes from the mod or the game.");
+        LogPerformance = config.Bind("General", "LogPerformance", false, "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.");
 
         MapRunways = config.Bind("Map", "ShowRunways", true, "Draw friendly runways and their numbers on the minimap and full map.");
         RunwayColor = config.Bind("Map", "RunwayColor", new Color(0f, 0.85f, 0f, 0.85f), "Fill colour of runway strips.");
@@ -58,6 +59,7 @@ internal sealed class ModSettings
     }
 
     public ConfigEntry<bool> Enabled { get; }
+    public ConfigEntry<bool> LogPerformance { get; }
 
     public ConfigEntry<bool> MapRunways { get; }
     public ConfigEntry<Color> RunwayColor { get; }

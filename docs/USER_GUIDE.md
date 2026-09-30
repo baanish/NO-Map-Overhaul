@@ -102,6 +102,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Section | Setting | Default | What it does |
 | --- | --- | --- | --- |
 | General | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
+| General | LogPerformance | `false` | Log the frame rate and the mod's own time every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
 | Map | ShowRunways | `true` | Draw runways and their numbers. |
 | Map | RunwayColor | `00D900D9` | Strip fill. |
 | Map | RunwayLabelColor | `99FF99FF` | Runway number colour. |
@@ -141,6 +142,27 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Map Tools | WaypointPassedKm | `10` | How far behind you a waypoint still counts as reached. `0` turns it off. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
+
+## Measuring the mod's cost
+
+Turn on **General → LogPerformance**, and every 5 seconds the mod writes one line to `BepInEx/LogOutput.log`:
+
+```text
+[Info   :Baanish UI Improvements] Perf 5.0 s, mod on: 612 frames, 122.4 fps avg (8.17 ms), 1% low 88.1 fps, worst frame 21.3 ms. Mod per frame 0.084 ms avg, 0.412 ms worst. Map refresh 50x, 0.310 ms avg, 1.204 ms worst.
+```
+
+- **mod on** or **mod off** is whether Enabled was on for those 5 seconds, or **on and off** if you flipped it partway.
+- **fps avg**, **1% low**, and **worst frame** are the whole game's frame rate. The 1% low is the rate that 99% of frames beat, so it shows stutter the average hides.
+- **Mod per frame** is the time the mod's own code takes each frame, and **Map refresh** the time it takes on each of the game's map updates, about 10 a second. Neither counts what the graphics card spends drawing the mod's lines and text. That cost shows only in the frame rate, which is why the comparison below flips the mod off.
+
+To compare with and without the mod in one session:
+
+1. Turn on LogPerformance in F1, and close F1, since its window costs frames too.
+2. Fly something repeatable for at least 20 seconds, such as straight and level over the same area, or sit still on the runway. Keep the camera still.
+3. Open F1, turn **Enabled** off, close F1, and hold the same view for another 20 seconds.
+4. Turn Enabled back on and LogPerformance off.
+
+Compare the **mod on** lines with the **mod off** lines, skipping any line that reads **on and off**. The difference in fps avg and 1% low is the mod's full cost. With Enabled off, the mod's own times read near zero.
 
 ## Airbase abbreviations
 

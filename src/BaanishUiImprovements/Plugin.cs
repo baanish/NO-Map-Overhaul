@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BaanishUiImprovements.Airbases;
+using BaanishUiImprovements.Diagnostics;
 using BaanishUiImprovements.MapTools;
 using BaanishUiImprovements.Missiles;
 using BaanishUiImprovements.Runways;
@@ -35,6 +36,7 @@ public sealed class Plugin : BaseUnityPlugin
     private AirbaseLabelOverlay _labelOverlay = null!;
     private IncomingMissileArrows _missileArrows = null!;
     private MapToolHost _mapTools = null!;
+    private PerformanceLog _performance = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
@@ -50,6 +52,7 @@ public sealed class Plugin : BaseUnityPlugin
         _labelOverlay = new AirbaseLabelOverlay(_settings);
         _missileArrows = new IncomingMissileArrows(_settings);
         _mapTools = new MapToolHost(_settings);
+        _performance = new PerformanceLog(_settings, Logger);
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -68,28 +71,38 @@ public sealed class Plugin : BaseUnityPlugin
     /// Per frame: the HUD label and missile arrows follow the camera, the numbers counter-rotate the heading-up minimap,
     /// and the map tools take input and redraw what changed.
     /// </summary>
-    private void LateUpdate() => Guard(() =>
+    private void LateUpdate()
     {
-        if (!_settings.Enabled.Value)
+        var start = _performance.Start();
+        Guard(() =>
         {
-            // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
-            RemoveOverlays();
-            return;
-        }
+            if (!_settings.Enabled.Value)
+            {
+                // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
+                RemoveOverlays();
+                return;
+            }
 
-        if (SceneSingleton<DynamicMap>.i == null)
-        {
-            _approach = null; // the runways it points at went with the scene
-        }
+            if (SceneSingleton<DynamicMap>.i == null)
+            {
+                _approach = null; // the runways it points at went with the scene
+            }
 
-        _hudCallout.Render(_approach);
-        _missileArrows.Render();
-        _mapOverlay.KeepLabelsUpright();
-        _mapTools.Update(_hudCallout.HudStyle);
-    });
+            _hudCallout.Render(_approach);
+            _missileArrows.Render();
+            _mapOverlay.KeepLabelsUpright();
+            _mapTools.Update(_hudCallout.HudStyle);
+        });
+        _performance.AddFrame(start, _settings.Enabled.Value);
+    }
 
     /// <summary>Raised from inside the game's DynamicMap.Update, so it must never throw back into the game.</summary>
-    private void OnMapChanged() => Guard(RefreshMap);
+    private void OnMapChanged()
+    {
+        var start = _performance.Start();
+        Guard(RefreshMap);
+        _performance.AddRefresh(start);
+    }
 
     /// <summary>A throw disables the plugin rather than repeating every frame or breaking the game's map.</summary>
     private void Guard(System.Action action)
