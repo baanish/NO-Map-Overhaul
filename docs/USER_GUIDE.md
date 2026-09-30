@@ -83,7 +83,7 @@ With **Circle**, press on the centre and drag out to the radius, or click the ce
 
 With the Eraser, click on or near a drawing to delete it. The drawing under the cursor turns red first, so you can see what goes. Clear removes everything as one step, so Undo brings it all back. The Z and Y keys also undo and redo while the full map is open, but not while you type map text, chat, or into one of the game's text boxes. The colour swatches set the colour of new lines, arrows, and text.
 
-Drawings show on the minimap too. They sit under the game's unit icons and waypoints, so they never hide a unit, and over the runways. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
+Drawings show on the minimap too, unless **ShowOnMinimap** is off. They sit under the game's unit icons and waypoints, so they never hide a unit, and over the runways. Only you see them, and they're gone when you leave the mission. Distances follow the game's unit setting, kilometres for metric and nautical miles for imperial, unless **DistanceUnits** picks one. When you reach the shape limit, the menu says so, and the tools can't add anything until you erase or undo something.
 
 ## How the runway end is chosen
 
@@ -123,6 +123,7 @@ Change settings in game with F1 if Configuration Manager is installed. Changes a
 | Missile Arrows | ShowArrows | `true` | Point an arrow at each incoming missile outside the view. |
 | Missile Arrows | Color | `FF4033FF` | Arrow colour. |
 | Map Tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
+| Map Tools | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
 | Map Tools | Color | `FFDD33FF` | Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here. |
 | Map Tools | LineWidth | `2` | Width of drawn lines. |
 | Map Tools | TextSize | `10` | Size of text the tools draw on the map. |

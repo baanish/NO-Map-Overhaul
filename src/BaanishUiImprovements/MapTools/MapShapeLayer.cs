@@ -74,6 +74,18 @@ internal sealed class MapShapeLayer : IMapCanvas
     public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle)
     {
         var fresh = EnsureLayer(map);
+        var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value;
+        if (_layer!.gameObject.activeSelf != shown)
+        {
+            _layer.gameObject.SetActive(shown);
+            fresh = true; // hidden, it skips every redraw, so it redraws everything when it shows again
+        }
+
+        if (!shown)
+        {
+            return;
+        }
+
         var tick = map.mapLastUpdated != _lastTick;
         _lastTick = map.mapLastUpdated;
         if (fresh || tick)
@@ -131,9 +143,9 @@ internal sealed class MapShapeLayer : IMapCanvas
     /// </summary>
     public void KeepUpright()
     {
-        if (_layer == null)
+        if (_layer == null || !_layer.gameObject.activeSelf)
         {
-            return; // destroyed with the old scene's map; the next render rebuilds everything
+            return; // destroyed with the old scene's map, or hidden from the minimap; the next render rebuilds everything
         }
 
         var rotation = _layer.rotation;
