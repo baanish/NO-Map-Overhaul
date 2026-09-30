@@ -8,9 +8,10 @@ namespace BaanishUiImprovements.MapTools;
 /// <summary>
 /// One map label: the text, its plate for anything but a note, and a leader when the layout moved it off its
 /// arrowhead. A shape's draw sets what it says (<see cref="Set"/>); the layer's placement pass then says where
-/// (<see cref="Apply"/>). The text's container hangs from the label's origin and is turned upright on the minimap. The
-/// plate and leader aren't objects of their own: every label adds them to the layer's one mesh of plates
-/// (<see cref="AddPlate"/>), turned the same way.
+/// (<see cref="Apply"/>). The layout works in the frame the labels stand upright in, the screen's, which the heading-up
+/// minimap turns against the map's, so a bearing's label sits past its arrowhead as it shows on screen. The text's
+/// container hangs from the label's origin and is turned upright. The plate and leader aren't objects of their own:
+/// every label adds them to the layer's one mesh of plates (<see cref="AddPlate"/>), turned the same way.
 /// </summary>
 internal sealed class MapLabel
 {
@@ -27,6 +28,9 @@ internal sealed class MapLabel
     private static readonly Color PlateColor = new(5f / 255f, 14f / 255f, 7f / 255f, 0.78f);
 
     private readonly OutlinedText _text;
+
+    /// <summary>In the map's frame, in icon units, as the shape drew it. <see cref="Placement"/> gets it in the upright frame.</summary>
+    private LabelAnchor _anchor;
     private string? _measuredText;
     private float _measuredSize = -1f;
     private Object? _measuredFont;
@@ -41,7 +45,7 @@ internal sealed class MapLabel
 
     public RectTransform Rect => _text.Rect;
 
-    /// <summary>What the layout reads and writes, in icon units.</summary>
+    /// <summary>What the layout reads and writes, in icon units, in the upright frame (see <see cref="TurnUpright"/>).</summary>
     public PlacedLabel Placement { get; } = new();
 
     public bool Visible
@@ -72,16 +76,19 @@ internal sealed class MapLabel
         }
 
         _color = color;
-        Placement.Anchor = anchor;
+        _anchor = anchor;
         Placement.Text = text;
         Placement.HalfSize = LabelLayout.HalfSize(anchor.Kind, new FlatVector(_textSize.x, _textSize.y), size);
     }
 
-    /// <summary>Moves the label where the layout put it. Cheap when nothing moved.</summary>
-    public void Apply(float inverseScale)
+    /// <summary>Hands the layout the anchor turned by the angle with this cosine and sine, from the map's frame into the upright one.</summary>
+    public void TurnUpright(float cos, float sin) => Placement.Anchor = _anchor.Turned(cos, sin);
+
+    /// <summary>Moves the label where the layout put it. <paramref name="toMap"/> turns the upright frame back into the map's. Cheap when nothing moved.</summary>
+    public void Apply(float inverseScale, Quaternion toMap)
     {
         var origin = ToUnity(Placement.Origin);
-        var position = (Vector3)(origin * inverseScale);
+        var position = toMap * (origin * inverseScale);
         if (Rect.localPosition != position)
         {
             Rect.localPosition = position;
@@ -92,20 +99,18 @@ internal sealed class MapLabel
 
     /// <summary>
     /// Adds this label's leader and plate, the leader first since it ends under the plate, in the space of the text's
-    /// container's parent. <paramref name="upright"/> is the container's local rotation there.
+    /// container's parent, the map's frame. <paramref name="toMap"/> turns the upright frame into it.
     /// </summary>
-    public void AddPlate(FeatheredRectBatch plates, Quaternion upright, float inverseScale)
+    public void AddPlate(FeatheredRectBatch plates, Quaternion toMap, float inverseScale)
     {
         if (!_plated && !Placement.Leader)
         {
             return;
         }
 
-        var origin = ToUnity(Placement.Origin);
-        var across = (Vector2)(upright * Vector3.right);
-        var up = (Vector2)(upright * Vector3.up);
-        Vector2 At(FlatVector point) => (origin + Turn(ToUnity(point) - origin)) * inverseScale;
-        Vector2 Turn(Vector2 offset) => across * offset.x + up * offset.y;
+        var across = (Vector2)(toMap * Vector3.right);
+        var up = (Vector2)(toMap * Vector3.up);
+        Vector2 At(FlatVector point) => (across * point.X + up * point.Y) * inverseScale;
 
         if (Placement.Leader)
         {

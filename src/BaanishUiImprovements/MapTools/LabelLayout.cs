@@ -210,8 +210,8 @@ public sealed class LabelLayout
 
     /// <summary>
     /// Places every label, as described on the class. With <paramref name="obstacles"/> null nothing is avoided: each
-    /// label keeps the slot it had, or takes its first, which is what the map does while it moves and on the turning
-    /// minimap, where the game's labels aren't known.
+    /// label keeps the slot it had, or takes its first, which is what the full map does while it moves. The minimap,
+    /// where the game's labels aren't known, passes none, so its labels avoid only each other.
     /// A label drawn twice, such as the eraser's highlight redrawing a drawing, takes the slot of the first.
     /// </summary>
     public void Place(List<PlacedLabel> labels, IReadOnlyList<LabelBox>? obstacles)

@@ -80,11 +80,19 @@ public readonly struct LabelAnchor : IEquatable<LabelAnchor>
     /// <summary>The same anchor with every position and length times <paramref name="factor"/>, such as meters to icon units.</summary>
     public LabelAnchor Scaled(float factor) => new(Kind, Point * factor, From * factor, Radius * factor);
 
+    /// <summary>
+    /// The same anchor turned about the origin by the angle with this cosine and sine, such as from the heading-up
+    /// minimap's frame into the screen's, where its labels stand upright.
+    /// </summary>
+    public LabelAnchor Turned(float cos, float sin) => new(Kind, Turn(Point, cos, sin), Turn(From, cos, sin), Radius);
+
     public bool Equals(LabelAnchor other) => Kind == other.Kind && Point == other.Point && From == other.From && Radius == other.Radius;
 
     public override bool Equals(object? obj) => obj is LabelAnchor other && Equals(other);
 
     public override int GetHashCode() => HashCode.Combine(Kind, Point, From, Radius);
+
+    private static Vector2 Turn(Vector2 point, float cos, float sin) => new(point.X * cos - point.Y * sin, point.X * sin + point.Y * cos);
 }
 
 /// <summary>

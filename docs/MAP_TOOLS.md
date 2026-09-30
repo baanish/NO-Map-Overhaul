@@ -94,7 +94,7 @@ Drawings only use what your side knows. A drawing on a unit follows it only wher
 
 Drawings show on the full map and on the minimap. Turn off **Show on minimap** to keep the minimap clear. They sit under the game's unit icons, so they never hide a unit.
 
-Measurements, radii, and waypoint numbers sit on small dark plates. On the full map, they move aside so they don't cover unit icons, airbase names, runway numbers, or each other.
+Measurements, radii, and waypoint numbers sit on small dark plates. On the full map, they move aside so they don't cover unit icons, airbase names, runway numbers, or each other. On the minimap, they move aside so they don't cover each other.
 
 Distances follow the game's unit setting: kilometres for metric, nautical miles for imperial. Set **Distance units** to always use one unit.
 
