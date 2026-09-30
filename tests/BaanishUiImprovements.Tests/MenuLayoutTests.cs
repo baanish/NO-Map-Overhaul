@@ -22,7 +22,16 @@ internal static class MenuLayoutTests
         ("a map near the screen's top keeps the strip inside, and one rail column fits", TallMapKeepsStripInside),
         ("the HUD in the way keeps the rail inside", HudInTheWayKeepsRailInside),
         ("the strip takes the first wide enough stretch above the map, else goes inside", StripTakesFirstWideStretch),
+        ("a strip wide enough keeps the hint and buttons on one row", WideStripKeepsOneRow),
+        ("a narrow strip moves the buttons to a second row rather than wrap a short hint", NarrowStripMovesButtonsDown),
+        ("only a hint too long for its row wraps", LongHintWraps),
     };
+
+    /// <summary>The waypoint tool's start: its name, then a 231-pixel hint, then SKIP and RESTART with their gaps.</summary>
+    private const float WaypointLead = 101f;
+
+    private const float StartHint = 231f;
+    private const float RouteButtons = 142f;
 
     private const int Tools = 6;
     private const int Swatches = 6;
@@ -116,6 +125,27 @@ internal static class MenuLayoutTests
         (_, strip) = MenuLayout.Place(2560, 1440, Map(2560, 1440, 900f), 1f, hud, Tools, Swatches);
         ExpectNear(strip.X, MenuLayout.RailX + RailGrid.RailWidth, "strip x, beside the rail's head");
         ExpectNear(strip.MaxWidth, MenuLayout.StripMaxWidth, "strip width inside");
+    }
+
+    private static void WideStripKeepsOneRow() =>
+        ExpectFit(MenuLayout.FitStrip(WaypointLead, StartHint, RouteButtons, MenuLayout.StripMaxWidth), secondRow: false, StartHint, wraps: false);
+
+    private static void NarrowStripMovesButtonsDown() =>
+        ExpectFit(MenuLayout.FitStrip(WaypointLead, StartHint, RouteButtons, 430f), secondRow: true, StartHint, wraps: false);
+
+    /// <summary>With buttons, the hint wraps above them on its own row; without, it wraps on the one row.</summary>
+    private static void LongHintWraps()
+    {
+        ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, RouteButtons, 430f), secondRow: true, 430f - WaypointLead - 14f, wraps: true);
+        ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, 0f, 430f), secondRow: false, 430f - WaypointLead - 14f, wraps: true);
+        ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, RouteButtons, 200f), secondRow: true, MenuLayout.MinHintWidth, wraps: true);
+    }
+
+    private static void ExpectFit(StripFit fit, bool secondRow, float hintWidth, bool wraps)
+    {
+        Expect(fit.SecondRow == secondRow, $"expected the buttons {(secondRow ? "on a second row" : "beside the hint")}");
+        Expect(fit.Wraps == wraps, $"expected the hint {(wraps ? "wrapped" : "on one line")}");
+        ExpectNear(fit.HintWidth, hintWidth, "hint width");
     }
 
     /// <summary>

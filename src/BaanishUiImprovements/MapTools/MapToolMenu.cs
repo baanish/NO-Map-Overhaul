@@ -23,7 +23,7 @@ internal enum MenuCommand
 }
 
 /// <summary>
-/// The map tools' menu on the full map: a slim rail of line icons, and a one-line strip that names the picked tool, says
+/// The map tools' menu on the full map: a slim rail of line icons, and a strip that names the picked tool, says
 /// what a click does, and holds the tool's option buttons, in the game's MFD green on dark. The rail holds the Tools head,
 /// which opens and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it,
 /// with its key. A warning turns the strip amber and badges the tool that raised it.
@@ -46,14 +46,16 @@ internal sealed class MapToolMenu
     private const float SwatchChip = 14f;
     private const float SwatchRing = 20f;
     private const float Chamfer = 6f;
-    private const float StripPad = 14f;
-    private const float StripGap = 12f;
 
     /// <summary>Above and below a wrapped hint, inside the strip it makes taller than the head.</summary>
     private const float StripTextPad = 4f;
 
-    private const float MinHintWidth = 160f;
     private const float ButtonHeight = 28f;
+
+    /// <summary>A second row holds the buttons with the margin below them that one row has.</summary>
+    private const float SecondRowHeight = ButtonHeight + (HeadHeight - ButtonHeight) * 0.5f;
+
+    private const float CounterGap = 18f;
     private const float ButtonMinWidth = 32f;
     private const float TagGap = 6f;
     private const float TagHeight = 28f;
@@ -333,8 +335,9 @@ internal sealed class MapToolMenu
     /// <summary>
     /// Lays the strip out left to right in design pixels: the tool name, a divider, the hint, then any option buttons,
     /// their unit, and a count. A warning replaces the name with an amber sign, since the badge on the rail names the
-    /// tool. The strip grows to fit, up to its placement's width, past which the hint wraps and the strip grows taller
-    /// to hold it: down inside the map, up outside it.
+    /// tool. The strip grows to fit, up to its placement's width, past which the buttons, unit, and count take a second
+    /// row under the hint, and a hint too long for its row wraps (<see cref="MenuLayout.FitStrip"/>). A second row or a
+    /// wrapped hint makes the strip taller: down inside the map, up outside it.
     /// </summary>
     private void LayoutStrip(string toolName, bool open)
     {
@@ -364,7 +367,7 @@ internal sealed class MapToolMenu
         _hint.enableWordWrapping = false;
         var hintWidth = hasHint ? Measure(_hint) : 0f;
 
-        var tail = StripPad;
+        var tail = 0f;
         for (var i = 0; i < _optionCount; i++)
         {
             tail += StripGap + ButtonWidth(_options[i]);
@@ -379,20 +382,19 @@ internal sealed class MapToolMenu
         if (_counter.gameObject.activeSelf)
         {
             _counter.text = _count;
-            tail += 18f + Measure(_counter);
+            tail += CounterGap + Measure(_counter);
         }
 
-        var overflow = lead + hintWidth + tail - _stripPlace.MaxWidth;
-        if (hasHint && overflow > 0f)
-        {
-            hintWidth = Mathf.Max(hintWidth - overflow, MinHintWidth);
-            _hint.enableWordWrapping = true;
-        }
-
-        var height = _hint.enableWordWrapping
-            ? Mathf.Clamp(_hint.GetPreferredValues(_status, hintWidth * Px, 0f).y / Px + 2f * StripTextPad, HeadHeight, _stripPlace.MaxHeight)
+        var fit = FitStrip(lead, hintWidth, tail, _stripPlace.MaxWidth);
+        hintWidth = fit.HintWidth;
+        _hint.enableWordWrapping = fit.Wraps;
+        var below = fit.SecondRow ? SecondRowHeight : 0f;
+        var rowHeight = fit.Wraps
+            ? Mathf.Clamp(_hint.GetPreferredValues(_status, hintWidth * Px, 0f).y / Px + 2f * StripTextPad, HeadHeight,
+                _stripPlace.MaxHeight - below)
             : HeadHeight;
-        var middle = height * 0.5f;
+        var height = rowHeight + below;
+        var middle = rowHeight * 0.5f;
         var x = StripPad;
         if (_warning)
         {
@@ -403,7 +405,7 @@ internal sealed class MapToolMenu
         else
         {
             var width = Measure(_name);
-            Box(_name.rectTransform, x, 0f, width, height);
+            Box(_name.rectTransform, x, 0f, width, rowHeight);
             x += width + StripGap;
         }
 
@@ -413,15 +415,27 @@ internal sealed class MapToolMenu
             x += StripGap;
         }
 
-        Box(_hint.rectTransform, x, 0f, hintWidth, height);
+        Box(_hint.rectTransform, x, 0f, hintWidth, rowHeight);
+        var hintX = x;
         x += hintWidth;
+        var rowEnd = x;
+
+        // The buttons, unit, and count go beside the hint, or on the second row starting under it.
+        var top = 0f;
+        var band = rowHeight;
+        if (fit.SecondRow)
+        {
+            x = hintX - (_optionCount > 0 ? StripGap : CounterGap);
+            top = rowHeight;
+            band = ButtonHeight;
+        }
 
         for (var i = 0; i < _optionCount; i++)
         {
             var button = _options[i];
             x += StripGap;
             var width = ButtonWidth(button);
-            Box(button.Rect, x, middle - ButtonHeight * 0.5f, width, ButtonHeight);
+            Box(button.Rect, x, top + band * 0.5f - ButtonHeight * 0.5f, width, ButtonHeight);
             button.Show(i == _pickedOption, width);
             x += width;
         }
@@ -430,20 +444,20 @@ internal sealed class MapToolMenu
         {
             x += 8f;
             var width = Measure(_suffix);
-            Box(_suffix.rectTransform, x, 0f, width, height);
+            Box(_suffix.rectTransform, x, top, width, band);
             x += width;
         }
 
         if (_counter.gameObject.activeSelf)
         {
-            x += 18f;
+            x += CounterGap;
             var width = Measure(_counter);
-            Box(_counter.rectTransform, x, 0f, width, height);
+            Box(_counter.rectTransform, x, top, width, band);
             x += width;
         }
 
         Box(_strip, _stripPlace.X, _stripPlace.Outside ? _stripPlace.Y - height : _stripPlace.Y, 0f, 0f);
-        SetFrame(open: true, x + StripPad, height);
+        SetFrame(open: true, Mathf.Max(rowEnd, x) + StripPad, height);
     }
 
     /// <summary>

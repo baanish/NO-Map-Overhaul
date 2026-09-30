@@ -191,6 +191,26 @@ internal readonly struct StripPlacement
 }
 
 /// <summary>
+/// How the strip's contents share its width: whether the option buttons, their unit, and the count take a second row
+/// under the hint, and how wide the hint is, wrapped or on one line.
+/// </summary>
+internal readonly struct StripFit
+{
+    public StripFit(bool secondRow, float hintWidth, bool wraps)
+    {
+        SecondRow = secondRow;
+        HintWidth = hintWidth;
+        Wraps = wraps;
+    }
+
+    public bool SecondRow { get; }
+
+    public float HintWidth { get; }
+
+    public bool Wraps { get; }
+}
+
+/// <summary>
 /// Places the map tools menu on the full map. The rail and the strip each go outside the map when there's room there, so
 /// the map stays clear, and back inside its top-left corner when there isn't: on a screen too narrow for the rail beside
 /// the map, with the map too near the screen's top for the strip, or with the game's HUD in the way. Works in screen
@@ -210,6 +230,14 @@ internal static class MenuLayout
     public const float OutsideGap = 8f;
 
     public const float StripMaxWidth = 640f;
+
+    /// <summary>The strip's padding at either end, and the gap between its name, divider, hint, and buttons.</summary>
+    public const float StripPad = 14f;
+
+    public const float StripGap = 12f;
+
+    /// <summary>The narrowest a wrapped hint gets, even if that makes the strip wider than its placement.</summary>
+    public const float MinHintWidth = 160f;
 
     /// <summary>
     /// The narrowest strip outside the map: the widest tool's name and buttons, the waypoint's SKIP and RESTART, beside a
@@ -275,6 +303,24 @@ internal static class MenuLayout
         var strip = PlaceStrip(screenWidth, map, pixelsPerDesign, blockers) ??
             new StripPlacement(false, RailX + (rail.Outside ? 0f : RailGrid.RailWidth), RailY, StripMaxWidth, InsideStripMaxHeight);
         return (rail, strip);
+    }
+
+    /// <summary>
+    /// Fits the strip's contents to <paramref name="maxWidth"/>, in design pixels. <paramref name="lead"/> is the width left
+    /// of the hint, <paramref name="hint"/> the hint's on one line, and <paramref name="tail"/> what the buttons, their unit,
+    /// and the count take right of it, gaps included. All on one row if it fits; else the buttons go to a second row, so a
+    /// short hint keeps its line, and only a hint too long for the row by itself wraps.
+    /// </summary>
+    public static StripFit FitStrip(float lead, float hint, float tail, float maxWidth)
+    {
+        var room = maxWidth - lead - StripPad;
+        if (hint + tail <= room)
+        {
+            return new StripFit(false, hint, false);
+        }
+
+        var secondRow = tail > 0f;
+        return hint <= room ? new StripFit(secondRow, hint, false) : new StripFit(secondRow, Math.Max(room, MinHintWidth), true);
     }
 
     /// <summary>The fewest columns that fit left of the map, from its top edge down, clear of the HUD and on screen.</summary>
