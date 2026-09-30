@@ -5,7 +5,8 @@ namespace NoMapOverhaul.MapTools.BearingRange;
 /// <summary>
 /// Measures bearing and range: click where to measure from, then where to. Either end snaps to a unit clicked on or
 /// just beside its icon and follows it. An arrow previews the measurement until the second click, and clicking the
-/// start again drops it. Each arrow's label also shows in the 3D view.
+/// start again drops it. Pressing the tool's key twice starts from the player's aircraft instead (see
+/// <see cref="StartAtOwnAircraft"/>). Each arrow's label also shows in the 3D view.
 /// </summary>
 public sealed class BearingRangeTool : MapTool
 {
@@ -18,12 +19,16 @@ public sealed class BearingRangeTool : MapTool
 
     private const string PickStart = "Click where to measure from.";
     private const string PickEnd = "Click where to measure to, or the start again to cancel.";
+    private const string PickEndFromAircraft = "From your aircraft: click where to measure to.";
+    private const string NoAircraft = "No aircraft to measure from.";
 
     private readonly MeasureLabel _previewLabel = new();
     private MapPoint? _start;
     private MapPoint? _hover;
     private float _startElevation;
     private float _hoverElevation;
+    private bool _startOnAircraft;
+    private bool _noAircraft;
 
     public BearingRangeTool(IMapToolContext context)
         : base(context)
@@ -33,9 +38,37 @@ public sealed class BearingRangeTool : MapTool
     public override string Name => "Bearing/range";
 
     /// <summary>Empty at the shape cap, so the menu says why nothing is added.</summary>
-    public override string Status => Context.Shapes.IsFull ? string.Empty : _start is null ? PickStart : PickEnd;
+    public override string Status =>
+        Context.Shapes.IsFull ? string.Empty
+        : _noAircraft ? NoAircraft
+        : _start is null ? PickStart
+        : _startOnAircraft ? PickEndFromAircraft
+        : PickEnd;
+
+    public override bool Warning => _noAircraft;
 
     public override bool InProgress => _start is not null;
+
+    /// <summary>
+    /// The tool's key pressed twice: measure from the player's own aircraft, anchored to it as a click on its icon is,
+    /// so the arrow follows it. Replaces a start already placed. With no aircraft, as when dead or spectating, the strip
+    /// says so and nothing else changes.
+    /// </summary>
+    public void StartAtOwnAircraft()
+    {
+        if (Context.OwnAircraft is not { } aircraft)
+        {
+            _noAircraft = true;
+            return;
+        }
+
+        _noAircraft = false;
+        _start = aircraft;
+        _startOnAircraft = true;
+        _startElevation = Elevation(aircraft);
+        _hoverElevation = _hover is { } hover ? Elevation(hover) : 0f;
+        InvalidateOverlay();
+    }
 
     public override void OnDeactivate() => Forget();
 
@@ -56,6 +89,7 @@ public sealed class BearingRangeTool : MapTool
     {
         _hover = pointer.Point;
         _hoverElevation = Elevation(pointer.Point);
+        _noAircraft = false;
         InvalidateOverlay();
         if (_start is not { } start)
         {
@@ -66,6 +100,7 @@ public sealed class BearingRangeTool : MapTool
 
         var end = pointer.Point;
         _start = null;
+        _startOnAircraft = false;
         var same = start.IsAnchored || end.IsAnchored
             ? start.UnitId == end.UnitId
             : Vector2.Distance(start.Position, end.Position) <= SamePointReach * Context.MetersPerIconUnit;
@@ -108,5 +143,7 @@ public sealed class BearingRangeTool : MapTool
     {
         _start = null;
         _hover = null;
+        _startOnAircraft = false;
+        _noAircraft = false;
     }
 }

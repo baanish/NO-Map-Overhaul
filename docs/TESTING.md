@@ -18,7 +18,7 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, the numbered drawing, and the 3D label text;
 - the pen: point spacing, simplifying, the point budget, and undo and erase; text notes: typing, Escape, Backspace, the length cap, and placing;
 - notes on units: a click putting the note on a unit, following it, reading lost while stale and resuming, going when the unit is destroyed, and undo, redo, and undoing a Clear never bringing it back;
-- bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, and the 3D labels and rings;
+- bearing and range, and circles: clicks and drags, cancelling, presets, the edge staying at the cursor beside a unit, following a unit and freezing when it's lost, the 3D labels and rings, and the Bearing/range key's double tap measuring from your aircraft;
 - label placement: each kind's candidate slots, a note beside its unit's icon, priority order, keeping a slot, leaders, a label drawn twice, crowded bearings, and the minimap's upright and relayout steps;
 - the rail and strip layout: outside the map at 2560x1440, 1920x1080, 3440x1440, and 1280x1024, falling back inside on a square screen, with the map near the screen's top, or with the HUD in the way, the strip's rows and hint wrapping, and each hover tag beside its cell;
 - the perf test's frame statistics, report, slice order, per-part timings, and typical and heavy drawings;

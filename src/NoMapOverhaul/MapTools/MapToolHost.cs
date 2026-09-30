@@ -33,6 +33,9 @@ internal sealed class MapToolHost
     private readonly MapShapeLayer _layer;
     private readonly MapToolMenu _menu;
     private readonly MapToolInput _input = new();
+
+    /// <summary>The Bearing/range key pressed twice puts the measurement's start on the player's aircraft.</summary>
+    private readonly DoubleTap _bearingKeyTap = new();
     private readonly WorldLabelPool _worldLabels;
     private readonly ShapeHitTest _hitTest;
     private DynamicMap? _map;
@@ -115,6 +118,11 @@ internal sealed class MapToolHost
                         if (_keys[i].Value.IsDown())
                         {
                             Apply((MenuCommand.Tool, i)); // opens the rail on that tool if it's closed
+                            if (_tools[i] is BearingRangeTool bearing && _bearingKeyTap.Press(UnityEngine.Time.unscaledTime))
+                            {
+                                bearing.StartAtOwnAircraft();
+                            }
+
                             break;
                         }
                     }

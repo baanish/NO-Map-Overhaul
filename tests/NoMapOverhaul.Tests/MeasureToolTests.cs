@@ -36,6 +36,9 @@ internal static class MeasureToolTests
         ("the eraser's highlight moves off a measurement whose unit moves away", EraserHighlightFollowsMovingUnit),
         ("previews follow the cursor only once started", PreviewsFollowCursorOnceStarted),
         ("a placed start, centre, or preset is in progress until dropped", PlacedPointsAreInProgress),
+        ("two key presses inside the window are a double tap, and a third starts over", DoubleTapNeedsTwoQuickPresses),
+        ("a double tap measures from the player's aircraft", DoubleTapMeasuresFromOwnAircraft),
+        ("a double tap with no aircraft only says so", DoubleTapWithoutAircraftSaysSo),
     };
 
     private const float Nm = NavFormat.MetersPerNauticalMile;
@@ -393,6 +396,48 @@ internal static class MeasureToolTests
         Expect(!circle.InProgress && circle.PickedOption == -1, "expected a dropped preset to be gone");
     }
 
+    private static void DoubleTapNeedsTwoQuickPresses()
+    {
+        var tap = new DoubleTap();
+        Expect(!tap.Press(10f), "expected a first press to be a single tap");
+        Expect(tap.Press(10f + DoubleTap.Window - 0.01f), "expected a second press inside the window to be a double tap");
+        Expect(!tap.Press(10f + DoubleTap.Window), "expected a third quick press to start over");
+        Expect(tap.Press(10f + DoubleTap.Window + 0.1f), "expected a fourth quick press to make the next double tap");
+
+        var slow = new DoubleTap();
+        Expect(!slow.Press(20f) && !slow.Press(20f + DoubleTap.Window + 0.01f), "expected two presses outside the window to be single taps");
+        Expect(slow.Press(20f + DoubleTap.Window + 0.2f), "expected the later press to start the window again");
+    }
+
+    /// <summary>A start already placed gives way to the aircraft, which the arrow then follows.</summary>
+    private static void DoubleTapMeasuresFromOwnAircraft()
+    {
+        var map = new FakeMap();
+        map.Positions[1] = new Vector3(0, 3000, 0);
+        map.OwnAircraft = new MapPoint(Vector2.Zero, 1);
+        var tool = new BearingRangeTool(map);
+        tool.OnClick(At(5000, 5000));
+        tool.StartAtOwnAircraft();
+        Expect(tool.InProgress && tool.Status.StartsWith("From your aircraft", StringComparison.Ordinal) && !tool.Warning,
+            $"expected the start on the aircraft, got \"{tool.Status}\"");
+        tool.OnClick(At(0, Nm));
+        var shape = map.Shapes.Shapes.Single() as BearingRangeShape;
+        Expect(shape is { From.UnitId: 1, To.IsAnchored: false }, "expected a measurement from the aircraft to the clicked point");
+        Expect(!tool.InProgress && !tool.Status.StartsWith("From", StringComparison.Ordinal), "expected the next measurement to start with a click");
+    }
+
+    private static void DoubleTapWithoutAircraftSaysSo()
+    {
+        var map = new FakeMap();
+        var tool = new BearingRangeTool(map);
+        tool.OnClick(At(0, 0));
+        tool.StartAtOwnAircraft();
+        Expect(tool.Warning && tool.Status == "No aircraft to measure from.", $"expected a warning, got \"{tool.Status}\"");
+        Expect(tool.InProgress, "expected the placed start kept");
+        tool.OnClick(At(0, Nm));
+        Expect(!tool.Warning && map.Shapes.Shapes.Count == 1, "expected the click to measure from the placed start and clear the warning");
+    }
+
     private static MapPointer At(float x, float y) => new(new Vector2(x, y), null);
 
     /// <summary>A click on a unit's icon, as the input routing reports it: anchored at the icon's current position.</summary>
@@ -436,7 +481,7 @@ internal static class MeasureToolTests
         public DistanceUnit Units { get; set; } = DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;
         public float TextSize => 10f;
-        public MapPoint? OwnAircraft => null;
+        public MapPoint? OwnAircraft { get; set; }
 
         public bool TryResolve(MapPoint point, out Vector2 position)
         {

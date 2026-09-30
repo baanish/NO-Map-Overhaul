@@ -23,6 +23,7 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | Right click a drawing | Delete it. Undo brings it back. |
 | `H` | Open or close the rail, like clicking **Tools**. |
 | `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
+| `1` twice, quickly | Pick Bearing/range and measure from your aircraft: your next click sets the other end. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
@@ -86,6 +87,8 @@ Click where to measure from, then where to. An arrow joins the two points, and t
 ![In the 3D view, the BRA label on a contact with its note stacked under it](images/hud-bra-note.jpg)
 
 Click on or beside a unit's icon to tie that end to the unit. The arrow and its numbers then follow the unit as the map updates. Tie one end to your own aircraft and the other to a target, and the label is always your bearing and range to it. The label also shows in the 3D view.
+
+To measure from yourself without finding your own icon, such as over a crowded airbase, press `1` twice within about a third of a second. That picks Bearing/range and ties the start to your aircraft, replacing a start you'd already placed, so your next click sets the other end. While you're dead or spectating, the strip says there's no aircraft to measure from.
 
 When the arrow ends on a unit, the label adds that unit's altitude above sea level, like a BRA call: `045° 12nm 18k ft` in miles, or `045° 22km 5500 m` in kilometres. Feet show in thousands, to the nearest 100 ft below 10,000 ft (`4.5k ft`) and the nearest 1,000 ft above; metres show to the nearest 100 m. An arrow ending on a spot on the map shows no altitude.
 
