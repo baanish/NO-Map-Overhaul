@@ -7,7 +7,7 @@ Every setting mentioned here is listed in the [user guide's settings table](USER
 ## Quick start
 
 1. Open the full map.
-2. Click **Tools** in the map's top-left corner. A slim green rail opens down the side of the map, with Waypoint picked.
+2. Click **Tools** just outside the map's top-left corner. A green rail of tool icons opens left of the map, with Waypoint picked.
 3. Click the map to drop waypoints. A numbered route appears, and a line runs from your aircraft to the next waypoint.
 4. Close the map. The next two waypoints show in the 3D view with their distance and bearing, such as `WP2 4.2nm 045°`.
 5. Open the map again and click **Tools** to close the rail. Your clicks go back to the game.
@@ -31,9 +31,11 @@ A selected friendly unit keeps its right click: with one selected, right click g
 
 ## The rail
 
-The rail has an icon for each tool: Waypoint, Pen, Text, Bearing/range, Circle, and Eraser. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool: Waypoint, Pen, Text, Bearing/range, Circle, and Eraser. The picked tool is solid green. Hover over an icon to see its name. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
-The strip beside the **Tools** button names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
+The strip above the map, between the speed readout and the attitude ball, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
+
+When the screen leaves no room outside the map, such as on a nearly square screen, the rail or the strip moves inside the map's top-left corner instead, as a single column with the strip beside the **Tools** button.
 
 ## Waypoint
 

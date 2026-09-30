@@ -39,6 +39,7 @@ internal static class Program
         tests.AddRange(PenTextTests.All);
         tests.AddRange(MeasureToolTests.All);
         tests.AddRange(LabelLayoutTests.All);
+        tests.AddRange(MenuLayoutTests.All);
         tests.AddRange(FrameStatsTests.All);
         tests.AddRange(PerfTestTests.All);
         tests.AddRange(RingProjectionTests.All);

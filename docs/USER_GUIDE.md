@@ -63,7 +63,7 @@ Only missiles the game's missile warning already knows about get an arrow, and e
 
 ### Map tools
 
-On the full map, a **Tools** button in the top-left corner opens a rail of planning tools: a waypoint route with markers in the 3D view, a pen, text notes, bearing and range measurements, range circles, and an eraser, with undo, redo, and colours. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
+On the full map, a **Tools** button just outside the map's top-left corner opens a rail of planning tools beside the map: a waypoint route with markers in the 3D view, a pen, text notes, bearing and range measurements, range circles, and an eraser, with undo, redo, and colours. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
 
 ## How the runway end is chosen
 

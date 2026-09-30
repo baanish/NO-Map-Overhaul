@@ -4,6 +4,8 @@ using BepInEx.Configuration;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static BaanishUiImprovements.MapTools.MenuLayout;
+using static BaanishUiImprovements.MapTools.RailGrid;
 
 namespace BaanishUiImprovements.MapTools;
 
@@ -21,39 +23,35 @@ internal enum MenuCommand
 }
 
 /// <summary>
-/// The map tools' menu on the full map: a slim rail of line icons down the map's top-left corner, and beside the rail's
-/// head a one-line strip that names the picked tool, says what a click does, and holds the tool's option buttons.
-/// Together they frame the corner as an L in the game's MFD green on dark. The rail holds the Tools head, which opens
-/// and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it, with the
-/// key for Undo and Redo. A warning turns the strip amber and badges the tool that raised it.
+/// The map tools' menu on the full map: a slim rail of line icons, and a one-line strip that names the picked tool, says
+/// what a click does, and holds the tool's option buttons, in the game's MFD green on dark. The rail holds the Tools head,
+/// which opens and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it,
+/// with the key for Undo and Redo. A warning turns the strip amber and badges the tool that raised it.
+/// Where there's room, the rail stands left of the map in columns and the strip above it, so the map stays clear; each
+/// falls back to the map's top-left corner, where together they frame the corner as an L (<see cref="MenuLayout"/>).
 /// Sizes are the design's pixels at 2560x1440 (see docs/DESIGN.md), turned into map canvas units by <see cref="Px"/>, so
 /// the menu scales with the game's UI. Text is in the HUD label's font, as the runway numbers are.
-/// It is built on the map's own canvas, after the map, so it takes clicks before the map under it, and it hides
-/// whenever the map isn't the full map. Under the menu lies the <see cref="MapPointerCatcher"/> that covers the map
-/// while a tool is active. Clicks only record a <see cref="MenuCommand"/>; the host applies it in the plugin's guarded
-/// update, so nothing the menu starts can throw inside Unity's event system.
+/// Inside the map it is built on the map's own canvas, after the map, so it takes clicks before the map under it.
+/// Outside, the map's <c>RectMask2D</c> would clip it, so it sits beside the map on the map's parent canvas, last, which
+/// draws over the game's HUD canvas. It hides whenever the map isn't the full map. Under the menu lies the
+/// <see cref="MapPointerCatcher"/> that covers the map while a tool is active. Clicks only record a
+/// <see cref="MenuCommand"/>; the host applies it in the plugin's guarded update, so nothing the menu starts can throw
+/// inside Unity's event system.
 /// </summary>
 internal sealed class MapToolMenu
 {
     /// <summary>Canvas units per design pixel: the design is drawn at 2560x1440, where the map canvas scales by 4/3.</summary>
     private const float Px = 0.75f;
 
-    /// <summary>The rail's corner from the map's top-left corner: just clear of the grid's row letters and column numbers.</summary>
-    private const float RailX = 32f;
-
-    private const float RailY = 38f;
-    private const float RailWidth = 48f;
-    private const float HeadHeight = 48f;
-    private const float ToolHeight = 44f;
-    private const float ActionHeight = 40f;
-    private const float GroupGap = 8f;
-    private const float SwatchCell = 24f;
     private const float SwatchChip = 14f;
     private const float SwatchRing = 20f;
     private const float Chamfer = 6f;
     private const float StripPad = 14f;
     private const float StripGap = 12f;
-    private const float StripMaxWidth = 640f;
+
+    /// <summary>Above and below a wrapped hint, inside the strip it makes taller than the head.</summary>
+    private const float StripTextPad = 4f;
+
     private const float MinHintWidth = 160f;
     private const float ButtonHeight = 28f;
     private const float ButtonMinWidth = 32f;
@@ -99,13 +97,20 @@ internal sealed class MapToolMenu
     private readonly List<RailCell> _cells = new();
     private readonly List<StripButton> _options = new();
     private readonly List<(TextMeshProUGUI Text, FontStyles Extra)> _texts = new();
-    private readonly RectTransform[] _areas = new RectTransform[2];
+    private readonly List<RectTransform> _swatches = new();
+    private readonly List<RectTransform> _areas = new(2);
+    private readonly List<Vector2> _outline = new();
+    private readonly Vector3[] _corners = new Vector3[4];
     private RectTransform? _root;
+    private RectTransform? _outside;
     private RectTransform _rail = null!;
+    private RectTransform _strip = null!;
     private GameObject _open = null!;
     private PolygonGraphic _railFill = null!;
     private PolygonGraphic _stripFill = null!;
     private StrokeGraphic _frameRim = null!;
+    private StrokeGraphic _stripRim = null!;
+    private StrokeGraphic _dividers = null!;
     private RailCell _head = null!;
     private TextMeshProUGUI _headLabel = null!;
     private RailCell _undo = null!;
@@ -125,8 +130,13 @@ internal sealed class MapToolMenu
     private StrokeGraphic _tagKeyBox = null!;
     private TextMeshProUGUI? _fontSource;
     private (MenuCommand Command, int Index) _command;
-    private float _swatchTop;
-    private float _railHeight;
+    private RailGrid _grid = null!;
+    private RailPlacement _railPlace;
+    private StripPlacement _stripPlace;
+
+    /// <summary>The map's rect on screen and the screen's size when the menu was last placed; null once the map closes.</summary>
+    private (Rect Map, int Width, int Height)? _placedFor;
+
     private int _shownTool = -2;
     private int _shownSwatch = -2;
     private RailCell? _shownTag;
@@ -143,7 +153,7 @@ internal sealed class MapToolMenu
 
     public MapPointerCatcher? Catcher { get; private set; }
 
-    /// <summary>The rail and the strip, for map labels to keep clear of. Inactive ones aren't showing.</summary>
+    /// <summary>The rail and the strip while they sit inside the map, for map labels to keep clear of. Inactive ones aren't showing.</summary>
     public IReadOnlyList<RectTransform> Areas => _areas;
 
     /// <summary>Goes up whenever <see cref="Areas"/> open, close, or change size.</summary>
@@ -162,8 +172,10 @@ internal sealed class MapToolMenu
         ShapeColor color, TextMeshProUGUI? hudStyle)
     {
         EnsureBuilt(map, tools, icons);
+        Place(map, tools.Count);
         var open = activeTool >= 0;
         SetActive(_root!.gameObject, true);
+        SetActive(_outside!.gameObject, true);
         SetActive(Catcher!.gameObject, open);
         if (!ReferenceEquals(hudStyle, _fontSource) && hudStyle != null)
         {
@@ -183,7 +195,7 @@ internal sealed class MapToolMenu
         {
             _shownTool = activeTool;
             SetActive(_open, open);
-            SetActive(_stripFill.gameObject, open);
+            SetActive(_strip.gameObject, open);
             _stripDirty = true;
         }
 
@@ -234,9 +246,15 @@ internal sealed class MapToolMenu
     public void Hide()
     {
         _command = default;
+        _placedFor = null;
         if (_root != null)
         {
             SetActive(_root.gameObject, false);
+        }
+
+        if (_outside != null)
+        {
+            SetActive(_outside.gameObject, false);
         }
     }
 
@@ -247,12 +265,20 @@ internal sealed class MapToolMenu
             Object.Destroy(_root.gameObject);
         }
 
+        if (_outside != null)
+        {
+            Object.Destroy(_outside.gameObject);
+        }
+
         _root = null;
+        _outside = null;
         Catcher = null;
         _cells.Clear();
         _options.Clear();
         _texts.Clear();
-        System.Array.Clear(_areas, 0, _areas.Length);
+        _swatches.Clear();
+        _areas.Clear();
+        _placedFor = null;
         _fontSource = null;
         _command = default;
         _shownTool = -2;
@@ -306,18 +332,17 @@ internal sealed class MapToolMenu
     /// <summary>
     /// Lays the strip out left to right in design pixels: the tool name, a divider, the hint, then any option buttons,
     /// their unit, and a count. A warning replaces the name with an amber sign, since the badge on the rail names the
-    /// tool. The strip grows to fit, up to <see cref="StripMaxWidth"/>, past which the hint wraps onto a second line.
+    /// tool. The strip grows to fit, up to its placement's width, past which the hint wraps and the strip grows taller
+    /// to hold it: down inside the map, up outside it.
     /// </summary>
     private void LayoutStrip(string toolName, bool open)
     {
         if (!open)
         {
-            SetFrame(open: false, 0f);
+            SetFrame(open: false, 0f, 0f);
             return;
         }
 
-        var x = RailWidth + StripPad;
-        const float middle = HeadHeight * 0.5f;
         var hasHint = _status.Length > 0;
         SetActive(_warnBar.gameObject, _warning);
         SetActive(_warnIcon.gameObject, _warning);
@@ -331,25 +356,8 @@ internal sealed class MapToolMenu
             SetActive(_options[i].Rect.gameObject, i < _optionCount);
         }
 
-        if (_warning)
-        {
-            RailIcons.DrawWarning(_warnIcon, P(x + 8f, middle - 8f), Px, Feather, WarnColor, Ground);
-            x += WarnIconWidth;
-        }
-        else
-        {
-            _name.text = toolName;
-            var width = Measure(_name);
-            Box(_name.rectTransform, x, 0f, width, HeadHeight);
-            x += width + StripGap;
-        }
-
-        if (hasHint && !_warning)
-        {
-            DrawLine(_nameDivider, P(x, middle - 11f), P(x, middle + 11f), Fade(Green, 0.3f));
-            x += StripGap;
-        }
-
+        _name.text = toolName;
+        var lead = StripPad + (_warning ? WarnIconWidth : Measure(_name) + StripGap) + (hasHint && !_warning ? StripGap : 0f);
         _hint.text = _status;
         _hint.color = _warning ? WarnColor : HintColor;
         _hint.enableWordWrapping = false;
@@ -373,14 +381,38 @@ internal sealed class MapToolMenu
             tail += 18f + Measure(_counter);
         }
 
-        var overflow = x + hintWidth + tail - RailWidth - StripMaxWidth;
+        var overflow = lead + hintWidth + tail - _stripPlace.MaxWidth;
         if (hasHint && overflow > 0f)
         {
             hintWidth = Mathf.Max(hintWidth - overflow, MinHintWidth);
             _hint.enableWordWrapping = true;
         }
 
-        Box(_hint.rectTransform, x, 0f, hintWidth, HeadHeight);
+        var height = _hint.enableWordWrapping
+            ? Mathf.Clamp(_hint.GetPreferredValues(_status, hintWidth * Px, 0f).y / Px + 2f * StripTextPad, HeadHeight, _stripPlace.MaxHeight)
+            : HeadHeight;
+        var middle = height * 0.5f;
+        var x = StripPad;
+        if (_warning)
+        {
+            Box(_warnBar.rectTransform, 0f, 1f, 2f, height - 2f);
+            RailIcons.DrawWarning(_warnIcon, P(x + 8f, middle - 8f), Px, Feather, WarnColor, Ground);
+            x += WarnIconWidth;
+        }
+        else
+        {
+            var width = Measure(_name);
+            Box(_name.rectTransform, x, 0f, width, height);
+            x += width + StripGap;
+        }
+
+        if (hasHint && !_warning)
+        {
+            DrawLine(_nameDivider, P(x, middle - 11f), P(x, middle + 11f), Fade(Green, 0.3f));
+            x += StripGap;
+        }
+
+        Box(_hint.rectTransform, x, 0f, hintWidth, height);
         x += hintWidth;
 
         for (var i = 0; i < _optionCount; i++)
@@ -397,7 +429,7 @@ internal sealed class MapToolMenu
         {
             x += 8f;
             var width = Measure(_suffix);
-            Box(_suffix.rectTransform, x, 0f, width, HeadHeight);
+            Box(_suffix.rectTransform, x, 0f, width, height);
             x += width;
         }
 
@@ -405,45 +437,125 @@ internal sealed class MapToolMenu
         {
             x += 18f;
             var width = Measure(_counter);
-            Box(_counter.rectTransform, x, 0f, width, HeadHeight);
+            Box(_counter.rectTransform, x, 0f, width, height);
             x += width;
         }
 
-        SetFrame(open: true, x + StripPad - RailWidth);
+        Box(_strip, _stripPlace.X, _stripPlace.Outside ? _stripPlace.Y - height : _stripPlace.Y, 0f, 0f);
+        SetFrame(open: true, x + StripPad, height);
     }
 
-    /// <summary>The L's ground and rim: the rail, with one chamfer on its outer corner, and while open the strip beside its head.</summary>
-    private void SetFrame(bool open, float stripWidth)
+    /// <summary>
+    /// The ground and rim of the rail, with one chamfer on its head's outer corner, and while open of the strip. With both
+    /// inside the map the strip sits beside the head and one rim goes round the L they make; apart, each has its own rim
+    /// and chamfer. Outside the map in columns, the head stands at the top right with an empty notch left of it.
+    /// </summary>
+    private void SetFrame(bool open, float stripWidth, float stripHeight)
     {
-        var height = open ? _railHeight : HeadHeight;
-        Box(_railFill.rectTransform, 0f, 0f, RailWidth, height);
-        _railFill.SetPoints(P(Chamfer, 0f), P(RailWidth, 0f), P(RailWidth, height), P(0f, height), P(0f, Chamfer));
-        Box(_stripFill.rectTransform, RailWidth, 0f, stripWidth, HeadHeight);
-        _stripFill.SetPoints(P(0f, 0f), P(stripWidth, 0f), P(stripWidth, HeadHeight), P(0f, HeadHeight));
-
-        _frameRim.Clear();
-        _frameRim.AddPoint(P(Chamfer, 0f));
-        if (open)
+        var joined = !_railPlace.Outside && !_stripPlace.Outside;
+        var width = _grid.Width;
+        var height = open ? _grid.Height : HeadHeight;
+        var head = _grid.Head.X;
+        _outline.Clear();
+        if (!open)
         {
-            var right = RailWidth + stripWidth;
-            _frameRim.AddPoint(P(right, 0f));
-            _frameRim.AddPoint(P(right, HeadHeight));
+            AddOutline(head + Chamfer, 0f, head + RailWidth, 0f, head + RailWidth, HeadHeight, head, HeadHeight);
+            _outline.Add(new Vector2(head, Chamfer));
+            SetFill(_railFill, head, RailWidth, HeadHeight, 0);
+        }
+        else if (head == 0f)
+        {
+            AddOutline(Chamfer, 0f, width, 0f, width, height, 0f, height);
+            _outline.Add(new Vector2(0f, Chamfer));
+            SetFill(_railFill, 0f, width, height, 0);
         }
         else
         {
-            _frameRim.AddPoint(P(RailWidth, 0f));
+            AddOutline(head + Chamfer, 0f, width, 0f, width, height, 0f, height);
+            AddOutline(0f, HeadHeight, head, HeadHeight, head, Chamfer);
+            SetFill(_railFill, 0f, width, height, 5); // a fan from the notch's inner corner covers the whole shape
         }
 
-        _frameRim.AddPoint(P(RailWidth, HeadHeight));
-        _frameRim.AddPoint(P(RailWidth, height));
-        _frameRim.AddPoint(P(0f, height));
-        _frameRim.AddPoint(P(0f, Chamfer));
-        _frameRim.EndStroke(true, 0.5f * Px, Rim, 0f, Rim, Feather);
-        _frameRim.Apply();
+        if (open && joined)
+        {
+            // Round the strip on the way from the head's top edge down to the rail's right edge.
+            _outline.RemoveAt(1);
+            _outline.InsertRange(1, new[]
+            {
+                new Vector2(RailWidth + stripWidth, 0f), new Vector2(RailWidth + stripWidth, stripHeight), new Vector2(RailWidth, stripHeight),
+            });
+        }
+
+        DrawOutline(_frameRim);
+        if (open)
+        {
+            _outline.Clear();
+            AddOutline(joined ? 0f : Chamfer, 0f, stripWidth, 0f, stripWidth, stripHeight, 0f, stripHeight);
+            if (!joined)
+            {
+                _outline.Add(new Vector2(0f, Chamfer));
+            }
+
+            SetFill(_stripFill, 0f, stripWidth, stripHeight, 0);
+            _outline.Clear(); // joined, the rail's rim goes round the strip
+            if (!joined)
+            {
+                AddOutline(Chamfer, 0f, stripWidth, 0f, stripWidth, stripHeight, 0f, stripHeight);
+                _outline.Add(new Vector2(0f, Chamfer));
+            }
+
+            DrawOutline(_stripRim);
+        }
+
         LayoutVersion++;
     }
 
-    /// <summary>The name tag right of a hovered cell: its name, plus its key in a box for Undo and Redo.</summary>
+    private void AddOutline(params float[] xy)
+    {
+        for (var i = 0; i < xy.Length; i += 2)
+        {
+            _outline.Add(new Vector2(xy[i], xy[i + 1]));
+        }
+    }
+
+    /// <summary>
+    /// Fills <see cref="_outline"/>, in design pixels from the parent's top-left, as a fan from point <paramref name="from"/>,
+    /// in a rect from <paramref name="x"/> sized to the shape, which is also its click area.
+    /// </summary>
+    private void SetFill(PolygonGraphic fill, float x, float width, float height, int from)
+    {
+        Box(fill.rectTransform, x, 0f, width, height);
+        var points = new Vector2[_outline.Count];
+        for (var i = 0; i < points.Length; i++)
+        {
+            var point = _outline[(from + i) % points.Length];
+            points[i] = P(point.x - x, point.y);
+        }
+
+        fill.SetPoints(points);
+    }
+
+    /// <summary>Strokes <see cref="_outline"/> as a closed rim, or clears the rim for an empty outline.</summary>
+    private void DrawOutline(StrokeGraphic rim)
+    {
+        rim.Clear();
+        foreach (var point in _outline)
+        {
+            rim.AddPoint(P(point.x, point.y));
+        }
+
+        if (_outline.Count > 0)
+        {
+            rim.EndStroke(true, 0.5f * Px, Rim, 0f, Rim, Feather);
+        }
+
+        rim.Apply();
+    }
+
+    /// <summary>
+    /// The name tag beside a hovered cell: its name, plus its key in a box for Undo and Redo. It points into free space:
+    /// left of a rail outside the map while the screen has room there, else right, over the map.
+    /// </summary>
     private void ShowTag(RailCell? cell)
     {
         if (ReferenceEquals(cell, _shownTag))
@@ -475,7 +587,8 @@ internal sealed class MapToolMenu
         }
 
         Box(_tagName.rectTransform, TagPad, 0f, nameWidth, TagHeight);
-        Box(_tag, RailWidth + TagGap, cell.Top + cell.Height * 0.5f - TagHeight * 0.5f, width, TagHeight);
+        var left = _railPlace.Outside && width + TagGap <= _railPlace.TagRoom;
+        Box(_tag, left ? -TagGap - width : _grid.Width + TagGap, cell.Y + cell.Height * 0.5f - TagHeight * 0.5f, width, TagHeight);
     }
 
     private void ShowSwatch(int index)
@@ -489,19 +602,126 @@ internal sealed class MapToolMenu
         SetActive(_swatchRing.gameObject, index >= 0);
         if (index >= 0)
         {
-            var (x, y) = SwatchCenter(index);
-            DrawBox(_swatchRing, x - SwatchRing * 0.5f, y - SwatchRing * 0.5f, SwatchRing, SwatchRing, RingColor, strokeWidth: 2f);
+            var center = _grid.SwatchCenters[index];
+            DrawBox(_swatchRing, center.X - SwatchRing * 0.5f, center.Y - SwatchRing * 0.5f, SwatchRing, SwatchRing, RingColor, strokeWidth: 2f);
         }
     }
 
-    /// <summary>A scene change destroys the map and the menu with it; a missing root means everything here is gone.</summary>
+    /// <summary>
+    /// Places the rail and the strip (<see cref="MenuLayout.Place"/>) when the map opens, and again if the map's rect on
+    /// screen or the screen's size changes. The outside parent is made to match the map's rect, so the menu's design
+    /// pixels count from the map's top-left corner inside the map and out.
+    /// </summary>
+    private void Place(DynamicMap map, int toolCount)
+    {
+        var mapRect = (RectTransform)map.transform;
+        mapRect.GetWorldCorners(_corners);
+        (Rect Map, int Width, int Height) key = (Rect.MinMaxRect(_corners[0].x, _corners[0].y, _corners[2].x, _corners[2].y), Screen.width, Screen.height);
+        if (_placedFor == key)
+        {
+            return;
+        }
+
+        _placedFor = key;
+        var outside = _outside!;
+        if (outside.parent != mapRect.parent)
+        {
+            outside.SetParent(mapRect.parent, false);
+        }
+
+        outside.anchorMin = mapRect.anchorMin;
+        outside.anchorMax = mapRect.anchorMax;
+        outside.pivot = mapRect.pivot;
+        outside.sizeDelta = mapRect.sizeDelta;
+        outside.anchoredPosition = mapRect.anchoredPosition;
+        outside.localRotation = mapRect.localRotation;
+        outside.localScale = mapRect.localScale;
+
+        // A screen-space overlay canvas's world units are screen pixels, Y up.
+        var scale = mapRect.lossyScale.x;
+        var mapBox = new PixelBox(key.Map.xMin, key.Height - key.Map.yMax, key.Map.width, key.Map.height);
+        (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, mapBox, scale * Px, MenuLayout.GameHud(key.Width, key.Height, scale),
+            toolCount, ShapeColor.Palette.Count);
+
+        _strip.SetParent(_stripPlace.Outside ? outside : _root, false);
+        _rail.SetParent(_railPlace.Outside ? outside : _root, false);
+        _strip.SetAsLastSibling();
+        _rail.SetAsLastSibling(); // over the strip, for the joined rim and the hover tag
+        Box(_rail, _railPlace.X, _railPlace.Y, 0f, 0f);
+        _grid = new RailGrid(_railPlace.Columns, toolCount, ShapeColor.Palette.Count);
+        _head.Place(_grid.Head);
+        for (var i = 0; i < toolCount; i++)
+        {
+            _cells[i].Place(_grid.Tools[i]);
+        }
+
+        _undo.Place(_grid.Actions[0]);
+        _redo.Place(_grid.Actions[1]);
+        _clear.Place(_grid.Actions[2]);
+        for (var i = 0; i < _swatches.Count; i++)
+        {
+            var center = _grid.SwatchCenters[i];
+            Box(_swatches[i], center.X - SwatchCell * 0.5f, center.Y - SwatchCell * 0.5f, SwatchCell, SwatchCell);
+        }
+
+        DrawDividers(joined: !_railPlace.Outside && !_stripPlace.Outside);
+        _areas.Clear();
+        if (!_railPlace.Outside)
+        {
+            _areas.Add(_railFill.rectTransform);
+        }
+
+        if (!_stripPlace.Outside)
+        {
+            _areas.Add(_stripFill.rectTransform);
+        }
+
+        _shownSwatch = -2;
+        _shownTag = null;
+        _stripDirty = true;
+    }
+
+    /// <summary>Lines between the rail's groups, and while the strip is joined to the head, between the two.</summary>
+    private void DrawDividers(bool joined)
+    {
+        _dividers.Clear();
+        var head = _grid.Head.X;
+        if (joined)
+        {
+            _dividers.AddPoint(P(RailWidth, 8f));
+            _dividers.AddPoint(P(RailWidth, HeadHeight - 8f));
+            EndLine(_dividers, Fade(Green, 0.3f));
+        }
+
+        _dividers.AddPoint(P(head + 8f, HeadHeight));
+        _dividers.AddPoint(P(head + RailWidth - 8f, HeadHeight));
+        EndLine(_dividers, Fade(Green, 0.3f));
+        foreach (var y in new[] { _grid.ActionTop - GroupGap * 0.5f, _grid.SwatchTop - GroupGap * 0.5f })
+        {
+            _dividers.AddPoint(P(10f, y));
+            _dividers.AddPoint(P(_grid.Width - 10f, y));
+            EndLine(_dividers, Fade(Green, 0.25f));
+        }
+
+        _dividers.Apply();
+    }
+
+    /// <summary>
+    /// A scene change destroys the map and the menu with it; a missing root means everything here is gone. The game
+    /// parents the map anew each time it opens, which puts it last, so the outside part moves back after it.
+    /// </summary>
     private void EnsureBuilt(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons)
     {
-        if (_root != null && _root.parent == map.transform)
+        if (_root != null && _root.parent == map.transform && _outside != null)
         {
             if (_root.GetSiblingIndex() != _root.parent.childCount - 1)
             {
                 _root.SetAsLastSibling();
+            }
+
+            if (_outside.parent != null && _outside.GetSiblingIndex() != _outside.parent.childCount - 1)
+            {
+                _outside.SetAsLastSibling();
             }
 
             return;
@@ -509,27 +729,22 @@ internal sealed class MapToolMenu
 
         Reset();
         _root = Stretch(NewRect("BaanishMapTools", map.transform));
+        _outside = NewRect("BaanishMapToolsOutside", map.transform.parent);
 
         var catcher = Stretch(NewRect("PointerCatcher", _root));
         catcher.gameObject.AddComponent<Image>().color = Color.clear;
         Catcher = catcher.gameObject.AddComponent<MapPointerCatcher>();
 
-        var actionTop = HeadHeight + 1f + tools.Count * ToolHeight + GroupGap;
-        _swatchTop = actionTop + 3f * ActionHeight + GroupGap;
-        _railHeight = _swatchTop + 3f * SwatchCell + 6f;
+        _strip = NewRect("Strip", _root);
+        BuildStrip(_strip);
+        SetActive(_strip.gameObject, false);
 
         _rail = NewRect("Rail", _root);
-        Box(_rail, RailX, RailY, 0f, 0f);
         _railFill = NewGraphic<PolygonGraphic>("RailGround", _rail, raycast: true);
         _railFill.color = Ground;
-        _stripFill = NewGraphic<PolygonGraphic>("StripGround", _rail, raycast: true);
-        _stripFill.color = Ground;
         _frameRim = NewGraphic<StrokeGraphic>("Rim", _rail, raycast: false);
-        _areas[0] = _railFill.rectTransform;
-        _areas[1] = _stripFill.rectTransform;
 
-        _head = NewCell(_rail, "Tools", RailIcon.Tools, 0f, HeadHeight, iconY: 18f, iconScale: 0.8f, insetY: 3f,
-            () => Record(MenuCommand.Toggle, 0));
+        _head = NewCell(_rail, "Tools", RailIcon.Tools, HeadHeight, iconY: 18f, iconScale: 0.8f, insetY: 3f, () => Record(MenuCommand.Toggle, 0));
         _headLabel = NewText(_head.Rect, "Tools", HeadLabelSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Center);
         _headLabel.characterSpacing = HeadTracking;
         Box(_headLabel.rectTransform, 0f, 31f, RailWidth, 14f);
@@ -537,13 +752,11 @@ internal sealed class MapToolMenu
         var open = NewRect("Open", _rail);
         Box(open, 0f, 0f, 0f, 0f);
         _open = open.gameObject;
-        BuildStrip(open);
 
         for (var i = 0; i < tools.Count; i++)
         {
             var index = i;
-            var cell = NewCell(open, tools[i].Name, icons[i], HeadHeight + 1f + i * ToolHeight, ToolHeight, ToolHeight * 0.5f, 1f, 2f,
-                () => Record(MenuCommand.Tool, index));
+            var cell = NewCell(open, tools[i].Name, icons[i], ToolHeight, ToolHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Tool, index));
             var badge = NewGraphic<FeatheredRect>("Badge", cell.Rect, raycast: false);
             badge.color = WarnColor;
             badge.SetEdges(0.75f * Px, Ground, Feather);
@@ -552,37 +765,18 @@ internal sealed class MapToolMenu
             _cells.Add(cell);
         }
 
-        _undo = NewCell(open, "Undo", RailIcon.Undo, actionTop, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Undo, 0));
-        _redo = NewCell(open, "Redo", RailIcon.Redo, actionTop + ActionHeight, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
-            () => Record(MenuCommand.Redo, 0));
-        _clear = NewCell(open, "Clear", RailIcon.Clear, actionTop + 2f * ActionHeight, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
-            () => Record(MenuCommand.Clear, 0));
+        _undo = NewCell(open, "Undo", RailIcon.Undo, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Undo, 0));
+        _redo = NewCell(open, "Redo", RailIcon.Redo, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Redo, 0));
+        _clear = NewCell(open, "Clear", RailIcon.Clear, ActionHeight, ActionHeight * 0.5f, 1f, 2f, () => Record(MenuCommand.Clear, 0));
         _cells.Add(_undo);
         _cells.Add(_redo);
         _cells.Add(_clear);
-
-        var dividers = NewGraphic<StrokeGraphic>("Dividers", open, raycast: false);
-        dividers.AddPoint(P(RailWidth, 8f));
-        dividers.AddPoint(P(RailWidth, HeadHeight - 8f));
-        EndLine(dividers, Fade(Green, 0.3f));
-        dividers.AddPoint(P(8f, HeadHeight));
-        dividers.AddPoint(P(RailWidth - 8f, HeadHeight));
-        EndLine(dividers, Fade(Green, 0.3f));
-        foreach (var y in new[] { actionTop - GroupGap * 0.5f, _swatchTop - GroupGap * 0.5f })
-        {
-            dividers.AddPoint(P(10f, y));
-            dividers.AddPoint(P(RailWidth - 10f, y));
-            EndLine(dividers, Fade(Green, 0.25f));
-        }
-
-        dividers.Apply();
+        _dividers = NewGraphic<StrokeGraphic>("Dividers", open, raycast: false);
 
         for (var i = 0; i < ShapeColor.Palette.Count; i++)
         {
             var index = i;
-            var (x, y) = SwatchCenter(i);
             var cell = NewGraphic<PolygonGraphic>("Swatch", open, raycast: true);
-            Box(cell.rectTransform, x - SwatchCell * 0.5f, y - SwatchCell * 0.5f, SwatchCell, SwatchCell);
             var button = cell.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -590,28 +784,31 @@ internal sealed class MapToolMenu
             var chip = NewGraphic<Image>("Chip", cell.rectTransform, raycast: false);
             chip.color = ShapeColor.Palette[i].ToColor32();
             Box(chip.rectTransform, (SwatchCell - SwatchChip) * 0.5f, (SwatchCell - SwatchChip) * 0.5f, SwatchChip, SwatchChip);
+            _swatches.Add(cell.rectTransform);
         }
 
         _swatchRing = NewGraphic<StrokeGraphic>("SwatchRing", open, raycast: false);
         BuildTag();
-        SetFrame(open: false, 0f);
     }
 
-    private void BuildStrip(RectTransform open)
+    /// <summary>The strip's ground, rim, and contents, in design pixels from the strip's top-left corner.</summary>
+    private void BuildStrip(RectTransform strip)
     {
-        _warnBar = NewGraphic<Image>("WarnBar", open, raycast: false);
+        _stripFill = NewGraphic<PolygonGraphic>("StripGround", strip, raycast: true);
+        _stripFill.color = Ground;
+        _stripRim = NewGraphic<StrokeGraphic>("Rim", strip, raycast: false);
+        _warnBar = NewGraphic<Image>("WarnBar", strip, raycast: false);
         _warnBar.color = WarnColor;
-        Box(_warnBar.rectTransform, RailWidth, 1f, 2f, HeadHeight - 2f);
-        _warnIcon = NewGraphic<StrokeGraphic>("WarnIcon", open, raycast: false);
-        _name = NewText(open, string.Empty, NameSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Left);
+        _warnIcon = NewGraphic<StrokeGraphic>("WarnIcon", strip, raycast: false);
+        _name = NewText(strip, string.Empty, NameSize, FontStyles.Bold | FontStyles.UpperCase, TextAlignmentOptions.Left);
         _name.characterSpacing = NameTracking;
         _name.color = Green;
-        _nameDivider = NewGraphic<StrokeGraphic>("Divider", open, raycast: false);
-        _hint = NewText(open, string.Empty, HintSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _nameDivider = NewGraphic<StrokeGraphic>("Divider", strip, raycast: false);
+        _hint = NewText(strip, string.Empty, HintSize, FontStyles.Normal, TextAlignmentOptions.Left);
         for (var i = 0; i < MaxOptions; i++)
         {
             var index = i;
-            var rect = NewRect("Option", open);
+            var rect = NewRect("Option", strip);
             var fill = rect.gameObject.AddComponent<Image>();
             fill.color = HudGreen;
             var button = rect.gameObject.AddComponent<Button>();
@@ -625,9 +822,9 @@ internal sealed class MapToolMenu
             _options.Add(new StripButton(rect, button, border, label));
         }
 
-        _suffix = NewText(open, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _suffix = NewText(strip, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
         _suffix.color = Fade(Green, 0.7f);
-        _counter = NewText(open, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
+        _counter = NewText(strip, string.Empty, NameSize, FontStyles.Normal, TextAlignmentOptions.Left);
         _counter.color = Fade(Green, 0.6f);
     }
 
@@ -650,14 +847,13 @@ internal sealed class MapToolMenu
 
     /// <summary>
     /// A rail cell: a hit area the full size of the cell, a fill inset from its edges that the button tints, and a line
-    /// icon. <paramref name="iconY"/> is the icon's centre from the cell's top, in design pixels.
+    /// icon. <paramref name="iconY"/> is the icon's centre from the cell's top, in design pixels. The layout places it.
     /// </summary>
-    private RailCell NewCell(Transform parent, string name, RailIcon icon, float top, float height, float iconY, float iconScale,
-        float insetY, UnityEngine.Events.UnityAction onClick)
+    private RailCell NewCell(Transform parent, string name, RailIcon icon, float height, float iconY, float iconScale, float insetY,
+        UnityEngine.Events.UnityAction onClick)
     {
         var hit = NewGraphic<PolygonGraphic>(name, parent, raycast: true);
         var rect = hit.rectTransform;
-        Box(rect, 0f, top, RailWidth, height);
         var fill = NewGraphic<Image>("Fill", rect, raycast: false);
         fill.color = HudGreen;
         Box(fill.rectTransform, 3f, insetY, RailWidth - 6f, height - 2f * insetY);
@@ -667,7 +863,7 @@ internal sealed class MapToolMenu
         button.onClick.AddListener(onClick);
         var strokes = NewGraphic<StrokeGraphic>("Icon", rect, raycast: false);
         var hover = rect.gameObject.AddComponent<MenuHover>();
-        return new RailCell(rect, button, hover, strokes, icon, P(RailWidth * 0.5f, iconY), iconScale * Px, name, top, height);
+        return new RailCell(rect, button, hover, strokes, icon, P(RailWidth * 0.5f, iconY), iconScale * Px, name, height);
     }
 
     private TextMeshProUGUI NewText(Transform parent, string text, float size, FontStyles extra, TextAlignmentOptions alignment)
@@ -686,9 +882,6 @@ internal sealed class MapToolMenu
     }
 
     private void Record(MenuCommand command, int index) => _command = (command, index);
-
-    private (float X, float Y) SwatchCenter(int index) =>
-        (SwatchCell * (0.5f + index % 2), _swatchTop + SwatchCell * (0.5f + index / 2));
 
     private static int IndexOf(ShapeColor color)
     {
@@ -804,7 +997,7 @@ internal sealed class MapToolMenu
         private int _look = -1;
 
         public RailCell(RectTransform rect, Button button, MenuHover hover, StrokeGraphic icon, RailIcon kind, Vector2 iconCenter,
-            float iconScale, string name, float top, float height)
+            float iconScale, string name, float height)
         {
             Rect = rect;
             Button = button;
@@ -814,7 +1007,6 @@ internal sealed class MapToolMenu
             _iconCenter = iconCenter;
             _iconScale = iconScale;
             Name = name;
-            Top = top;
             Height = height;
         }
 
@@ -827,12 +1019,18 @@ internal sealed class MapToolMenu
         public string Name { get; }
 
         /// <summary>Design pixels from the rail's top.</summary>
-        public float Top { get; }
+        public float Y { get; private set; }
 
         public float Height { get; }
 
         /// <summary>The amber square a tool's cell shows while its status is a warning.</summary>
         public FeatheredRect? Badge { get; set; }
+
+        public void Place(RailSlot slot)
+        {
+            Y = slot.Y;
+            Box(Rect, slot.X, slot.Y, slot.Width, Height);
+        }
 
         /// <summary>
         /// Picked: a solid fill with a dark icon. Otherwise the icon is green at 72%, full while <paramref name="bright"/>

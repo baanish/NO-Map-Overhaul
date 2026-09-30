@@ -8,7 +8,7 @@ namespace BaanishUiImprovements.MapTools;
 /// <summary>
 /// Boxes around what map labels keep clear of on the full map, in the drawings layer's icon units: the game's unit and
 /// airbase icons, the grid's row letters and column numbers, the mod's own runway numbers and airbase names, and the
-/// map tools rail. Read only when labels are placed, which is when a drawing changes or the map comes to rest, never
+/// map tools menu while it sits inside the map. Read only when labels are placed, which is when a drawing changes or the map comes to rest, never
 /// per frame. Its lists are kept, so collecting allocates nothing.
 /// </summary>
 internal sealed class LabelObstacles
