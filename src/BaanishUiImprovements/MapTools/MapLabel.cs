@@ -72,13 +72,17 @@ internal sealed class MapLabel
         }
     }
 
-    /// <summary>The label's text and look, and its anchor in icon units. Measures and typesets the text only when it changes.</summary>
-    public void Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
+    /// <summary>
+    /// The label's text and look, and its anchor in icon units. Measures and typesets the text only when it changes.
+    /// True when anything its placement, plate, or text mesh is built from changed, so the labels need placing again.
+    /// </summary>
+    public bool Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
     {
         _plated = anchor.Kind != LabelKind.Note;
         var font = hudStyle != null ? hudStyle.font : null;
         var changed = !ReferenceEquals(text, _measuredText) || size != _measuredSize || !ReferenceEquals(font, _measuredFont) ||
                       _plated != _measuredPlated;
+        var redo = changed || !anchor.Equals(_anchor) || color.r != _color.r || color.g != _color.g || color.b != _color.b || color.a != _color.a;
         if (_plated)
         {
             Visible = _visible;
@@ -89,6 +93,7 @@ internal sealed class MapLabel
                 _typesetScale = scale;
                 // TextMeshPro generates nothing before its Awake, which waits for an inactive parent; the next call tries again.
                 _measuredText = text.Length == 0 || _glyphs.Vertices.Count > 0 ? text : null;
+                redo = true;
             }
         }
         else
@@ -117,6 +122,7 @@ internal sealed class MapLabel
         _anchor = anchor;
         Placement.Text = text;
         Placement.HalfSize = LabelLayout.HalfSize(anchor.Kind, new FlatVector(_textSize.x, _textSize.y), size);
+        return redo;
     }
 
     /// <summary>Hands the layout the anchor turned by the angle with this cosine and sine, from the map's frame into the upright one.</summary>

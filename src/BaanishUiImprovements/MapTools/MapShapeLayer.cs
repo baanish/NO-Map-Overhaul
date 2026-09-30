@@ -18,8 +18,9 @@ namespace BaanishUiImprovements.MapTools;
 /// re-batch the game's icons and icons moving every frame don't re-batch a long pen stroke, and the markers and labels in
 /// a canvas of their own, since the minimap turns them upright as it turns.
 /// Labels are placed after the shapes draw, by <see cref="LabelLayout"/>: on the full map clear of the game's icons and
-/// labels and of each other, whenever a drawing redraws and once the map comes to rest after a pan or zoom, and while it
-/// moves each label keeps its slot. On the minimap they keep clear of each other only, and move with it as it turns.
+/// labels and of each other, whenever a drawing's labels change and once the map comes to rest after a pan or zoom, and
+/// while it moves each label keeps its slot. On the minimap they keep clear of each other only, and move with it as it
+/// turns.
 /// </summary>
 internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 {
@@ -34,6 +35,21 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// BaanishAirbaseBoundaryLayer). They take the icon layer's first slots, so together they lead its children.
     /// </summary>
     private const string ModLayerPrefix = "Baanish";
+
+    /// <summary>
+    /// How far the full map may move in a frame, in icon units, and still hold still. While it follows the aircraft the
+    /// game moves it every frame, by a small fraction of a unit zoomed out; a pan moves it by more.
+    /// </summary>
+    private const float StillStep = 0.5f;
+
+    /// <summary>How long the full map holds still after a pan or zoom before its labels step clear of what moved under them.</summary>
+    private const float RestSeconds = 0.1f;
+
+    /// <summary>
+    /// How far the full map may drift while it holds still before its labels are placed again. Only the menu and the
+    /// grid labels stay put on screen; the icons and every other label move with the map.
+    /// </summary>
+    private const float RestDrift = 8f;
 
     /// <summary>The minimap's obstacles: its labels keep clear of each other, but the game's labels there aren't collected.</summary>
     private static readonly LabelBox[] NoObstacles = System.Array.Empty<LabelBox>();
@@ -74,10 +90,14 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     private Quaternion _uprightFor = Quaternion.identity;
     private Quaternion _placedForRotation;
     private float _spacedHeading;
-    private bool _labelsDrawn;
+    private bool _labelsChanged;
     private Vector3 _viewPosition;
     private float _viewScale;
-    private bool _viewMoving;
+    private float _viewMovedAt;
+
+    /// <summary>Where the full map was when its labels last stepped clear of the obstacles.</summary>
+    private Vector3 _restPosition;
+    private float _restScale;
     private bool _placedOnFullMap;
     private int _placedForScreenLayout = -1;
 
@@ -104,7 +124,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// Per frame, cheap when nothing changed. Redraws what the store, the zoom, or the settings changed, the overlays
     /// their tools invalidated, and on each of the game's 10 Hz map refreshes (<c>DynamicMap.mapLastUpdated</c>) the
     /// live shapes and overlays. A store change redraws every overlay too, since the eraser's highlight and the
-    /// waypoint leg draw stored shapes. Then places the labels if anything was drawn or the map came to rest.
+    /// waypoint leg draw stored shapes. Then places the labels if a label changed or the full map came to rest.
     /// </summary>
     /// <param name="screenAreas">Menu areas fixed on screen that labels keep clear of.</param>
     /// <param name="screenLayout">Changes whenever <paramref name="screenAreas"/> change.</param>
@@ -149,6 +169,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                 Sync(store);
             }
 
+            // A zoom or a new style moves every label, and a shape gone from the store takes its labels with it.
+            _labelsChanged |= restyle || synced;
+
             foreach (var pair in _graphics)
             {
                 var graphics = pair.Value;
@@ -183,33 +206,40 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     }
 
     /// <summary>
-    /// Places every label when one was drawn, the map came to rest, the labels were turned upright again, the full map
-    /// opened or closed, or the menu changed shape. On the full map at rest, labels step clear of the game's icons and
-    /// labels and of each other; while it moves they keep their slots. On the minimap they step clear of each other
-    /// only, when one was drawn and every <see cref="MinimapHeading.RespaceStepDegrees"/> of turn. The layout works in
-    /// the frame the labels stand upright in, which the heading-up minimap turns against the map, so each upright step
-    /// moves every label even when it keeps its slot.
+    /// Places every label when one changed, the full map came to rest, the labels were turned upright again, the full
+    /// map opened or closed, or the menu changed shape. On the full map at rest, labels step clear of the game's icons
+    /// and labels and of each other; while it moves they keep their slots. It comes to rest once it has held still for
+    /// <see cref="RestSeconds"/> after a pan or zoom, or has drifted <see cref="RestDrift"/> while holding still. On the
+    /// minimap they step clear of each other only, when one changed and every
+    /// <see cref="MinimapHeading.RespaceStepDegrees"/> of turn. The layout works in the frame the labels stand upright
+    /// in, which the heading-up minimap turns against the map, so each upright step moves every label even when it
+    /// keeps its slot.
     /// </summary>
     private void PlaceLabels(DynamicMap map, IReadOnlyList<RectTransform> screenAreas, int screenLayout)
     {
         var position = _layer!.position;
         var scale = _layer.lossyScale.x;
-        var moving = position != _viewPosition || scale != _viewScale;
-        var cameToRest = _viewMoving && !moving;
+        var unit = scale * _inverseScale; // world units per icon unit
+        if (scale != _viewScale || (position - _viewPosition).magnitude > StillStep * unit)
+        {
+            _viewMovedAt = Time.unscaledTime;
+        }
+
         _viewPosition = position;
         _viewScale = scale;
-        _viewMoving = moving;
         var fullMap = DynamicMap.mapMaximized;
+        var still = Time.unscaledTime - _viewMovedAt >= RestSeconds;
+        var cameToRest = fullMap && still && (scale != _restScale || (position - _restPosition).magnitude > RestDrift * unit);
         var toUpright = _uprightFor;
         var turned = !toUpright.Equals(_placedForRotation); // exact: KeepUpright steps it
-        if (!_labelsDrawn && !cameToRest && !turned && fullMap == _placedOnFullMap && screenLayout == _placedForScreenLayout)
+        if (!_labelsChanged && !cameToRest && !turned && fullMap == _placedOnFullMap && screenLayout == _placedForScreenLayout)
         {
             return;
         }
 
         var switchedMap = fullMap != _placedOnFullMap;
-        var drawn = _labelsDrawn;
-        _labelsDrawn = false;
+        var changed = _labelsChanged;
+        _labelsChanged = false;
         _placedForRotation = toUpright;
         _placedOnFullMap = fullMap;
         _placedForScreenLayout = screenLayout;
@@ -238,12 +268,14 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
 
         IReadOnlyList<LabelBox>? obstacles = null;
-        if (fullMap && !moving)
+        if (fullMap && still)
         {
             _obstacleFinder.Collect(map, _layer, _inverseScale, screenAreas, _obstacles);
             obstacles = _obstacles;
+            _restPosition = position;
+            _restScale = scale;
         }
-        else if (!fullMap && (drawn || switchedMap ||
+        else if (!fullMap && (changed || switchedMap ||
                               MinimapHeading.Turned(_spacedHeading, toUpright.eulerAngles.z, MinimapHeading.RespaceStepDegrees)))
         {
             obstacles = NoObstacles;
@@ -403,10 +435,13 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
     }
 
-    /// <summary>Sets the text now; the label is placed once every shape has drawn (<see cref="PlaceLabels"/>).</summary>
+    /// <summary>
+    /// Sets the text now; the label is placed once every shape has drawn (<see cref="PlaceLabels"/>), if it changed. A live
+    /// shape draws ten times a second, and its labels mostly haven't moved.
+    /// </summary>
     public void Label(LabelAnchor anchor, string text, ShapeColor color) =>
-        _target!.NextLabel().Set(anchor.Scaled(_factor / _inverseScale), text, _settings.MapToolTextSize.Value, color.ToColor32(),
-            _settings.OutlineColor.Value, _hudStyle, _inverseScale);
+        _labelsChanged |= _target!.NextLabel().Set(anchor.Scaled(_factor / _inverseScale), text, _settings.MapToolTextSize.Value,
+            color.ToColor32(), _settings.OutlineColor.Value, _hudStyle, _inverseScale);
 
     /// <summary>A scene change destroys the map and our layer with it, so a missing layer means every cached graphic is gone too.</summary>
     private bool EnsureLayer(DynamicMap map, int toolCount)
@@ -524,12 +559,11 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     {
         graphics.Begin();
         _target = graphics;
-        _labelsDrawn = true;
     }
 
     private void End()
     {
-        _target!.End();
+        _labelsChanged |= _target!.End();
         _target = null;
     }
 
@@ -587,6 +621,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         private ImageBatch? _markers;
         private int _labelsUsed;
 
+        /// <summary>How many labels the last finished draw used.</summary>
+        private int _lastLabelCount;
+
         public ShapeGraphics(Transform layer, Transform markers, Transform labels, PlateText plateText, string name)
         {
             _labelParent = labels;
@@ -619,7 +656,8 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             Undrawn = false;
         }
 
-        public void End()
+        /// <summary>True when this draw used a different number of labels from the last, so the labels need placing again.</summary>
+        public bool End()
         {
             for (var i = _labelsUsed; i < _labels.Count; i++)
             {
@@ -634,6 +672,10 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             {
                 Strokes.enabled = drawn;
             }
+
+            var labelsChanged = _labelsUsed != _lastLabelCount;
+            _lastLabelCount = _labelsUsed;
+            return labelsChanged;
         }
 
         public MapLabel NextLabel()
