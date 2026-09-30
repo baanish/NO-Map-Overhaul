@@ -19,6 +19,7 @@ internal sealed class OutlinedText
 
     private readonly TextMeshProUGUI[] _rims = new TextMeshProUGUI[RimOffsets.Length];
     private readonly TextMeshProUGUI _face;
+    private Vector2 _offset;
 
     /// <summary>Children draw after their parent, so the rims and the face are siblings under an empty container, face last.</summary>
     public OutlinedText(string name, Transform parent, Vector2 pivot, TextAlignmentOptions alignment)
@@ -57,21 +58,28 @@ internal sealed class OutlinedText
         Style(_face, text, size, color, hudStyle);
     }
 
-    /// <summary>Which point of the text sits on <see cref="Rect"/>'s position, for a label that must clear what it names. Cheap when unchanged.</summary>
-    public void Align(Vector2 pivot, TextAlignmentOptions alignment)
+    /// <summary>
+    /// Which point of the text sits <paramref name="offset"/> from <see cref="Rect"/>'s position, for a label that must
+    /// clear what it names. The offset is in the container's own units and frame, so it stays upright with the text
+    /// when the container is turned upright on a rotating map. Cheap when unchanged.
+    /// </summary>
+    public void Align(Vector2 pivot, TextAlignmentOptions alignment, Vector2 offset)
     {
-        if (_face.alignment == alignment && _face.rectTransform.pivot == pivot)
+        if (_face.alignment == alignment && _face.rectTransform.pivot == pivot && _offset == offset)
         {
             return;
         }
 
-        foreach (var copy in _rims)
+        _offset = offset;
+        for (var i = 0; i < _rims.Length; i++)
         {
-            copy.rectTransform.pivot = pivot;
-            copy.alignment = alignment;
+            _rims[i].rectTransform.pivot = pivot;
+            _rims[i].rectTransform.localPosition = RimOffsets[i] + offset;
+            _rims[i].alignment = alignment;
         }
 
         _face.rectTransform.pivot = pivot;
+        _face.rectTransform.localPosition = offset;
         _face.alignment = alignment;
     }
 

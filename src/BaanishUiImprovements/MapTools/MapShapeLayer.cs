@@ -239,8 +239,8 @@ internal sealed class MapShapeLayer : IMapCanvas
             _ => (new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center, Vector2.zero),
         };
         var label = _target!.NextLabel();
-        label.Align(pivot, alignment);
-        label.Rect.localPosition = Local(position) + away * (MapCanvasMetrics.LabelGap * _inverseScale);
+        label.Align(pivot, alignment, away * MapCanvasMetrics.LabelGap);
+        label.Rect.localPosition = Local(position);
         label.Rect.localScale = Vector3.one * _inverseScale;
         label.Set(text, _settings.MapToolTextSize.Value, color.ToColor32(), _settings.OutlineColor.Value, _hudStyle);
     }
