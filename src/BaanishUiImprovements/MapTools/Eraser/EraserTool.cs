@@ -88,7 +88,6 @@ public sealed class EraserTool : MapTool
         public void Circle(Vector2 center, float radius, ShapeColor color) => _inner.Circle(center, radius, _color);
         public void Marker(Vector2 position, ShapeColor color) => _inner.Marker(position, _color);
 
-        public void Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center) =>
-            _inner.Label(position, text, _color, placement);
+        public void Label(LabelAnchor anchor, string text, ShapeColor color) => _inner.Label(anchor, text, _color);
     }
 }

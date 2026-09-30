@@ -15,6 +15,9 @@ namespace BaanishUiImprovements.MapTools;
 /// when the shape is added, when the zoom or a drawing setting changes, or on the game's 10 Hz map refresh if it drew
 /// anything live. Panning moves the layer with the map and rebuilds nothing. The layer is its own canvas, so rebuilding
 /// a shape doesn't re-batch the game's icons, and icons moving every frame don't re-batch a long pen stroke.
+/// Labels are placed after the shapes draw, by <see cref="LabelLayout"/>: on the full map clear of the game's icons and
+/// labels and of each other, whenever a drawing redraws and once the map comes to rest after a pan or zoom. While the
+/// map moves, and on the minimap, each label keeps its slot.
 /// </summary>
 internal sealed class MapShapeLayer : IMapCanvas
 {
@@ -33,7 +36,15 @@ internal sealed class MapShapeLayer : IMapCanvas
     private readonly HashSet<MapShape> _seen = new();
     private readonly List<MapShape> _stale = new();
     private readonly ShapeGraphics?[] _overlays;
+    private readonly LabelLayout _labelLayout = new();
+    private readonly LabelObstacles _obstacleFinder = new();
+    private readonly List<LabelBox> _obstacles = new();
+    private readonly List<PlacedLabel> _placements = new();
+    private readonly List<MapLabel> _placing = new();
     private RectTransform? _layer;
+
+    /// <summary>Every label, after every drawing's lines and markers.</summary>
+    private RectTransform? _labelRoot;
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
     private int _storeVersion = -1;
@@ -44,6 +55,12 @@ internal sealed class MapShapeLayer : IMapCanvas
     private ShapeGraphics? _target;
     private Quaternion _uprightFor;
     private bool _redrawnSinceUpright;
+    private bool _labelsDrawn;
+    private Vector3 _viewPosition;
+    private float _viewScale;
+    private bool _viewMoving;
+    private bool _placedOnFullMap;
+    private int _placedForScreenLayout = -1;
 
     public MapShapeLayer(ModSettings settings, IMapView view, int toolCount)
     {
@@ -69,9 +86,12 @@ internal sealed class MapShapeLayer : IMapCanvas
     /// Per frame, cheap when nothing changed. Redraws what the store, the zoom, or the settings changed, the overlays
     /// their tools invalidated, and on each of the game's 10 Hz map refreshes (<c>DynamicMap.mapLastUpdated</c>) the
     /// live shapes and overlays. A store change redraws every overlay too, since the eraser's highlight and the
-    /// waypoint leg draw stored shapes.
+    /// waypoint leg draw stored shapes. Then places the labels if anything was drawn or the map came to rest.
     /// </summary>
-    public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle)
+    /// <param name="screenAreas">Menu areas fixed on screen that labels keep clear of.</param>
+    /// <param name="screenLayout">Changes whenever <paramref name="screenAreas"/> change.</param>
+    public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle,
+        IReadOnlyList<RectTransform> screenAreas, int screenLayout)
     {
         var fresh = EnsureLayer(map);
         var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value;
@@ -98,42 +118,100 @@ internal sealed class MapShapeLayer : IMapCanvas
         var style = (_settings.MapToolLineWidth.Value, _settings.OutlineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units);
         var restyle = fresh || factor != _factor || inverseScale != _inverseScale || !style.Equals(_style) || !ReferenceEquals(hudStyle, _hudStyle);
         var synced = store.Version != _storeVersion;
-        if (!restyle && !synced && !tick && !AnyOverlayInvalid(tools))
+        if (restyle || synced || tick || AnyOverlayInvalid(tools))
+        {
+            _factor = factor;
+            _inverseScale = inverseScale;
+            _style = style;
+            _hudStyle = hudStyle;
+            _markerPrefab = map.mapWaypoint;
+            if (synced)
+            {
+                Sync(store);
+            }
+
+            foreach (var pair in _graphics)
+            {
+                var graphics = pair.Value;
+                if (graphics.Undrawn || restyle || (tick && graphics.Live))
+                {
+                    Begin(graphics);
+                    pair.Key.Draw(this);
+                    End();
+                }
+            }
+
+            for (var i = 0; i < tools.Count; i++)
+            {
+                var overlay = _overlays[i]!;
+                if (restyle || synced || tools[i].OverlayInvalid || (tick && overlay.Live))
+                {
+                    Begin(overlay);
+                    tools[i].DrawOverlay(this);
+                    End();
+                    tools[i].OverlayInvalid = false;
+                }
+            }
+        }
+
+        PlaceLabels(map, screenAreas, screenLayout);
+    }
+
+    /// <summary>
+    /// Places every label when one was drawn, the map came to rest, the full map opened or closed, or the menu changed
+    /// shape. On the full map at rest, labels step clear of the game's icons and labels; while it moves they keep
+    /// their slots, and on the turning minimap, where nothing is avoided, each takes its first.
+    /// </summary>
+    private void PlaceLabels(DynamicMap map, IReadOnlyList<RectTransform> screenAreas, int screenLayout)
+    {
+        var position = _layer!.position;
+        var scale = _layer.lossyScale.x;
+        var moving = position != _viewPosition || scale != _viewScale;
+        var cameToRest = _viewMoving && !moving;
+        _viewPosition = position;
+        _viewScale = scale;
+        _viewMoving = moving;
+        var fullMap = DynamicMap.mapMaximized;
+        if (!_labelsDrawn && !cameToRest && fullMap == _placedOnFullMap && screenLayout == _placedForScreenLayout)
         {
             return;
         }
 
-        _factor = factor;
-        _inverseScale = inverseScale;
-        _style = style;
-        _hudStyle = hudStyle;
-        _markerPrefab = map.mapWaypoint;
-        if (synced)
-        {
-            Sync(store);
-        }
-
+        _labelsDrawn = false;
+        _placedOnFullMap = fullMap;
+        _placedForScreenLayout = screenLayout;
+        _placing.Clear();
+        _placements.Clear();
         foreach (var pair in _graphics)
         {
-            var graphics = pair.Value;
-            if (graphics.Undrawn || restyle || (tick && graphics.Live))
-            {
-                Begin(graphics);
-                pair.Key.Draw(this);
-                End();
-            }
+            pair.Value.AddLabels(_placing, pair.Key.Id, overlay: false);
         }
 
-        for (var i = 0; i < tools.Count; i++)
+        foreach (var overlay in _overlays)
         {
-            var overlay = _overlays[i]!;
-            if (restyle || synced || tools[i].OverlayInvalid || (tick && overlay.Live))
+            overlay!.AddLabels(_placing, 0, overlay: true);
+        }
+
+        foreach (var label in _placing)
+        {
+            if (!fullMap)
             {
-                Begin(overlay);
-                tools[i].DrawOverlay(this);
-                End();
-                tools[i].OverlayInvalid = false;
+                label.Placement.Slot = -1;
             }
+
+            _placements.Add(label.Placement);
+        }
+
+        var avoid = fullMap && !moving;
+        if (avoid)
+        {
+            _obstacleFinder.Collect(map, _layer, _inverseScale, screenAreas, _obstacles);
+        }
+
+        _labelLayout.Place(_placements, avoid ? _obstacles : null);
+        foreach (var label in _placing)
+        {
+            label.Apply(_inverseScale);
         }
     }
 
@@ -176,9 +254,11 @@ internal sealed class MapShapeLayer : IMapCanvas
         }
 
         _layer = null;
+        _labelRoot = null;
         _graphics.Clear();
         System.Array.Clear(_overlays, 0, _overlays.Length);
         _storeVersion = -1;
+        _placedForScreenLayout = -1;
     }
 
     public bool TryResolve(MapPoint point, out FlatVector position)
@@ -258,22 +338,10 @@ internal sealed class MapShapeLayer : IMapCanvas
         marker.color = color.ToColor32();
     }
 
-    public void Label(FlatVector position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center)
-    {
-        var (pivot, alignment, away) = placement switch
-        {
-            LabelPlacement.Above => (new Vector2(0.5f, 0f), TextAlignmentOptions.Bottom, Vector2.up),
-            LabelPlacement.Below => (new Vector2(0.5f, 1f), TextAlignmentOptions.Top, Vector2.down),
-            LabelPlacement.Left => (new Vector2(1f, 0.5f), TextAlignmentOptions.Right, Vector2.left),
-            LabelPlacement.Right => (new Vector2(0f, 0.5f), TextAlignmentOptions.Left, Vector2.right),
-            _ => (new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center, Vector2.zero),
-        };
-        var label = _target!.NextLabel();
-        label.Align(pivot, alignment, away * MapCanvasMetrics.LabelGap);
-        label.Rect.localPosition = Local(position);
-        label.Rect.localScale = Vector3.one * _inverseScale;
-        label.Set(text, _settings.MapToolTextSize.Value, color.ToColor32(), _settings.OutlineColor.Value, _hudStyle);
-    }
+    /// <summary>Sets the text now; the label is placed once every shape has drawn (<see cref="PlaceLabels"/>).</summary>
+    public void Label(LabelAnchor anchor, string text, ShapeColor color) =>
+        _target!.NextLabel().Set(anchor.Scaled(_factor / _inverseScale), text, _settings.MapToolTextSize.Value, color.ToColor32(),
+            _settings.OutlineColor.Value, _hudStyle, _inverseScale);
 
     /// <summary>A scene change destroys the map and our layer with it, so a missing layer means every cached graphic is gone too.</summary>
     private bool EnsureLayer(DynamicMap map)
@@ -286,9 +354,10 @@ internal sealed class MapShapeLayer : IMapCanvas
         Reset();
         _layer = NewRect("BaanishMapToolsLayer", map.iconLayer.transform);
         _layer.gameObject.AddComponent<Canvas>();
+        _labelRoot = NewRect("Labels", _layer);
         for (var i = 0; i < _overlays.Length; i++)
         {
-            _overlays[i] = new ShapeGraphics(_layer, "ToolOverlay");
+            _overlays[i] = new ShapeGraphics(_layer, _labelRoot, "ToolOverlay");
         }
 
         return true;
@@ -334,7 +403,7 @@ internal sealed class MapShapeLayer : IMapCanvas
             var shape = shapes[i];
             if (!_graphics.TryGetValue(shape, out var graphics))
             {
-                graphics = new ShapeGraphics(_layer!, "MapShape");
+                graphics = new ShapeGraphics(_layer!, _labelRoot!, "MapShape");
                 _graphics.Add(shape, graphics);
             }
 
@@ -366,6 +435,7 @@ internal sealed class MapShapeLayer : IMapCanvas
             overlay!.Rect.SetAsLastSibling();
         }
 
+        _labelRoot!.SetAsLastSibling();
         _storeVersion = store.Version;
     }
 
@@ -374,6 +444,7 @@ internal sealed class MapShapeLayer : IMapCanvas
         graphics.Begin();
         _target = graphics;
         _redrawnSinceUpright = true;
+        _labelsDrawn = true;
     }
 
     private void End()
@@ -416,16 +487,21 @@ internal sealed class MapShapeLayer : IMapCanvas
         return rect;
     }
 
-    /// <summary>One shape's graphics: its lines as one mesh, then its markers and labels on top, reused from draw to draw.</summary>
+    /// <summary>
+    /// One shape's graphics, reused from draw to draw: its lines as one mesh with its markers on top, and its labels,
+    /// which sit in the layer's label container so every label draws over every drawing's lines.
+    /// </summary>
     private sealed class ShapeGraphics
     {
-        private readonly List<OutlinedText> _labels = new();
+        private readonly List<MapLabel> _labels = new();
         private readonly List<Image> _markers = new();
+        private readonly Transform _labelParent;
         private int _labelsUsed;
         private int _markersUsed;
 
-        public ShapeGraphics(Transform layer, string name)
+        public ShapeGraphics(Transform layer, Transform labels, string name)
         {
+            _labelParent = labels;
             Rect = NewRect(name, layer);
             Strokes = NewRect("Strokes", Rect).gameObject.AddComponent<StrokeGraphic>();
             Strokes.raycastTarget = false;
@@ -464,16 +540,28 @@ internal sealed class MapShapeLayer : IMapCanvas
             Strokes.Apply();
         }
 
-        public OutlinedText NextLabel()
+        public MapLabel NextLabel()
         {
             if (_labelsUsed == _labels.Count)
             {
-                _labels.Add(new OutlinedText("Label", Rect, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center));
+                _labels.Add(new MapLabel(_labelParent));
             }
 
             var label = _labels[_labelsUsed++];
             label.Visible = true;
             return label;
+        }
+
+        /// <summary>This draw's labels, for the layer to place.</summary>
+        public void AddLabels(List<MapLabel> into, int order, bool overlay)
+        {
+            for (var i = 0; i < _labelsUsed; i++)
+            {
+                var label = _labels[i];
+                label.Placement.Order = order;
+                label.Placement.Overlay = overlay;
+                into.Add(label);
+            }
         }
 
         /// <summary>Null if the game's marker has no image to tint.</summary>
@@ -511,6 +599,14 @@ internal sealed class MapShapeLayer : IMapCanvas
             }
         }
 
-        public void Destroy() => Object.Destroy(Rect.gameObject);
+        /// <summary>The labels live under the layer's label container, not this shape's rect, so they go separately.</summary>
+        public void Destroy()
+        {
+            Object.Destroy(Rect.gameObject);
+            foreach (var label in _labels)
+            {
+                Object.Destroy(label.Rect.gameObject);
+            }
+        }
     }
 }

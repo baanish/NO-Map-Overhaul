@@ -196,7 +196,7 @@ internal static class WaypointTests
 
         public void Marker(Vector2 position, ShapeColor color) => Markers++;
 
-        public void Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center) => Labels.Add(text);
+        public void Label(LabelAnchor anchor, string text, ShapeColor color) => Labels.Add(text);
     }
 
     private sealed class FakeContext : IMapToolContext

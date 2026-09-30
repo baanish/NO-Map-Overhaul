@@ -38,6 +38,7 @@ internal static class Program
         tests.AddRange(WaypointTests.All);
         tests.AddRange(PenTextTests.All);
         tests.AddRange(MeasureToolTests.All);
+        tests.AddRange(LabelLayoutTests.All);
 
         var failed = 0;
         foreach (var (name, test) in tests)

@@ -359,7 +359,7 @@ internal static class PenTextTests
         {
         }
 
-        void IMapCanvas.Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement) => Label = text;
+        void IMapCanvas.Label(LabelAnchor anchor, string text, ShapeColor color) => Label = text;
     }
 
     private sealed class RecordingLabels : IWorldLabels

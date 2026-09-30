@@ -20,5 +20,5 @@ public sealed class TextNote : MapShape
     /// <summary>Global meters: X east, Y up from sea level, Z north.</summary>
     public Vector3 WorldPosition { get; }
 
-    public override void Draw(IMapCanvas canvas) => canvas.Label(Position, Text, Color);
+    public override void Draw(IMapCanvas canvas) => canvas.Label(LabelAnchor.Note(Position), Text, Color);
 }

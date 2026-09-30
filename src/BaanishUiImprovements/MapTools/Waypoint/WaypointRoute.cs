@@ -28,7 +28,7 @@ public sealed class WaypointRoute : MapShape
 {
     /// <summary>
     /// The most waypoints the tool adds. The store's caps count the route as one shape of no points, and each added
-    /// waypoint rebuilds every marker and label, so this bound is the route's own. Two digits also fit the label spacing in <see cref="Draw"/>.
+    /// waypoint rebuilds every marker and label, so this bound is the route's own.
     /// </summary>
     public const int MaxWaypoints = 99;
 
@@ -67,10 +67,7 @@ public sealed class WaypointRoute : MapShape
         return new WaypointRoute(Color, waypoints);
     }
 
-    /// <summary>
-    /// The number sits on a point beside the marker far enough out that a two-digit number clears it in any direction,
-    /// since the heading-up minimap turns that point around the marker while the text stays upright.
-    /// </summary>
+    /// <summary>Each number sits diagonally off its marker; the layout picks which corner.</summary>
     public override void Draw(IMapCanvas canvas)
     {
         _line.Clear();
@@ -85,11 +82,10 @@ public sealed class WaypointRoute : MapShape
             canvas.Polyline(_line, Color);
         }
 
-        var offset = new Vector2(0f, (MapCanvasMetrics.MarkerRadius + canvas.TextSize * MapCanvasMetrics.CharWidth) * canvas.MetersPerIconUnit);
         for (var i = 0; i < _line.Count; i++)
         {
             canvas.Marker(_line[i], Color);
-            canvas.Label(_line[i] + offset, Number(i, _lost[i]), Color);
+            canvas.Label(LabelAnchor.Waypoint(_line[i]), Number(i, _lost[i]), Color);
         }
     }
 

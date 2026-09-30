@@ -1,4 +1,3 @@
-using System;
 using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools.BearingRange;
@@ -26,29 +25,21 @@ public sealed class BearingRangeShape : MapShape
 
     public float ToElevation { get; }
 
-    /// <summary>Past the arrowhead, on whichever side the arrow points, so the text doesn't sit on the line.</summary>
-    public static LabelPlacement PlacementBeyond(Vector2 from, Vector2 to)
-    {
-        var delta = to - from;
-        if (MathF.Abs(delta.X) >= MathF.Abs(delta.Y))
-        {
-            return delta.X < 0f ? LabelPlacement.Left : LabelPlacement.Right;
-        }
-
-        return delta.Y < 0f ? LabelPlacement.Below : LabelPlacement.Above;
-    }
-
-    /// <summary>The arrow and its label, shared with the tool's preview while the end is still being picked.</summary>
+    /// <summary>
+    /// The arrow and its label, shared with the tool's preview while the end is still being picked. The label hangs
+    /// from the head, or from just past a unit's icon at the head, so it clears the icon even where the map doesn't know
+    /// where the icons are.
+    /// </summary>
     public static void DrawMeasurement(IMapCanvas canvas, MeasureLabel label, Vector2 from, Vector2 to, bool toOnUnit, bool lost, ShapeColor color)
     {
         canvas.Arrow(from, to, color);
         var labelAt = to;
-        if (toOnUnit && to != from) // clear the unit's icon under the arrowhead
+        if (toOnUnit && to != from)
         {
             labelAt += Vector2.Normalize(to - from) * (MapCanvasMetrics.MarkerRadius * canvas.MetersPerIconUnit);
         }
 
-        canvas.Label(labelAt, label.BearingRange(from, to, canvas.Units, lost), color, PlacementBeyond(from, to));
+        canvas.Label(LabelAnchor.Bearing(from, labelAt), label.BearingRange(from, to, canvas.Units, lost), color);
     }
 
     public override void Draw(IMapCanvas canvas)

@@ -20,7 +20,7 @@ internal static class MeasureToolTests
         ("a measured end follows its unit and freezes when lost", MeasuredEndFollowsUnit),
         ("clicking the start again cancels a measurement", ClickingStartAgainCancels),
         ("a measurement's 3D label sits on its end", WorldLabelSitsOnEnd),
-        ("the label points away from the arrow", LabelPointsAwayFromArrow),
+        ("the label hangs from the arrowhead", LabelHangsFromArrowhead),
         ("measurement text is built only when it changes", MeasureTextBuiltOnlyOnChange),
         ("dragging from the centre draws a circle", DraggingDrawsCircle),
         ("clicking the centre then the edge draws a circle", ClickCenterThenEdge),
@@ -97,12 +97,19 @@ internal static class MeasureToolTests
         ExpectText(labels.Added[1].Text, "180° 1.0nm");
     }
 
-    private static void LabelPointsAwayFromArrow()
+    /// <summary>On a unit, the label hangs from just past its icon: the marker radius, 10 units of 10 m, beyond the head.</summary>
+    private static void LabelHangsFromArrowhead()
     {
-        Expect(BearingRangeShape.PlacementBeyond(Vector2.Zero, new Vector2(100, 20)) == LabelPlacement.Right, "expected east to label right");
-        Expect(BearingRangeShape.PlacementBeyond(Vector2.Zero, new Vector2(-100, 20)) == LabelPlacement.Left, "expected west to label left");
-        Expect(BearingRangeShape.PlacementBeyond(Vector2.Zero, new Vector2(20, 100)) == LabelPlacement.Above, "expected north to label above");
-        Expect(BearingRangeShape.PlacementBeyond(Vector2.Zero, new Vector2(20, -100)) == LabelPlacement.Below, "expected south to label below");
+        var map = new FakeMap();
+        map.Positions[7] = new Vector3(0, 0, 2000);
+        var tool = new BearingRangeTool(map);
+        tool.OnClick(At(0, 0));
+        tool.OnClick(At(1000, 0));
+        tool.OnClick(At(0, 0));
+        tool.OnClick(OnUnit(map, 7));
+        var canvas = Draw(map);
+        Expect(canvas.Labels[0].Anchor.Equals(LabelAnchor.Bearing(Vector2.Zero, new Vector2(1000, 0))), "expected a fixed end's label on the head");
+        Expect(canvas.Labels[1].Anchor.Equals(LabelAnchor.Bearing(Vector2.Zero, new Vector2(0, 2100))), "expected a unit's label past its icon");
     }
 
     private static void MeasureTextBuiltOnlyOnChange()
@@ -135,8 +142,7 @@ internal static class MeasureToolTests
         Expect(canvas.Circles.Count == 1 && canvas.Circles[0].Radius == 5000f, "expected a 5 km circle");
         Expect(canvas.Lines == 2, "expected a cross on a fixed centre");
         ExpectText(canvas.Labels[0].Text, "2.7nm");
-        Expect(canvas.Labels[0].Position == new Vector2(0, 5000) && canvas.Labels[0].Placement == LabelPlacement.Above,
-            "expected the radius above the top of the ring");
+        Expect(canvas.Labels[0].Anchor.Equals(LabelAnchor.Ring(Vector2.Zero, 5000f)), "expected the radius on the ring");
     }
 
     private static void ClickCenterThenEdge()
@@ -313,7 +319,7 @@ internal static class MeasureToolTests
 
         public List<(Vector2 From, Vector2 To)> Arrows { get; } = new();
         public List<(Vector2 Center, float Radius)> Circles { get; } = new();
-        public List<(Vector2 Position, string Text, LabelPlacement Placement)> Labels { get; } = new();
+        public List<(LabelAnchor Anchor, string Text)> Labels { get; } = new();
         public int Lines { get; private set; }
 
         public DistanceUnit Units => _view.Units;
@@ -331,8 +337,7 @@ internal static class MeasureToolTests
         {
         }
 
-        public void Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center) =>
-            Labels.Add((position, text, placement));
+        public void Label(LabelAnchor anchor, string text, ShapeColor color) => Labels.Add((anchor, text));
     }
 
     private sealed class RecordingLabels : IWorldLabels

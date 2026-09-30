@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -30,14 +31,60 @@ public interface IMapView
     bool TryResolve(MapPoint point, out Vector2 position);
 }
 
-/// <summary>Where a label sits relative to its point. Every placement but Center leaves a small gap.</summary>
-public enum LabelPlacement
+/// <summary>What a label names, which sets the places it may take and which labels give way to it (see <see cref="LabelLayout"/>).</summary>
+public enum LabelKind
 {
-    Center,
-    Above,
-    Below,
-    Left,
-    Right,
+    /// <summary>Typed text, centred on its point. It never moves and has no plate.</summary>
+    Note,
+
+    /// <summary>A waypoint's number beside its marker.</summary>
+    Waypoint,
+
+    /// <summary>A bearing and range at an arrow's head.</summary>
+    Bearing,
+
+    /// <summary>A circle's radius, on its ring.</summary>
+    Radius,
+}
+
+/// <summary>What a label is attached to. Positions are meters for a shape; the layout works in icon units.</summary>
+public readonly struct LabelAnchor : IEquatable<LabelAnchor>
+{
+    private LabelAnchor(LabelKind kind, Vector2 point, Vector2 from, float radius)
+    {
+        Kind = kind;
+        Point = point;
+        From = from;
+        Radius = radius;
+    }
+
+    public LabelKind Kind { get; }
+
+    /// <summary>The note's point, the marker, the arrow's head, or the circle's centre.</summary>
+    public Vector2 Point { get; }
+
+    /// <summary>The arrow's tail, for a bearing.</summary>
+    public Vector2 From { get; }
+
+    /// <summary>The circle's radius, for a radius.</summary>
+    public float Radius { get; }
+
+    public static LabelAnchor Note(Vector2 point) => new(LabelKind.Note, point, point, 0f);
+
+    public static LabelAnchor Waypoint(Vector2 marker) => new(LabelKind.Waypoint, marker, marker, 0f);
+
+    public static LabelAnchor Bearing(Vector2 from, Vector2 head) => new(LabelKind.Bearing, head, from, 0f);
+
+    public static LabelAnchor Ring(Vector2 center, float radius) => new(LabelKind.Radius, center, center, radius);
+
+    /// <summary>The same anchor with every position and length times <paramref name="factor"/>, such as meters to icon units.</summary>
+    public LabelAnchor Scaled(float factor) => new(Kind, Point * factor, From * factor, Radius * factor);
+
+    public bool Equals(LabelAnchor other) => Kind == other.Kind && Point == other.Point && From == other.From && Radius == other.Radius;
+
+    public override bool Equals(object? obj) => obj is LabelAnchor other && Equals(other);
+
+    public override int GetHashCode() => HashCode.Combine(Kind, Point, From, Radius);
 }
 
 /// <summary>
@@ -60,8 +107,12 @@ public interface IMapCanvas : IMapView
     /// <summary>The game's own map waypoint marker (its steerpoint sprite, 20 icon units across), tinted.</summary>
     void Marker(Vector2 position, ShapeColor color);
 
-    /// <summary>Upright text in the HUD font with a dark rim. May hold line breaks. A live shape draws ten times a second, so pass a cached string.</summary>
-    void Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center);
+    /// <summary>
+    /// Upright text in the HUD font: a note with a dark rim, anything else on a dark plate that the full map moves clear
+    /// of the game's labels and icons (see <see cref="LabelLayout"/>). May hold line breaks. A live shape draws ten times
+    /// a second, so pass a cached string.
+    /// </summary>
+    void Label(LabelAnchor anchor, string text, ShapeColor color);
 }
 
 /// <summary>Sizes the map drawing and the eraser's hit test share, in icon units.</summary>

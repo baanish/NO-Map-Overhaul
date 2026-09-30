@@ -197,7 +197,7 @@ internal static class MapToolTests
         Expect(hitTest.Find(ring, new Vector2(1050, 0), 80f) is not null, "expected a click on the ring to hit");
         Expect(hitTest.Find(ring, Vector2.Zero, 80f) is null, "expected a click in the middle of the ring to miss");
 
-        // "ABCD" in 10-unit text at 10 m per unit: 120 m either side of the point and 50 m above and below.
+        // "ABCD" in 10-unit text at 10 m per unit, with a 1-unit rim: 130 m either side of the point and 60 m above and below.
         var note = new MapShape[] { new Note(new Vector2(5000, 0), "ABCD") };
         Expect(hitTest.Find(note, new Vector2(5100, 30), 0f) is not null, "expected a click on the text to hit");
         Expect(hitTest.Find(note, new Vector2(5250, 0), 80f) is null, "expected a click 130 m past the text to miss");
@@ -316,7 +316,7 @@ internal static class MapToolTests
             _text = text;
         }
 
-        public override void Draw(IMapCanvas canvas) => canvas.Label(_position, _text, Color);
+        public override void Draw(IMapCanvas canvas) => canvas.Label(LabelAnchor.Note(_position), _text, Color);
     }
 
     private sealed class FakeContext : IMapToolContext

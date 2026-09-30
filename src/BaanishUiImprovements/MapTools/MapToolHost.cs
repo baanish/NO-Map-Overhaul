@@ -96,7 +96,7 @@ internal sealed class MapToolHost
         }
 
         _worldLabels.End();
-        _layer.Render(map, _store, _tools, hudStyle);
+        _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion);
         _layer.KeepUpright();
     }
 

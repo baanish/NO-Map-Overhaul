@@ -4,7 +4,7 @@ using BaanishUiImprovements.MapTools.BearingRange;
 namespace BaanishUiImprovements.MapTools.Circle;
 
 /// <summary>
-/// A ring of a set radius with the radius written above it. A centre anchored to a unit follows it, and a lost unit
+/// A ring of a set radius with the radius written on it. A centre anchored to a unit follows it, and a lost unit
 /// leaves the ring where it was last seen, labelled as lost. A fixed centre gets a small cross; a unit's icon marks its own.
 /// </summary>
 public sealed class CircleShape : MapShape
@@ -37,7 +37,7 @@ public sealed class CircleShape : MapShape
             canvas.Line(center - new Vector2(0f, arm), center + new Vector2(0f, arm), color);
         }
 
-        canvas.Label(center + new Vector2(0f, radius), label.Radius(radius, canvas.Units, lost), color, LabelPlacement.Above);
+        canvas.Label(LabelAnchor.Ring(center, radius), label.Radius(radius, canvas.Units, lost), color);
     }
 
     public override void Draw(IMapCanvas canvas)

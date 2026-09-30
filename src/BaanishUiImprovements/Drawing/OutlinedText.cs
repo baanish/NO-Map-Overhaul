@@ -47,6 +47,24 @@ internal sealed class OutlinedText
         }
     }
 
+    /// <summary>Off for text on a plate of its own, which needs no rim.</summary>
+    public bool Rimmed
+    {
+        set
+        {
+            foreach (var copy in _rims)
+            {
+                if (copy.gameObject.activeSelf != value)
+                {
+                    copy.gameObject.SetActive(value);
+                }
+            }
+        }
+    }
+
+    /// <summary>The text's natural size in the container's units. TextMeshPro caches it until the text or style changes.</summary>
+    public Vector2 PreferredSize => new(_face.preferredWidth, _face.preferredHeight);
+
     /// <summary>Every TMP setter here returns early on an unchanged value, so calling this each refresh is cheap.</summary>
     public void Set(string text, float size, Color color, Color rim, TextMeshProUGUI? hudStyle)
     {

@@ -66,22 +66,17 @@ public sealed class ShapeHitTest : IMapCanvas
     public void Marker(Vector2 position, ShapeColor color) =>
         Measure(MathF.Max(0f, Vector2.Distance(_point, position) - MapCanvasMetrics.MarkerRadius * MetersPerIconUnit));
 
-    /// <summary>Boxes the text by its longest line and its line count: a click anywhere on the words counts.</summary>
-    public void Label(Vector2 position, string text, ShapeColor color, LabelPlacement placement = LabelPlacement.Center)
+    /// <summary>
+    /// Boxes the text by its longest line and its line count, in the label's first slot: a click anywhere on the words
+    /// counts. The map may have moved a label clear of the game's; a click on the line still takes the drawing.
+    /// </summary>
+    public void Label(LabelAnchor anchor, string text, ShapeColor color)
     {
         var (columns, lines) = TextExtent(text);
         var unit = MetersPerIconUnit;
-        var half = new Vector2(columns * TextSize * MapCanvasMetrics.CharWidth * 0.5f, lines * TextSize * 0.5f) * unit;
-        var gap = MapCanvasMetrics.LabelGap * unit;
-        var center = placement switch
-        {
-            LabelPlacement.Above => position + new Vector2(0f, gap + half.Y),
-            LabelPlacement.Below => position - new Vector2(0f, gap + half.Y),
-            LabelPlacement.Right => position + new Vector2(gap + half.X, 0f),
-            LabelPlacement.Left => position - new Vector2(gap + half.X, 0f),
-            _ => position,
-        };
-        Measure(Vector2.Max(Vector2.Abs(_point - center) - half, Vector2.Zero).Length());
+        var half = LabelLayout.HalfSize(anchor.Kind, new Vector2(columns * TextSize * MapCanvasMetrics.CharWidth, lines * TextSize), TextSize);
+        LabelLayout.Candidate(anchor.Scaled(1f / unit), half, 0, out _, out var center);
+        Measure(Vector2.Max(Vector2.Abs(_point - center * unit) - half * unit, Vector2.Zero).Length());
     }
 
     private static (int Columns, int Lines) TextExtent(string text)

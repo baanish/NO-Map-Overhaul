@@ -96,7 +96,7 @@ public sealed class TextTool : MapTool
     {
         if (_typing)
         {
-            canvas.Label(_at, _preview, Context.Color);
+            canvas.Label(LabelAnchor.Note(_at), _preview, Context.Color);
         }
     }
 
