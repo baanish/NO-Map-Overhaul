@@ -25,7 +25,13 @@ internal static class MenuLayoutTests
         ("a strip wide enough keeps the hint and buttons on one row", WideStripKeepsOneRow),
         ("a narrow strip moves the buttons to a second row rather than wrap a short hint", NarrowStripMovesButtonsDown),
         ("only a hint too long for its row wraps", LongHintWraps),
+        ("a hover tag sits beside its cell, centred on it, on every screen", HoverTagSitsBesideItsCell),
     };
+
+    /// <summary>A hover tag's height, and the widths of a short tag ("TOOLS H") and the longest ("BEARING/RANGE" and its key).</summary>
+    private const float TagHeight = 28f;
+
+    private static readonly float[] TagWidths = { 100f, 190f };
 
     /// <summary>The waypoint tool's start: its name, then a 231-pixel hint, then SKIP and RESTART with their gaps.</summary>
     private const float WaypointLead = 101f;
@@ -149,6 +155,45 @@ internal static class MenuLayoutTests
         ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, RouteButtons, 430f), secondRow: true, 430f - WaypointLead - 14f, wraps: true);
         ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, 0f, 430f), secondRow: false, 430f - WaypointLead - 14f, wraps: true);
         ExpectFit(MenuLayout.FitStrip(WaypointLead, 400f, RouteButtons, 200f), secondRow: true, MenuLayout.MinHintWidth, wraps: true);
+    }
+
+    /// <summary>
+    /// The Tools head (all a closed rail shows), every tool, and Undo, Redo, and Clear, in each column, outside the map at
+    /// the four screens above and inside it on a square one. A tag goes left, on screen, when there's room left of its
+    /// cell, and there it covers no cell of the head's or first column's; else right.
+    /// </summary>
+    private static void HoverTagSitsBesideItsCell()
+    {
+        foreach (var (width, height) in new[] { (2560, 1440), (1920, 1080), (3440, 1440), (1280, 1024), (1080, 1080) })
+        {
+            var (rail, _) = Place(width, height);
+            var grid = new RailGrid(rail.Columns, Tools, Swatches);
+            var cells = new List<RailSlot> { grid.Head };
+            cells.AddRange(grid.Tools);
+            cells.AddRange(grid.Actions);
+            foreach (var tagWidth in TagWidths)
+            {
+                foreach (var cell in cells)
+                {
+                    var (x, y) = MenuLayout.HoverTag(rail, cell, tagWidth, TagHeight);
+                    var what = $"at {width}x{height}, a {tagWidth}-wide tag for the cell at ({cell.X}, {cell.Y})";
+                    ExpectNear(y + TagHeight * 0.5f, cell.Y + cell.Height * 0.5f, what + ": middle");
+                    var left = rail.Outside && tagWidth + MenuLayout.TagGap <= rail.TagRoom + cell.X;
+                    ExpectNear(left ? cell.X - (x + tagWidth) : x - (cell.X + cell.Width), MenuLayout.TagGap, what + ": gap");
+                    Expect(!left || x >= -rail.TagRoom, $"{what}: expected it on screen, got x {x}");
+                    if (left && (cell.X == 0f || cell.Equals(grid.Head)))
+                    {
+                        var tag = new PixelBox(x, y, tagWidth, TagHeight);
+                        Expect(!cells.Any(other => tag.Overlaps(new PixelBox(other.X, other.Y, other.Width, other.Height))), $"{what}: expected it clear of the rail");
+                    }
+                }
+            }
+        }
+
+        // The closed Tools button at the right end of three columns, with its tag just left of it rather than of the first column.
+        var (outside, _) = Place(2560, 1440);
+        var (headX, _) = MenuLayout.HoverTag(outside, new RailGrid(outside.Columns, Tools, Swatches).Head, 100f, TagHeight);
+        ExpectNear(headX + 100f, 96f - MenuLayout.TagGap, "the Tools tag's right edge");
     }
 
     private static void ExpectFit(StripFit fit, bool secondRow, float hintWidth, bool wraps)

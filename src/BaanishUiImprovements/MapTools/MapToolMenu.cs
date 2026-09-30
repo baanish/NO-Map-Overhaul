@@ -57,7 +57,6 @@ internal sealed class MapToolMenu
 
     private const float CounterGap = 18f;
     private const float ButtonMinWidth = 32f;
-    private const float TagGap = 6f;
     private const float TagHeight = 28f;
     private const float TagPad = 12f;
     private const float WarnIconWidth = 24f;
@@ -567,10 +566,7 @@ internal sealed class MapToolMenu
         rim.Apply();
     }
 
-    /// <summary>
-    /// The name tag beside a hovered cell: its name, plus its key in a box. It points into free space:
-    /// left of a rail outside the map while the screen has room there, else right, over the map.
-    /// </summary>
+    /// <summary>The name tag beside a hovered cell: its name, plus its key in a box, placed by <see cref="MenuLayout.HoverTag"/>.</summary>
     private void ShowTag(RailCell? cell)
     {
         if (ReferenceEquals(cell, _shownTag))
@@ -602,8 +598,8 @@ internal sealed class MapToolMenu
         }
 
         Box(_tagName.rectTransform, TagPad, 0f, nameWidth, TagHeight);
-        var left = _railPlace.Outside && width + TagGap <= _railPlace.TagRoom;
-        Box(_tag, left ? -TagGap - width : _grid.Width + TagGap, cell.Y + cell.Height * 0.5f - TagHeight * 0.5f, width, TagHeight);
+        var (x, y) = HoverTag(_railPlace, cell.Slot, width, TagHeight);
+        Box(_tag, x, y, width, TagHeight);
     }
 
     private void ShowSwatch(int index)
@@ -1042,8 +1038,8 @@ internal sealed class MapToolMenu
         /// <summary>The key its hover tag shows, if it has one.</summary>
         public ConfigEntry<KeyboardShortcut>? Key { get; }
 
-        /// <summary>Design pixels from the rail's top.</summary>
-        public float Y { get; private set; }
+        /// <summary>Where the layout last put it.</summary>
+        public RailSlot Slot { get; private set; }
 
         public float Height { get; }
 
@@ -1052,7 +1048,7 @@ internal sealed class MapToolMenu
 
         public void Place(RailSlot slot)
         {
-            Y = slot.Y;
+            Slot = slot;
             Box(Rect, slot.X, slot.Y, slot.Width, Height);
         }
 

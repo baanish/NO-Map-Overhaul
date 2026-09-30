@@ -248,6 +248,9 @@ internal static class MenuLayout
     /// <summary>Inside the map a hint wraps onto two lines at most, since the strip may be as wide as <see cref="StripMaxWidth"/>.</summary>
     public const float InsideStripMaxHeight = 2f * RailGrid.HeadHeight;
 
+    /// <summary>Between a hover tag and the cell it names.</summary>
+    public const float TagGap = 6f;
+
     /// <summary>
     /// The game's HUD around the full map: the speed, altitude, and attitude readouts along the top, the mission clock the
     /// game shows there instead while the player has no aircraft, and the columns of MFD buttons down both sides, from the
@@ -323,6 +326,17 @@ internal static class MenuLayout
 
         var secondRow = tail > 0f;
         return hint <= room ? new StripFit(secondRow, hint, false) : new StripFit(secondRow, Math.Max(room, MinHintWidth), true);
+    }
+
+    /// <summary>
+    /// The top-left corner of the hover tag naming <paramref name="cell"/>, in design pixels from the rail's top-left
+    /// corner: <see cref="TagGap"/> beside the cell and centred on it. It points left, off the map, while the rail stands
+    /// outside it and the screen has room for the tag left of the cell, else right, over the map.
+    /// </summary>
+    public static (float X, float Y) HoverTag(RailPlacement rail, RailSlot cell, float width, float height)
+    {
+        var left = rail.Outside && width + TagGap <= rail.TagRoom + cell.X;
+        return (left ? cell.X - TagGap - width : cell.X + cell.Width + TagGap, cell.Y + (cell.Height - height) * 0.5f);
     }
 
     /// <summary>The fewest columns that fit left of the map, from its top edge down, clear of the HUD and on screen.</summary>
