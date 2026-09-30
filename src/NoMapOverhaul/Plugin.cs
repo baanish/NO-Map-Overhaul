@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using NoMapOverhaul.Airbases;
 using NoMapOverhaul.Diagnostics;
@@ -25,6 +26,11 @@ public sealed class Plugin : BaseUnityPlugin
     public const string PluginGuid = "com.baanish.nuclearoption.mapoverhaul";
     public const string PluginName = "NO Map Overhaul";
     public const string PluginVersion = "0.5.0";
+
+    /// <summary>This plugin's GUID up to 0.4.0, as Baanish UI Improvements.</summary>
+    private const string OldPluginGuid = "com.baanish.nuclearoption.uiimprovements";
+
+    private const string OldConfigFile = OldPluginGuid + ".cfg";
 
     /// <summary>Below this radar altitude the aircraft is on the ground: the game's own landing guide treats touchdown the same way.</summary>
     private const float AirborneRadarAlt = 1f;
@@ -77,12 +83,17 @@ public sealed class Plugin : BaseUnityPlugin
         var orphans = typeof(ConfigFile).GetProperty("OrphanedEntries", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(Config);
         if (orphans is not IDictionary<ConfigDefinition, string> saved)
         {
-            Logger.LogWarning("Can't read the saved settings in this BepInEx version, so settings saved by 0.4.0 go back to their defaults.");
+            Logger.LogWarning("Can't read the saved settings in this BepInEx version, so settings saved by Baanish UI Improvements or 0.4.0 go back to their defaults.");
             return;
         }
 
+        var carried = CarryOverOldSettings(saved);
         var moved = SettingsMigration.MoveSavedValues(saved, (section, key) => new ConfigDefinition(section, key));
-        if (moved > 0)
+        if (carried)
+        {
+            Logger.LogInfo($"Carried {saved.Count} saved settings over from {OldConfigFile}, which stays for NO Missile Indicators.");
+        }
+        else if (moved > 0)
         {
             Logger.LogInfo($"Moved {moved} saved settings to their new sections.");
         }
@@ -90,6 +101,31 @@ public sealed class Plugin : BaseUnityPlugin
         if (SettingsMigration.MoveToolKeyDefaults(saved, (section, key) => new ConfigDefinition(section, key)))
         {
             Logger.LogInfo("Moved the map tool keys to their new default numbers.");
+        }
+    }
+
+    /// <summary>
+    /// On the first start after the rename, while this plugin's settings file holds nothing, copies in the settings
+    /// Baanish UI Improvements saved. Its file is left in place: NO Missile Indicators reads the missile arrow settings
+    /// from it. Returns whether anything was copied.
+    /// </summary>
+    private bool CarryOverOldSettings(IDictionary<ConfigDefinition, string> saved)
+    {
+        var oldFile = Path.Combine(Paths.ConfigPath, OldConfigFile);
+        if (!File.Exists(oldFile))
+        {
+            return false;
+        }
+
+        try
+        {
+            return SettingsMigration.CarryOver(saved, File.ReadAllLines(oldFile), (section, key) => new ConfigDefinition(section, key)) > 0;
+        }
+        catch (System.Exception exception) when (exception is IOException or System.UnauthorizedAccessException or System.ArgumentException)
+        {
+            saved.Clear(); // it was empty, and a half-copied file is worse than defaults
+            Logger.LogWarning($"Couldn't carry the settings over from {oldFile}, so they start at their defaults. {exception.Message}");
+            return false;
         }
     }
 

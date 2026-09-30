@@ -8,7 +8,7 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-147 tests pass. They cover:
+150 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
@@ -24,7 +24,8 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - the perf test's frame statistics, report, slice order, per-part timings, and typical and heavy drawings;
 - 3D ring projection: near-plane and screen-edge clipping, heading, the chord count, and moving a ring rather than rebuilding it;
 - tracked positions: live, stale, first seen stale, and never known;
-- settings migration from a real 0.4.0 file, a new value winning, dropping a removed setting, and moving the tool keys.
+- settings migration from a real 0.4.0 file, a new value winning, dropping a removed setting, and moving the tool keys;
+- carrying settings over from the Baanish UI Improvements file on the first start, without the missile arrows, and never over settings already saved.
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, 3D label stacking, the perf test switching the mod and map, or game-version compatibility.
 

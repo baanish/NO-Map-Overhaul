@@ -8,7 +8,8 @@ namespace NoMapOverhaul;
 /// values of settings that are gone. BepInEx keeps a saved value only under its exact section and key, and writes back
 /// every saved value no setting claims, so without this a moved setting would reset to its default, and its old entry,
 /// like a removed setting's, would linger in the file. It also moves the map tool keys saved at their old defaults to
-/// the new ones. Delete this once players have had a release or two to pick up the move.
+/// the new ones, and on the first start after the rename from Baanish UI Improvements copies that plugin's settings
+/// file in first. Delete this once players have had a release or two to pick up the move.
 /// </summary>
 internal static class SettingsMigration
 {
@@ -80,6 +81,56 @@ internal static class SettingsMigration
         ("PenKey", "Alpha2", "Alpha4"),
         ("WaypointKey", "Alpha1", "Alpha5"),
     };
+
+    /// <summary>
+    /// Copies every value saved in the old plugin's settings file (<paramref name="oldFileLines"/>) into
+    /// <paramref name="saved"/>, but only while <paramref name="saved"/> is empty, as it is on the first start after the
+    /// rename. <see cref="MoveSavedValues"/> then moves and drops them as it would in the old file, so the missile
+    /// arrows' values stay behind. Returns how many values were copied.
+    /// </summary>
+    internal static int CarryOver<TKey>(IDictionary<TKey, string> saved, IEnumerable<string> oldFileLines, Func<string, string, TKey> keyOf)
+    {
+        if (saved.Count > 0)
+        {
+            return 0;
+        }
+
+        foreach (var (section, key, value) in ReadSavedValues(oldFileLines))
+        {
+            saved[keyOf(section, key)] = value;
+        }
+
+        return saved.Count;
+    }
+
+    /// <summary>
+    /// A settings file's saved values as BepInEx reads them: each <c>key = value</c> line under the last
+    /// <c>[Section]</c>, split at the first '=' and trimmed. Comments and other lines are skipped.
+    /// </summary>
+    internal static IEnumerable<(string Section, string Key, string Value)> ReadSavedValues(IEnumerable<string> lines)
+    {
+        var section = "";
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
+            {
+                section = line.Substring(1, line.Length - 2);
+                continue;
+            }
+
+            var parts = line.Split(new[] { '=' }, 2);
+            if (parts.Length == 2)
+            {
+                yield return (section, parts[0].Trim(), parts[1].Trim());
+            }
+        }
+    }
 
     /// <summary>
     /// Moves the saved tool keys in <paramref name="saved"/> to their new defaults, but only when all four still hold
