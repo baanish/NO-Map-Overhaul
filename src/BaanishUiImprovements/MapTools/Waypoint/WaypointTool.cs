@@ -24,6 +24,7 @@ public sealed class WaypointTool : MapTool
 
     private const string StartStatus = "Click the map to start a route.";
     private const string FlownStatus = "Route flown. Click to add a waypoint, or Restart.";
+    private const string FullFlownStatus = "Route flown, and full. Restart, or erase it to plan another.";
     private const string NoAutopilotStatus = "NOAutopilot owns the route: right-click the map to plan it.";
 
     /// <summary>NOAutopilot's default route colour, for the labels on its route.</summary>
@@ -67,8 +68,8 @@ public sealed class WaypointTool : MapTool
                 _statusKey = key;
                 _status = _progress.HasNext
                     ? "Next: WP" + (_progress.Next + 1).ToString(CultureInfo.InvariantCulture) + " of " +
-                      route.Count.ToString(CultureInfo.InvariantCulture) + ". Click to add a waypoint."
-                    : FlownStatus;
+                      route.Count.ToString(CultureInfo.InvariantCulture) + (route.IsFull ? ". The route is full." : ". Click to add a waypoint.")
+                    : route.IsFull ? FullFlownStatus : FlownStatus;
             }
 
             return _status;
@@ -104,6 +105,11 @@ public sealed class WaypointTool : MapTool
         }
 
         _progress.Refresh(Context.Shapes);
+        if (_progress.Route is { IsFull: true })
+        {
+            return;
+        }
+
         var point = pointer.Point;
         if (point.IsAnchored && point.UnitId == Context.OwnAircraft?.UnitId)
         {

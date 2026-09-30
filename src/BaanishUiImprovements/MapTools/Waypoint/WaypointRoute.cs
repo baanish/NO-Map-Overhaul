@@ -26,6 +26,12 @@ public readonly struct RouteWaypoint
 /// </summary>
 public sealed class WaypointRoute : MapShape
 {
+    /// <summary>
+    /// The most waypoints the tool adds. The store's caps count the route as one shape of no points, and each added
+    /// waypoint rebuilds every marker and label, so this bound is the route's own. Two digits also fit the label spacing in <see cref="Draw"/>.
+    /// </summary>
+    public const int MaxWaypoints = 99;
+
     private static readonly List<string> NumberTexts = new();
     private static readonly List<string> LostTexts = new();
 
@@ -47,6 +53,8 @@ public sealed class WaypointRoute : MapShape
     }
 
     public int Count => _waypoints.Length;
+
+    public bool IsFull => Count >= MaxWaypoints;
 
     public RouteWaypoint this[int index] => _waypoints[index];
 
