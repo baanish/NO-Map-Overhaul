@@ -18,12 +18,9 @@ It doesn't guess which way you'll land: it always shows the end you're closest t
 
 When a missile is incoming and outside your view, a red arrow on the screen edge points the way to turn toward it, so you can find it and shoot it down. A missile behind you gets its arrow on the side it's on. Only missiles the game's missile warning already knows about get one, in every aircraft.
 
-## Coming soon
+## Map tools
 
-These came from squadron requests and aren't built yet:
-
-- Map markers, and drawing on the map.
-- Waypoints, with HUD markers.
+A **Tools** button on the full map opens a rail of planning tools: a waypoint route with markers in the 3D view, a pen, text notes, bearing and range measurements that can follow units, and range circles that also show as rings in the 3D view. Only you see what you draw. See the [map tools guide](docs/MAP_TOOLS.md).
 
 ## Requirements
 
