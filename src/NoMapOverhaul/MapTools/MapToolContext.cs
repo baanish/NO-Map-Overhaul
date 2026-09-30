@@ -83,7 +83,8 @@ internal sealed class MapToolContext : IMapToolContext
     public float GroundElevation(FlatVector position)
     {
         var sea = new GlobalPosition(position.X, 0f, position.Y).ToLocalPosition();
-        var count = Physics.RaycastNonAlloc(sea + Vector3.up * RayHeight, Vector3.down, _groundHits, RayHeight, PhysicsLayers.Everything);
+        var count = Physics.RaycastNonAlloc(sea + Vector3.up * RayHeight, Vector3.down, _groundHits, RayHeight, PhysicsLayers.Everything,
+            QueryTriggerInteraction.Ignore);
         var top = float.NegativeInfinity;
         for (var i = 0; i < count; i++)
         {

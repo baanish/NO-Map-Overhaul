@@ -168,7 +168,7 @@ The Circle tool also requests each circle as a ring through `IWorldLabels.Ring`,
 | Waypoint marker | `DynamicMap.mapWaypoint`, the prefab `DynamicMap.MapControls` places for a move order |
 | Right-click move order | `DynamicMap.selectedIcons[0]` a `UnitMapIcon` whose unit is `ICommandable` and friendly by `DynamicMap.GetFactionMode`, outside `GameState.Editor`, as in `DynamicMap.MapControls` |
 | Unit positions | `FactionHQ.TryGetKnownPosition`, live while `FactionHQ.IsTargetBeingTracked` |
-| Ground height | A ray down from 10 km, as in `DynamicMap.JumpCameraTo`, passing through units |
+| Ground height | A ray down from 10 km, as in `DynamicMap.JumpCameraTo`, passing through units and trigger colliders |
 | Unit system | `PlayerSettings.unitSystem` |
 | Chat or game menu open | `CursorManager.GetFlag(CursorFlags.Chat \| CursorFlags.GameMenu)` |
 
