@@ -1,3 +1,5 @@
+using System.Collections;
+using BepInEx;
 using Rewired;
 using UnityEngine;
 using FlatVector = System.Numerics.Vector2;
@@ -16,7 +18,8 @@ namespace BaanishUiImprovements.MapTools;
 /// </para>
 /// <para>
 /// Drags pan the map (<c>DynamicMap.MapControls</c> reads the mouse axes while the button is held), which a click-only
-/// tool keeps. For a tool that captures drags, the player's Rewired mouse maps are off until the button comes up.
+/// tool keeps. For a tool that captures drags, the player's Rewired mouse maps are off until the button comes up, even
+/// when the drag is cut short: the game would read a button still held as a pan, or as Fire once the map closes.
 /// </para>
 /// <para>
 /// Typing: the keyboard maps and the Escape menu are off while the tool captures the keyboard, the way the game's chat
@@ -41,7 +44,7 @@ internal sealed class MapToolInput
     /// <summary>How near a unit's map icon the cursor must be to anchor to it, in icon units: a little past a typical icon's edge.</summary>
     private const float UnitReach = 12f;
 
-    private readonly ControllerMapSuspension _mouse = new(ControllerType.Mouse);
+    private ControllerMapSuspension _mouse = new(ControllerType.Mouse);
     private readonly ControllerMapSuspension _keyboard = new(ControllerType.Keyboard);
     private bool _pressed;
     private bool _panned;
@@ -77,7 +80,7 @@ internal sealed class MapToolInput
         ReleaseKeyboard(immediately: false);
     }
 
-    /// <summary>Teardown: gives the controls straight back, since no later frame may come to do it.</summary>
+    /// <summary>Teardown: gives the keyboard straight back, since no later frame may come to do it, and the mouse once its button is up.</summary>
     public void Reset()
     {
         EndPress();
@@ -192,11 +195,38 @@ internal sealed class MapToolInput
         }
     }
 
+    /// <summary>
+    /// Gives the mouse maps back once the left button is up. A drag cut short while it's held (a right-click cancel,
+    /// the map closing, the tools or the mod switched off) hands the maps to a coroutine on BepInEx's own object that
+    /// waits for the release, since this may be the last frame the mod runs.
+    /// </summary>
     private void EndPress()
     {
         _pressed = false;
         _dragging = false;
-        _mouse.Resume();
+        if (!_mouse.IsSuspended)
+        {
+            return;
+        }
+
+        if (!Input.GetMouseButton(0))
+        {
+            _mouse.Resume();
+            return;
+        }
+
+        ThreadingHelper.Instance.StartCoroutine(ResumeOnRelease(_mouse));
+        _mouse = new ControllerMapSuspension(ControllerType.Mouse);
+    }
+
+    private static IEnumerator ResumeOnRelease(ControllerMapSuspension mouse)
+    {
+        while (Input.GetMouseButton(0))
+        {
+            yield return null;
+        }
+
+        mouse.Resume();
     }
 
     /// <summary>
