@@ -89,7 +89,9 @@ public sealed class RingProjection
     /// <summary>
     /// The fewest chords, doubling from <see cref="MinSegments"/> up to <see cref="Segments"/>, that keep the ring round on
     /// screen. No point of the ring is nearer the camera than <paramref name="distance"/> less the radius, so the ring's
-    /// radius spans at most the focal length times the radius over that many pixels. A camera inside the ring gets them all.
+    /// radius spans at most the focal length times the radius over that many pixels, and a chord of a ring that size
+    /// strays from it by <see cref="MaxStrayPixels"/> at most, from a camera looking straight at it. Off the screen's
+    /// centre, perspective can stretch that to about twice as much. A camera inside the ring gets them all.
     /// </summary>
     /// <param name="distance">From the camera to the ring's centre, in meters.</param>
     public static int ChordsFor(float distance, float radius, float focalPixels)
