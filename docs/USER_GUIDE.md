@@ -180,13 +180,19 @@ It measures six phases of 10 seconds, each after 2 seconds for the switch to set
 When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each phase, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full table, with each phase's fps, 1% low, and the mod's own time per frame and per map refresh:
 
 ```text
-[Info   :Baanish UI Improvements] Perf test: 10 s per phase after 2 s to settle. Changes are against the same view with the mod off.
+[Info   :Baanish UI Improvements] Perf test: 10 s per phase after 2 s to settle. Heavy drawings: 71 shapes, anchored to 3 live units. Changes are against the same view with the mod off.
 Phase                                 Avg fps   1% low Mod ms avg/max   Refresh ms avg/max   Avg fps change    1% low change
 Minimap, mod off                        140.7    118.2    0.001/0.004     0.001/0.003 100x         baseline         baseline
 Minimap, mod on                         138.8    116.9    0.080/0.312     0.300/0.910 100x     -1.9 (-1.4%)     -1.3 (-1.1%)
 Minimap, mod on, heavy drawings         129.6    104.0    0.210/0.655     1.200/2.410 100x    -11.1 (-7.9%)    -14.2 (-12.0%)
 ...
+Rendering per frame. Canvas ms is every canvas's rebuild and batching, the game's too. n/a is a stat this build doesn't record.
+Phase                                 Canvas ms  BuildBatch ms  WillRender ms  Batches  SetPass Draw calls   Vertices  Mod graphics/TMP
+Minimap, mod off                          0.310            n/a            n/a      212       64        240     410233               0/0
+...
 ```
+
+The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the phase, and how many of them are TextMeshPro text.
 
 Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Either way, your own drawings come back with their undo history, and so do the map and the ShowTools and ShowOnMinimap settings, which the test turns on while it runs. A route you were flying starts again from waypoint 1; use **Skip** to move it on. The test switches the mod off and on without changing **Enabled**, so the mod can't be left off.
 

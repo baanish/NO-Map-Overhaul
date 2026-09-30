@@ -67,6 +67,8 @@ Everything under `Diagnostics/` is off unless the player asks for it. `Performan
 
 `PerfTest` runs that comparison from an F1 button. The button is a `ConfigurationManagerAttributes.CustomDrawer`, which ConfigurationManager finds by the class's name, so the mod needs no reference to it. The test switches the mod through `Plugin.ModOn`, never by writing General.Enabled, so no crash can save the mod as off. It opens and closes the full map with `DynamicMap.Maximize` and `Minimize`, the calls the game's own map key makes. It swaps the player's drawings out with `ShapeStore.Save` and `Restore`, which keep the undo history and add no step. `StressDrawings` builds the heavy set from plain shapes, sized to the minimap: the rect's world width over one map meter in world units (`mapDisplayFactor` times the icon layer's scale).
 
+`RenderCounters` adds the rendering table. Unity's counters come from `ProfilerRecorder`, looked up by name through `ProfilerRecorderHandle.GetAvailable`, since a release player records the render counters but not the `Canvas.*` markers. Canvas time is measured without the profiler: while the test runs, two timestamp steps wrap `PostLateUpdate.PlayerUpdateCanvases` (layout, graphic rebuilds, and `RectMask2D` culling) and `PlayerEmitCanvasGeometry` (batching) in the player loop, and come out again when it ends.
+
 ## Map tools
 
 A Tools button on the full map opens a menu of drawing tools: a rail of icons and a strip beside it. What they draw shows on both maps and, for some shapes, in the 3D view. Everything lives under `src/BaanishUiImprovements/MapTools/`, and `MapToolHost` ties it together:

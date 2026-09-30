@@ -48,8 +48,11 @@ internal sealed class PerfTest
     private readonly MapToolContext _context;
     private readonly ManualLogSource _log;
     private readonly FrameStats _stats = new();
+    private readonly RenderCounters _render = new();
     private readonly List<PerfPhase> _results = new();
     private List<MapShape>? _stress;
+    private int _stressUnits;
+    private int _stressShown;
     private ShapeStore.Saved? _savedShapes;
     private DynamicMap? _map;
     private bool _mapWasOpen;
@@ -129,19 +132,21 @@ internal sealed class PerfTest
             if (elapsed >= settle)
             {
                 _stats.Clear();
+                _render.Clear();
                 _performance.Phase = _stats;
             }
 
             return;
         }
 
+        _render.Sample();
         if (elapsed < settle + MeasureSeconds)
         {
             return;
         }
 
         _performance.Phase = null;
-        _results.Add(new PerfPhase(phase.Name, _stats.Summarize(), phase.Baseline));
+        _results.Add(new PerfPhase(phase.Name, _stats.Summarize(), phase.Baseline, _render.Summarize()));
         if (_phase + 1 < Phases.Length)
         {
             StartPhase(_phase + 1);
@@ -184,6 +189,7 @@ internal sealed class PerfTest
         _savedShapes = _context.Shapes.Save();
         _stress = null;
         _results.Clear();
+        _render.Start();
         _log.LogInfo("Perf test started.");
         Tell("Perf test running for about 75 seconds. Close F1, and hold the view still.");
         StartPhase(0);
@@ -220,12 +226,15 @@ internal sealed class PerfTest
             {
                 _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
             }
+
+            _stressShown = _context.Shapes.Shapes.Count;
         }
     }
 
     private void Finish(string? note)
     {
-        var table = PerfReport.Table(_results, SettleSeconds, MeasureSeconds);
+        var drawings = string.Format(CultureInfo.InvariantCulture, "{0} shapes, anchored to {1} live units", _stressShown, _stressUnits);
+        var table = PerfReport.Table(_results, SettleSeconds, MeasureSeconds, drawings);
         _log.LogInfo(note == null ? table : table + "\n" + note);
         Restore(moveMap: true);
         Tell(PerfReport.Summary(_results));
@@ -247,6 +256,7 @@ internal sealed class PerfTest
 
         _phase = -1;
         _performance.Phase = null;
+        _render.Stop();
         _settings.ShowMapTools.Value = _showedTools;
         _settings.MapToolShowOnMinimap.Value = _showedOnMinimap;
         var map = SceneSingleton<DynamicMap>.i;
@@ -282,6 +292,7 @@ internal sealed class PerfTest
                      (forward.LengthSquared() > 0f ? FlatVector.Normalize(forward) * MinimapLead : FlatVector.Zero);
         var radius = MinimapRadius(map);
         var units = NearbyUnits(center, radius, aircraft.persistentID.Id);
+        _stressUnits = units.Count;
         var shapes = StressDrawings.Build(center, radius, units, _settings.MapToolMaxPenPoints.Value, _context.GroundElevation);
         _log.LogInfo(string.Format(CultureInfo.InvariantCulture,
             "Perf test drawings: {0} shapes in {1:0.0} km around the minimap's centre, {2} live units anchored.",

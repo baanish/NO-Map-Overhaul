@@ -15,6 +15,7 @@ internal static class PerfTestTests
     {
         ("perf changes read in fps and percent", PerfChangesReadInFpsAndPercent),
         ("the perf summary compares each phase with its baseline", SummaryComparesWithBaseline),
+        ("render stats a build doesn't record read n/a", RenderStatsReadNaNAsUnavailable),
         ("the heavy drawings fill the caps and ride on units", HeavyDrawingsFillCapsAndRideOnUnits),
     };
 
@@ -35,7 +36,16 @@ internal static class PerfTestTests
         var lines = PerfReport.Summary(phases).Split('\n');
         Expect(lines.Length == 2, $"expected a header and one line, got {lines.Length}");
         ExpectText(lines[1].TrimEnd(), "Minimap, mod on: avg -20.0 (-20.0%), 1% low -20.0 (-20.0%)");
-        Expect(PerfReport.Table(phases, 2f, 10f).Contains("baseline"), "expected the mod-off phase marked as the baseline");
+        Expect(PerfReport.Table(phases, 2f, 10f, "71 shapes").Contains("baseline"), "expected the mod-off phase marked as the baseline");
+    }
+
+    private static void RenderStatsReadNaNAsUnavailable()
+    {
+        var render = new RenderSummary(0.5f, float.NaN, float.NaN, 42f, 9f, 40f, 1234f, 30, 12);
+        var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1, render) }, 2f, 10f, "71 shapes");
+        Expect(table.Contains("Heavy drawings: 71 shapes."), "expected the heavy drawings in the header");
+        var row = table.Split('\n').Last().TrimEnd();
+        ExpectText(System.Text.RegularExpressions.Regex.Replace(row, " +", " "), "Minimap, mod on 0.500 n/a n/a 42 9 40 1234 30/12");
     }
 
     private static void HeavyDrawingsFillCapsAndRideOnUnits()
