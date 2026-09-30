@@ -23,7 +23,8 @@ public sealed class PenTool : MapTool
     private readonly List<Vector2> _points = new();
     private bool _drawing;
     private bool _stopped;
-    private bool _limited;
+    private bool _squeezed;
+    private int? _limitedAt;
     private int _room;
     private float _gapSquared;
     private float _tolerance;
@@ -37,15 +38,19 @@ public sealed class PenTool : MapTool
 
     public override bool CapturesDrag => true;
 
-    /// <summary>Empty at the shape cap, so the menu shows its own limit message.</summary>
-    public override string Status => _limited ? LimitStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
+    /// <summary>
+    /// Empty at the shape cap, so the menu shows its own limit message. The pen's own limit message lasts until the
+    /// drawings change, since an erase or undo may have made room.
+    /// </summary>
+    public override string Status =>
+        _stopped || _limitedAt == Context.Shapes.Version ? LimitStatus : Context.Shapes.IsFull ? string.Empty : IdleStatus;
 
     public override void OnDeactivate() => Drop();
 
     public override void OnMissionStart()
     {
         Drop();
-        _limited = false;
+        _limitedAt = null;
     }
 
     public override void OnPointerDown(MapPointer pointer)
@@ -53,8 +58,8 @@ public sealed class PenTool : MapTool
         Drop();
         var shapes = Context.Shapes;
         _room = shapes.MaxPoints - shapes.PointCount;
-        _limited = _room < 1;
-        if (_limited || shapes.IsFull)
+        _limitedAt = _room < 1 ? shapes.Version : null;
+        if (_limitedAt != null || shapes.IsFull)
         {
             return;
         }
@@ -86,10 +91,16 @@ public sealed class PenTool : MapTool
         Append(pointer.Position);
         StrokeSimplifier.Simplify(_points, _tolerance);
         var stroke = new PenStroke(_points.ToArray(), Context.Color);
+        var limited = _stopped;
         Drop();
         if (!Context.Shapes.Add(stroke) && !Context.Shapes.IsFull)
         {
-            _limited = true; // a redo during the drag took the room
+            limited = true; // a redo during the drag took the room
+        }
+
+        if (limited)
+        {
+            _limitedAt = Context.Shapes.Version;
         }
     }
 
@@ -101,7 +112,11 @@ public sealed class PenTool : MapTool
         }
     }
 
-    /// <summary>At the budget, simplifying what's drawn so far may make room; if not, the stroke ends here.</summary>
+    /// <summary>
+    /// At the budget, simplifying what's drawn so far may make room; if not, the stroke ends here. A pass that frees less
+    /// than an eighth of the budget is the last, and the stroke ends once that room fills, so a long stroke near the cap
+    /// isn't simplified again on every drag.
+    /// </summary>
     private void Append(Vector2 point)
     {
         if (_stopped || Vector2.DistanceSquared(point, _points[_points.Count - 1]) < _gapSquared)
@@ -111,10 +126,15 @@ public sealed class PenTool : MapTool
 
         if (_points.Count >= _room)
         {
-            StrokeSimplifier.Simplify(_points, _tolerance);
+            if (!_squeezed)
+            {
+                StrokeSimplifier.Simplify(_points, _tolerance);
+                _squeezed = _room - _points.Count < _room / 8;
+            }
+
             if (_points.Count >= _room)
             {
-                _stopped = _limited = true;
+                _stopped = true;
                 return;
             }
         }
@@ -127,5 +147,6 @@ public sealed class PenTool : MapTool
         _points.Clear();
         _drawing = false;
         _stopped = false;
+        _squeezed = false;
     }
 }

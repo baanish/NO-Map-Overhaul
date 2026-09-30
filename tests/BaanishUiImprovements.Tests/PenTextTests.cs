@@ -20,6 +20,7 @@ internal static class PenTextTests
         ("the pen drops points closer than the gap", PenDropsClosePoints),
         ("a pen click leaves a dot", PenClickLeavesDot),
         ("a pen stroke stops at the point cap and says so", PenStopsAtPointCap),
+        ("a straight stroke past the budget simplifies and keeps going", StraightStrokeKeepsGoing),
         ("a spent point budget refuses the next stroke", SpentBudgetRefusesStroke),
         ("a pen stroke undoes and erases", PenStrokeUndoesAndErases),
         ("switching tools drops a half-drawn stroke", SwitchingToolsDropsStroke),
@@ -95,6 +96,24 @@ internal static class PenTextTests
         DrawZigzag(pen, 0);
         Expect(OnlyStroke(context).PointCount == 5, $"expected the stroke cut at 5 points, got {OnlyStroke(context).PointCount}");
         Expect(pen.Status.Contains("limit"), $"expected a limit message, got '{pen.Status}'");
+        context.Shapes.Undo();
+        Expect(!pen.Status.Contains("limit"), $"expected the limit message gone after an undo, got '{pen.Status}'");
+    }
+
+    private static void StraightStrokeKeepsGoing()
+    {
+        var context = new FakeContext();
+        context.Shapes.MaxPoints = 16;
+        var pen = new PenTool(context);
+        pen.OnPointerDown(At(0, 0));
+        for (var x = 30; x <= 3000; x += 30)
+        {
+            pen.OnPointerDrag(At(x, 0));
+        }
+
+        pen.OnPointerUp(At(3000, 0));
+        ExpectPoints(OnlyStroke(context).Points, new Vector2(0, 0), new Vector2(3000, 0));
+        Expect(!pen.Status.Contains("limit"), $"expected no limit message, got '{pen.Status}'");
     }
 
     private static void SpentBudgetRefusesStroke()
