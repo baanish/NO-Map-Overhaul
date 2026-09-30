@@ -14,15 +14,10 @@ internal static class SettingsMigrationTests
         ("a value already in the new section wins", NewValueWins),
         ("a removed setting's value is dropped from its old and new sections", RemovedSettingIsDropped),
         ("each move has its own source and target", MovesAreDistinct),
-        ("tool keys saved at their old defaults move to the new ones", OldToolKeysMove),
-        ("a changed tool key keeps every tool key as saved", ChangedToolKeyKeepsAll),
-        ("the new tool key defaults swap the old ones among themselves", ToolKeyDefaultsSwap),
         ("the old plugin's 0.4.0 settings carry over on the first start", OldPluginFileCarriesOver),
         ("the old plugin's grouped settings carry over without the missile arrows", GroupedFileCarriesOverWithoutMissileArrows),
         ("settings already saved under the new name aren't replaced", ExistingSettingsAreNotReplaced),
     };
-
-    private static readonly string[] ToolKeys = { "BearingRangeKey", "CircleKey", "TextKey", "PenKey", "WaypointKey", "EraserKey" };
 
     private static void OldFileMovesIntoNewSections()
     {
@@ -76,55 +71,6 @@ internal static class SettingsMigrationTests
         var moves = SettingsMigration.Moves;
         Expect(moves.Select(m => (m.OldSection, m.Key)).Distinct().Count() == moves.Length, "expected no old setting listed twice");
         Expect(moves.Select(m => (m.NewSection, m.Key)).Distinct().Count() == moves.Length, "expected no two settings moved to one place");
-    }
-
-    /// <summary>The six tool keys as the first build with tool keys saved them: 1 Waypoint, 2 Pen, 3 Text, 4 Bearing/range, 5 Circle, 6 Eraser.</summary>
-    private static void OldToolKeysMove()
-    {
-        var saved = ToolKeysSaved("Alpha4", "Alpha5", "Alpha3", "Alpha2", "Alpha1", "Alpha6");
-        saved[(SettingSections.MapToolsKeysAndLimits, "UndoKey")] = "Z";
-        Expect(SettingsMigration.MoveToolKeyDefaults(saved, (section, key) => (section, key)), "expected the tool keys moved");
-        ExpectToolKeys(saved, "Alpha1", "Alpha2", "Alpha3", "Alpha4", "Alpha5", "Alpha6");
-        ExpectText(saved[(SettingSections.MapToolsKeysAndLimits, "UndoKey")], "Z");
-
-        Expect(!SettingsMigration.MoveToolKeyDefaults(saved, (section, key) => (section, key)), "expected keys at the new defaults to stay");
-        ExpectToolKeys(saved, "Alpha1", "Alpha2", "Alpha3", "Alpha4", "Alpha5", "Alpha6");
-        Expect(!SettingsMigration.MoveToolKeyDefaults(new Dictionary<(string, string), string>(), (section, key) => (section, key)),
-            "expected nothing to move in a file without tool keys");
-    }
-
-    private static void ChangedToolKeyKeepsAll()
-    {
-        var saved = ToolKeysSaved("Alpha4", "Alpha5", "Alpha3", "Alpha2", "F", "Alpha6");
-        Expect(!SettingsMigration.MoveToolKeyDefaults(saved, (section, key) => (section, key)), "expected nothing moved");
-        ExpectToolKeys(saved, "Alpha4", "Alpha5", "Alpha3", "Alpha2", "F", "Alpha6");
-    }
-
-    private static void ToolKeyDefaultsSwap()
-    {
-        var defaults = SettingsMigration.ToolKeyDefaults;
-        Expect(defaults.Select(d => d.OldDefault).OrderBy(k => k).SequenceEqual(defaults.Select(d => d.NewDefault).OrderBy(k => k)),
-            "expected the new defaults to reuse the old ones");
-    }
-
-    /// <summary>Values for <see cref="ToolKeys"/>, in that order.</summary>
-    private static Dictionary<(string, string), string> ToolKeysSaved(params string[] values)
-    {
-        var saved = new Dictionary<(string, string), string>();
-        for (var i = 0; i < ToolKeys.Length; i++)
-        {
-            saved[(SettingSections.MapToolsKeysAndLimits, ToolKeys[i])] = values[i];
-        }
-
-        return saved;
-    }
-
-    private static void ExpectToolKeys(Dictionary<(string, string), string> saved, params string[] values)
-    {
-        for (var i = 0; i < ToolKeys.Length; i++)
-        {
-            ExpectText(saved[(SettingSections.MapToolsKeysAndLimits, ToolKeys[i])], values[i]);
-        }
     }
 
     /// <summary>The first start after the rename, with nothing saved yet under the new GUID and a 0.4.0 file under the old one.</summary>

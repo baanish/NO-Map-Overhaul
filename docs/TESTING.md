@@ -24,7 +24,7 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - the perf test's frame statistics, report, slice order, per-part timings, and typical and heavy drawings;
 - 3D ring projection: near-plane and screen-edge clipping, heading, the chord count, and moving a ring rather than rebuilding it;
 - tracked positions: live, stale, first seen stale, and never known;
-- settings migration from a real 0.4.0 file, a new value winning, dropping a removed setting, and moving the tool keys;
+- settings migration from a real 0.4.0 file, a new value winning, and dropping a removed setting;
 - carrying settings over from the Baanish UI Improvements file on the first start, without the missile arrows, and never over settings already saved.
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, 3D label stacking, the perf test switching the mod and map, or game-version compatibility.

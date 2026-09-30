@@ -7,9 +7,8 @@ namespace NoMapOverhaul;
 /// Carries saved values over from the 0.4.0 settings layout, where every setting sat in a flat section, and drops the
 /// values of settings that are gone. BepInEx keeps a saved value only under its exact section and key, and writes back
 /// every saved value no setting claims, so without this a moved setting would reset to its default, and its old entry,
-/// like a removed setting's, would linger in the file. It also moves the map tool keys saved at their old defaults to
-/// the new ones, and on the first start after the rename from Baanish UI Improvements copies that plugin's settings
-/// file in first. Delete this once players have had a release or two to pick up the move.
+/// like a removed setting's, would linger in the file. On the first start after the rename from Baanish UI Improvements
+/// it copies that plugin's settings file in first. Delete this once players have had a release or two to pick up the move.
 /// </summary>
 internal static class SettingsMigration
 {
@@ -71,18 +70,6 @@ internal static class SettingsMigration
     };
 
     /// <summary>
-    /// Tool keys whose default changed when the rail was reordered, with the old and new default as the file writes them.
-    /// The four swap numbers among themselves, so moving all of them can't put two tools on one key.
-    /// </summary>
-    internal static readonly (string Key, string OldDefault, string NewDefault)[] ToolKeyDefaults =
-    {
-        ("BearingRangeKey", "Alpha4", "Alpha1"),
-        ("CircleKey", "Alpha5", "Alpha2"),
-        ("PenKey", "Alpha2", "Alpha4"),
-        ("WaypointKey", "Alpha1", "Alpha5"),
-    };
-
-    /// <summary>
     /// Copies every value saved in the old plugin's settings file (<paramref name="oldFileLines"/>) into
     /// <paramref name="saved"/>, but only while <paramref name="saved"/> is empty, as it is on the first start after the
     /// rename. <see cref="MoveSavedValues"/> then moves and drops them as it would in the old file, so the missile
@@ -130,29 +117,6 @@ internal static class SettingsMigration
                 yield return (section, parts[0].Trim(), parts[1].Trim());
             }
         }
-    }
-
-    /// <summary>
-    /// Moves the saved tool keys in <paramref name="saved"/> to their new defaults, but only when all four still hold
-    /// their old defaults: BepInEx keeps a saved value over a new default, so the old numbering would otherwise stay. A
-    /// player who changed any of them keeps every one as saved. Returns whether they moved.
-    /// </summary>
-    internal static bool MoveToolKeyDefaults<TKey>(IDictionary<TKey, string> saved, Func<string, string, TKey> keyOf)
-    {
-        foreach (var (key, oldDefault, _) in ToolKeyDefaults)
-        {
-            if (!saved.TryGetValue(keyOf(SettingSections.MapToolsKeysAndLimits, key), out var value) || value != oldDefault)
-            {
-                return false;
-            }
-        }
-
-        foreach (var (key, _, newDefault) in ToolKeyDefaults)
-        {
-            saved[keyOf(SettingSections.MapToolsKeysAndLimits, key)] = newDefault;
-        }
-
-        return true;
     }
 
     /// <summary>
