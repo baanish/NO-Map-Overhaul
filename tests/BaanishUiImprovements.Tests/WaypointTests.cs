@@ -23,6 +23,7 @@ internal static class WaypointTests
         ("undo takes back waypoints but not progress", UndoTakesBackWaypointsNotProgress),
         ("undoing an erase keeps the route's progress", UndoingEraseKeepsProgress),
         ("a new route starts at its first waypoint", NewRouteStartsAtFirstWaypoint),
+        ("undoing back to an older route keeps its progress", UndoBackToOlderRouteKeepsProgress),
         ("the route draws numbered markers on one line", RouteDrawsNumberedMarkers),
         ("the eraser takes the whole route", EraserTakesWholeRoute),
         ("the 3D label re-formats only when its text changes, and says lost", CalloutReformatsOnlyOnChange),
@@ -126,6 +127,34 @@ internal static class WaypointTests
         AddRoute(context.Shapes, new Vector2(5000, 0), new Vector2(6000, 0));
         progress.Refresh(context.Shapes);
         Expect(progress.Route is { Count: 2 } && progress.Next == 0, $"expected the new route from waypoint 1, got {progress.Next + 1}");
+    }
+
+    private static void UndoBackToOlderRouteKeepsProgress()
+    {
+        var context = new FakeContext();
+        var progress = new RouteProgress();
+        var old = AddRoute(context.Shapes, new Vector2(0, 1000), new Vector2(0, 2000), new Vector2(0, 3000));
+        progress.Refresh(context.Shapes);
+        progress.Skip();
+        progress.Skip();
+        context.Shapes.Remove(old);
+        AddRoute(context.Shapes, new Vector2(5000, 0), new Vector2(6000, 0));
+        progress.Refresh(context.Shapes);
+        progress.Skip();
+        for (var i = 0; i < 3; i++)
+        {
+            context.Shapes.Undo();
+            progress.Refresh(context.Shapes);
+        }
+
+        Expect(ReferenceEquals(progress.Route, old) && progress.Next == 2, $"expected the old route back with waypoint 3 next, got {progress.Next + 1}");
+        for (var i = 0; i < 3; i++)
+        {
+            context.Shapes.Redo();
+            progress.Refresh(context.Shapes);
+        }
+
+        Expect(progress.Route is { Count: 2 } && progress.Next == 1, $"expected the redone route back with waypoint 2 next, got {progress.Next + 1}");
     }
 
     private static void RouteDrawsNumberedMarkers()

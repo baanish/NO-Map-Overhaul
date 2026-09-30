@@ -51,6 +51,23 @@ public sealed class ShapeStore
         }
     }
 
+    /// <summary>Whether a shape with this id is here, or undo or redo can bring it back.</summary>
+    public bool InHistory(int id)
+    {
+        foreach (var shapes in _history)
+        {
+            foreach (var shape in shapes)
+            {
+                if (shape.Id == id)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>False when an undo, the eraser, or Clear has taken the shape out, so a tool can let go of it.</summary>
     public bool Contains(MapShape shape) => Array.IndexOf(_history[_current], shape) >= 0;
 

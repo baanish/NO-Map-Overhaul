@@ -1,16 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace BaanishUiImprovements.MapTools.Waypoint;
 
 /// <summary>
 /// Which waypoint of the store's route is next. Flying the route isn't a drawing change, so it stays out of the
-/// store's history: undo takes back waypoints, never progress. Progress belongs to one route by id, which a
+/// store's history: undo takes back waypoints, never progress. Progress belongs to a route by id, which a
 /// <see cref="ShapeStore.Replace"/> keeps, so it survives adding waypoints and undoing an erase, and a new route
-/// starts from its first waypoint.
+/// starts from its first waypoint. An older route keeps its progress while undo or redo can still bring it back.
 /// </summary>
 public sealed class RouteProgress
 {
+    /// <summary>Progress on routes other than the current one, by id, dropped once the store's history no longer holds them.</summary>
+    private readonly Dictionary<int, (int Next, bool SeenAhead)> _others = new();
+    private readonly List<int> _gone = new();
     private int _storeVersion = -1;
     private int _routeId;
 
@@ -60,14 +64,18 @@ public sealed class RouteProgress
 
         if (Route.Id != _routeId)
         {
+            if (_routeId != 0)
+            {
+                _others[_routeId] = (Next, _seenAhead);
+            }
+
             _routeId = Route.Id;
-            Next = 0;
-            _seenAhead = false;
+            (Next, _seenAhead) = _others.TryGetValue(_routeId, out var kept) ? kept : (0, false);
+            _others.Remove(_routeId);
+            ForgetGone(store);
         }
-        else
-        {
-            Next = Math.Min(Next, Route.Count);
-        }
+
+        Next = Math.Min(Next, Route.Count);
     }
 
     /// <summary>Moves on past the next waypoint if the aircraft has reached it. At most one waypoint per call.</summary>
@@ -110,9 +118,27 @@ public sealed class RouteProgress
     {
         _storeVersion = -1;
         _routeId = 0;
+        _others.Clear();
         Route = null;
         Next = 0;
         _seenAhead = false;
+    }
+
+    private void ForgetGone(ShapeStore store)
+    {
+        _gone.Clear();
+        foreach (var id in _others.Keys)
+        {
+            if (!store.InHistory(id))
+            {
+                _gone.Add(id);
+            }
+        }
+
+        foreach (var id in _gone)
+        {
+            _others.Remove(id);
+        }
     }
 
     /// <summary>The topmost route. The tool only starts a route when there is none, so there is at most one.</summary>
