@@ -245,8 +245,10 @@ internal sealed class RunwayMapOverlay
             PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
             PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
 
-            // Zoomed far out, a runway is a few pixels long and its two numbers pile onto the airbase's name and units.
-            var longEnough = Vector2.Distance(start, end) / inverseScale >= settings.RunwayNumbersMinLength.Value;
+            // Zoomed far out on the full map, a runway is a few pixels long and its two numbers pile onto the airbase's
+            // name and units. The minimap's own zoom keeps runways short too, but there the numbers are wanted.
+            var longEnough = !DynamicMap.mapMaximized ||
+                             Vector2.Distance(start, end) / inverseScale >= settings.RunwayNumbersMinLength.Value;
             _startLabel.Visible = longEnough;
             _endLabel.Visible = longEnough && (_runway.Reversable || settings.RunwayBothEnds.Value);
         }
