@@ -65,7 +65,7 @@ The table lists the sections in the order F1 shows them.
 | Map / Runways | Number both ends | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
 | Map / Runways | Number size, *advanced* | RunwayLabelSize | `8` | Runway number size. |
 | Map / Runways | Minimum width, *advanced* | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
-| Map / Runways | Numbers from zoom, *advanced* | NumbersMinGridSquare | `200` | On the full map, hide every runway number while one grid square is narrower than this on screen, so zoomed far out they don't pile onto the airbases. The minimap always shows them. `0` always shows them. |
+| Map / Runways | Numbers from zoom, *advanced* | NumbersMinGridSquare | `100` | On the full map, hide every runway number while one grid square is narrower than this on screen, so zoomed far out they don't pile onto the airbases. The minimap always shows them. `0` always shows them. |
 | Map / Approach Line | Show within (km) | TriggerRangeKm | `5` | How close to a runway the approach line and the HUD callout appear. |
 | Map / Approach Line | Line length (km) | LineLengthKm | `5` | Approach line length. |
 | Map / Approach Line | Line colour | LineColor | `00D90066` | Approach line colour. |
