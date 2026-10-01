@@ -31,7 +31,7 @@ The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, 
 
 ## In-game status for v0.5.0
 
-Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, the map tools and their keys, the settings layout, and the perf test. Everything below marked Observed was confirmed in game by the author, before the mod was renamed from Baanish UI Improvements.
+Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx 5.4.23.4, in single-player free flight and the Escalation mission, with other client mods loaded (NOAutopilot among them). Status recorded on 2026-09-26, and on 2026-09-30 for the gear-down callout, the master switch, the map tools and their keys, the settings layout, and the perf test, and on 2026-10-01 for airbase names and runway numbers across zoom. Everything below marked Observed was confirmed in game by the author, before the mod was renamed from Baanish UI Improvements.
 
 | Area | Status | Evidence or remaining work |
 | --- | --- | --- |
@@ -73,6 +73,8 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Harmony Sands takeoff-only lane | Observed | The takeoff-only lane is hidden; its garbled custom-name label is gone. |
 | Feldspar painted numbers | Observed | Ignus: 16/34 on the crossing runway, and the free-flight mission's duplicate airbases carry the same numbers. Other fields' paint hasn't been compared. |
 | Airbase names | Observed | Full map with ShowNames on: one name per airbase under its centre, clear of the friendly icon, and Ignus free flight's three Feldspar airbases share one label. |
+| Airbase names zoomed in | Observed | Zooming the full map in moves each name down to its capture circle's edge, below the base's units, up to a limit. |
+| Runway numbers zoomed out | Observed | Zooming the full map far out hides every runway's numbers on the same wheel click; the cutoff of 100 was tuned live at 3K. |
 | Map text rim | Observed | Runway numbers and airbase names at size 8 read over bright map linework with the 1-unit dark rim. |
 | Multiplayer | Observed for v0.4.0 | A multiplayer session showed no problems. Join direction and lobby size weren't recorded. The v0.5.0 map tools haven't been flown in multiplayer yet. |
 

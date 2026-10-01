@@ -16,6 +16,13 @@ internal sealed class RunwayMapOverlay
 {
     private const float LabelGap = 14f;
 
+    /// <summary>
+    /// One square of the game's map grid, in meters: the map image is sized so 81920 m spans the grid's 16 squares
+    /// (<c>MapSettings.MapSize / 81920 * 900</c> in <c>DynamicMap</c>), whatever the map. Its size on screen is a zoom
+    /// level that means the same on every map.
+    /// </summary>
+    private const float GridSquareMeters = 5120f;
+
     /// <summary>One dash plus its gap spans 500 m of ground, so the dashes double as distance ticks: two per km.</summary>
     private const float DashCycleMeters = 500f;
     private const float DashMeters = 300f;
@@ -36,6 +43,11 @@ internal sealed class RunwayMapOverlay
         var factor = map.mapDisplayFactor;
         var inverseScale = 1f / map.mapImage.transform.localScale.x;
 
+        // Zoomed far out on the full map, every runway's numbers pile onto its airbase's name and units, so all of them
+        // hide at one zoom. The minimap's own zoom keeps runways short too, but there the numbers are wanted.
+        var numbersShown = !DynamicMap.mapMaximized ||
+                           GridSquareMeters * factor / inverseScale >= _settings.RunwayNumbersMinGridSquare.Value;
+
         _seen.Clear();
         if (_settings.MapRunways.Value)
         {
@@ -47,7 +59,7 @@ internal sealed class RunwayMapOverlay
                     _graphics.Add(runway, graphic);
                 }
 
-                graphic.Update(_settings, factor, inverseScale, hudStyle);
+                graphic.Update(_settings, factor, inverseScale, numbersShown, hudStyle);
                 _seen.Add(runway);
             }
         }
@@ -224,7 +236,7 @@ internal sealed class RunwayMapOverlay
             KeepLabelsUpright();
         }
 
-        public void Update(ModSettings settings, float factor, float inverseScale, TextMeshProUGUI? hudStyle)
+        public void Update(ModSettings settings, float factor, float inverseScale, bool numbersShown, TextMeshProUGUI? hudStyle)
         {
             var start = MapPoint(_runway.Start, factor);
             var end = MapPoint(_runway.End, factor);
@@ -244,7 +256,9 @@ internal sealed class RunwayMapOverlay
             var (startNumber, endNumber) = EndNumbers(_runway);
             PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
             PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
-            _endLabel.Visible = _runway.Reversable || settings.RunwayBothEnds.Value;
+
+            _startLabel.Visible = numbersShown;
+            _endLabel.Visible = numbersShown && (_runway.Reversable || settings.RunwayBothEnds.Value);
         }
 
         public void KeepLabelsUpright()

@@ -29,6 +29,7 @@ internal sealed class ModSettings
         RunwayBothEnds = Bind(SettingSections.MapRunways, "NumberBothEnds", true, "Number both ends", "Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from.");
         RunwayLabelSize = Bind(SettingSections.MapRunways, "RunwayLabelSize", 8f, "Number size", "Runway number size on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
         RunwayMinWidth = Bind(SettingSections.MapRunways, "RunwayMinWidth", 6f, "Minimum width", "Narrowest a runway strip gets when zoomed out, in map icon units.", new AcceptableValueRange<float>(1f, 30f), advanced: true);
+        RunwayNumbersMinGridSquare = Bind(SettingSections.MapRunways, "NumbersMinGridSquare", 100f, "Numbers from zoom", "On the full map, hide every runway number while one grid square is narrower than this on screen, in map icon units, so zoomed far out they don't pile onto the airbases. The minimap always shows them. 0 always shows them.", new AcceptableValueRange<float>(0f, 1000f), advanced: true);
 
         ApproachRangeKm = Bind(SettingSections.MapApproachLine, "TriggerRangeKm", 5f, "Show within (km)", "Show the approach line, and the HUD runway callout, for the nearest runway within this distance.", new AcceptableValueRange<float>(0.5f, 30f));
         ApproachLineLengthKm = Bind(SettingSections.MapApproachLine, "LineLengthKm", 5f, "Line length (km)", "Length of the dashed centerline drawn off the nearest runway end. Each dash plus gap is 500 m.", new AcceptableValueRange<float>(0.5f, 30f));
@@ -94,6 +95,7 @@ internal sealed class ModSettings
     public ConfigEntry<bool> RunwayBothEnds { get; }
     public ConfigEntry<float> RunwayLabelSize { get; }
     public ConfigEntry<float> RunwayMinWidth { get; }
+    public ConfigEntry<float> RunwayNumbersMinGridSquare { get; }
     public ConfigEntry<Color> OutlineColor { get; }
     public ConfigEntry<float> OutlineWidth { get; }
 
