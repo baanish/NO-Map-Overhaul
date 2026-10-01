@@ -6,14 +6,21 @@ using UnityEngine;
 namespace NoMapOverhaul.Airbases;
 
 /// <summary>
-/// Names the player's side's airbases on the full map, just under the game's icon for each, so a base named on comms
+/// Names the player's side's airbases on the full map, under the game's icon for each and below the base's units as the
+/// map zooms in, so a base named on comms
 /// is easy to find. Full map only, like the game's airbase icons: it is north-up there, so map-space down is screen
 /// down and the labels need no per-frame work.
 /// </summary>
 internal sealed class AirbaseLabelOverlay
 {
-    /// <summary>From the airbase centre to the top of its label, clearing the game's icon.</summary>
+    /// <summary>From the airbase centre to the top of its label, clearing the game's icon. The least it ever sits below.</summary>
     private const float IconClearance = 22f;
+
+    /// <summary>
+    /// The most a label sits below its airbase centre, in icon units. Zoomed in, the base's units spread over its capture
+    /// circle, so the label follows that circle's edge down to here; past it, the label would leave the screen.
+    /// </summary>
+    private const float MaxClearance = 90f;
 
     private readonly ModSettings _settings;
     private readonly Dictionary<Airbase, OutlinedText> _labels = new();
@@ -55,7 +62,9 @@ internal sealed class AirbaseLabelOverlay
                 }
 
                 var center = airbase.center.GlobalPosition();
-                label.Rect.localPosition = new Vector2(center.x, center.z) * factor + Vector2.down * (IconClearance * inverseScale);
+                var circleEdge = airbase.GetRadius() * factor / inverseScale;
+                var clearance = Mathf.Clamp(circleEdge, IconClearance, MaxClearance);
+                label.Rect.localPosition = new Vector2(center.x, center.z) * factor + Vector2.down * (clearance * inverseScale);
                 label.Rect.localScale = Vector3.one * inverseScale;
                 label.Set(NameOf(airbase) ?? string.Empty, _settings.AirbaseNameSize.Value, _settings.AirbaseNameColor.Value,
                     _settings.OutlineColor.Value, hudStyle);
