@@ -159,5 +159,5 @@ internal sealed class ModSettings
     /// <summary>A key that picks one map tool. The number row, where they start, isn't bound in the game's default controls.</summary>
     private ConfigEntry<KeyboardShortcut> BindToolKey(string key, string tool, KeyCode defaultKey) =>
         Bind(SettingSections.MapToolsKeysAndLimits, key, new KeyboardShortcut(defaultKey), tool + " key",
-            $"Pick the {tool} tool while the full map is open, opening the tools rail if it's closed.", advanced: true);
+            $"Pick the {tool} tool while the full map is open, opening the tools rail if it's closed. Clear it to turn the key off.");
 }

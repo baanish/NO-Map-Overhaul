@@ -28,7 +28,7 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, while the game menu is open, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, while the game menu is open, or with Shift or Ctrl held. Change any of them in F1 under **Map Tools / Keys and Limits**: **Tools key**, **Undo key**, **Redo key**, and **Bearing/range key** to **Eraser key**. Click **Clear** on a key to turn it off.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 
