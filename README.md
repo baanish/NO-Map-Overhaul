@@ -46,6 +46,13 @@ See the [map tools guide](docs/MAP_TOOLS.md) for every tool, the keys, and plann
 
 Off by default. Your side's airbases get a faint name label on the full map, so you can find the one someone just called out. That includes airbases a mission adds and ones your side captures. Enemy and neutral airbases get no name, since the game doesn't mark them.
 
+## Coming soon
+
+Planned for 0.6.0, not built yet:
+
+- **Shared drawings in multiplayer, by channel.** List the channels you follow in settings, comma-separated, up to 10. A channel can be a squadron, so your drawings reach the people who need them and nobody else.
+- **Picking a channel.** New drawings go to your first channel. `Shift+1` to `Shift+9` pick channels 1 to 9 for your next drawings, and `Shift+0` picks channel 10, so a Medusa crew can work out BRA calls in their own channel without cluttering everyone else's map.
+
 ## Requirements
 
 - Nuclear Option 0.34.2.
