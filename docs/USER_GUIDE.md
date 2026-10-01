@@ -10,7 +10,7 @@ The runways, approach line, callout, boundary, and names apply to friendly airba
 
 ### On the map
 
-Runways show on both the minimap and the full map. The game uses one map object for both, so everything pans, zooms, and rotates with it. Each runway is a filled strip with a thin dark rim. When you zoom out, the strip keeps a minimum width so it never shrinks to nothing.
+Runways show on both the minimap and the full map. The game uses one map object for both, so everything pans, zooms, and rotates with it. Each runway is a filled strip with a thin dark rim. When you zoom out, the strip keeps a minimum width so it never shrinks to nothing, and once the runway is too short on screen for its two numbers to separate, the numbers hide until you zoom back in.
 
 Each end carries the runway number you'd land on from that end. The mod works each number out from the runway heading, the same way the game numbers an unnamed runway in its landing clearance. Where the paint on the tarmac differs, the paint wins, so the clearance can name a different number from the map. The same goes for a runway a mission has named. So far that's one runway, Feldspar's crossing runway on Ignus, which the mod labels 16/34 where the heading gives 15/33. A mission can give a runway its own name, but the mod ignores it, because mission names don't always match the paint. Takeoff-only runways aren't drawn.
 
@@ -65,6 +65,7 @@ The table lists the sections in the order F1 shows them.
 | Map / Runways | Number both ends | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
 | Map / Runways | Number size, *advanced* | RunwayLabelSize | `8` | Runway number size. |
 | Map / Runways | Minimum width, *advanced* | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
+| Map / Runways | Numbers from length, *advanced* | NumbersMinLength | `24` | Hide a runway's numbers while it's shorter than this on screen, so zoomed far out they don't pile onto the airbase. `0` always shows them. |
 | Map / Approach Line | Show within (km) | TriggerRangeKm | `5` | How close to a runway the approach line and the HUD callout appear. |
 | Map / Approach Line | Line length (km) | LineLengthKm | `5` | Approach line length. |
 | Map / Approach Line | Line colour | LineColor | `00D90066` | Approach line colour. |

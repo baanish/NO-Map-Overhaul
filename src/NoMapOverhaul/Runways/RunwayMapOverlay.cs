@@ -244,7 +244,11 @@ internal sealed class RunwayMapOverlay
             var (startNumber, endNumber) = EndNumbers(_runway);
             PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
             PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
-            _endLabel.Visible = _runway.Reversable || settings.RunwayBothEnds.Value;
+
+            // Zoomed far out, a runway is a few pixels long and its two numbers pile onto the airbase's name and units.
+            var longEnough = Vector2.Distance(start, end) / inverseScale >= settings.RunwayNumbersMinLength.Value;
+            _startLabel.Visible = longEnough;
+            _endLabel.Visible = longEnough && (_runway.Reversable || settings.RunwayBothEnds.Value);
         }
 
         public void KeepLabelsUpright()
