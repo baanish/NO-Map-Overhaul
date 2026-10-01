@@ -27,7 +27,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.baanish.nuclearoption.mapoverhaul";
     public const string PluginName = "NO Map Overhaul";
-    public const string PluginVersion = "0.5.0";
+    public const string PluginVersion = "0.5.1";
 
     /// <summary>This plugin's GUID up to 0.4.0, as Baanish UI Improvements: its settings carry over, and a leftover install is switched off.</summary>
     private const string OldPluginGuid = "com.baanish.nuclearoption.uiimprovements";

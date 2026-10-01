@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>NoMapOverhaul</AssemblyName>
     <RootNamespace>NoMapOverhaul</RootNamespace>
-    <Version>0.5.0</Version>
+    <Version>0.5.1</Version>
     <Description>Runways, planning tools, and airbase names on the Nuclear Option map.</Description>
     <Authors>baanish</Authors>
     <LangVersion>latest</LangVersion>

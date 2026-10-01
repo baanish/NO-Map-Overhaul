@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 - 2026-10-01
+
+### Changed
+
+- Airbase names move down to the edge of the airbase's capture circle as the full map zooms in, so they stay clear of the base's units.
+- Runway numbers on the full map all hide together once the map is zoomed far out, so they don't pile onto the airbases. The minimap always shows them. The cutoff is the advanced setting Map / Runways → Numbers from zoom.
+
 ## 0.5.0 - 2026-09-30
 
 The mod is renamed NO Map Overhaul, from Baanish UI Improvements, and is now a map mod.
