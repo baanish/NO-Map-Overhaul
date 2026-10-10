@@ -222,10 +222,23 @@ public sealed class Plugin : BaseUnityPlugin
     /// <summary>As the game quits, its scene may be half torn down, so the perf test leaves the map alone.</summary>
     private void Shutdown(bool gameQuitting)
     {
-        DynamicMap.onMapChanged -= OnMapChanged;
-        AutopilotRightClickPatch.Remove();
-        RemoveOverlays();
-        _perfTest.Shutdown(moveMap: !gameQuitting);
+        ShutdownStep(() => DynamicMap.onMapChanged -= OnMapChanged);
+        ShutdownStep(AutopilotRightClickPatch.Remove);
+        ShutdownStep(RemoveOverlays);
+        ShutdownStep(() => _perfTest.Shutdown(moveMap: !gameQuitting));
+    }
+
+    /// <summary>Each step runs even when an earlier one throws, so one failure can't leave the map hook or a patch behind.</summary>
+    private void ShutdownStep(System.Action step)
+    {
+        try
+        {
+            step();
+        }
+        catch (System.Exception exception)
+        {
+            Logger.LogError($"Couldn't undo part of the mod's changes. {exception}");
+        }
     }
 
     /// <summary>Each overlay rebuilds itself on its next render, so turning the mod back on needs nothing more.</summary>
