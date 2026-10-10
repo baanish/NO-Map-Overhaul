@@ -19,7 +19,7 @@ $nommStage = Join-Path $staging 'nomm'
 $pluginStage = Join-Path $staging 'plugin-only'
 $safeRoot = $root.Replace('\', '/')
 
-$gitStatus = @(& git -c "safe.directory=$safeRoot" status --porcelain --untracked-files=all)
+$gitStatus = @(& git -C $root -c "safe.directory=$safeRoot" status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Unable to read the Git working-tree status.' }
 if ($gitStatus.Count -ne 0 -and -not $AllowDirty) {
     throw 'The release must be built from a clean Git working tree. Pass -AllowDirty for a local packaging check.'
@@ -133,6 +133,6 @@ $nommHash = (Get-FileHash -LiteralPath $nommZip -Algorithm SHA256).Hash.ToLowerI
 $manifest = [IO.File]::ReadAllText((Join-Path $root 'packaging\NOMNOM-MANIFEST.template.json')).Replace('@VERSION@', $version).Replace('@SHA256@', $nommHash)
 [IO.File]::WriteAllText((Join-Path $artifacts 'NoMapOverhaul.nomnom.json'), $manifest, [Text.UTF8Encoding]::new($false))
 
-$state = if ($gitStatus.Count -eq 0) { "from commit $((& git -c "safe.directory=$safeRoot" rev-parse --short HEAD).Trim())" } else { 'from a DIRTY tree (not releasable)' }
+$state = if ($gitStatus.Count -eq 0) { "from commit $((& git -C $root -c "safe.directory=$safeRoot" rev-parse --short HEAD).Trim())" } else { 'from a DIRTY tree (not releasable)' }
 Write-Host "v$version $state passed tests, build, and package validation."
 Get-Content -LiteralPath (Join-Path $artifacts 'SHA256SUMS.txt')
