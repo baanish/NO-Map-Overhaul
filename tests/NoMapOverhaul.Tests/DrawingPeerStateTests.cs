@@ -196,7 +196,7 @@ internal static class DrawingPeerStateTests
         Expect(!state.CanTransmit(130.999) && !state.TryHello(130.999), "compatible traffic cannot clear transport backoff");
         Expect(state.CanTransmit(131) && state.TryHello(131), "first restored probe waits for the existing deadline");
         Expect(!state.TryHello(135.999) && state.TryHello(136), "restored probes keep five-second spacing");
-        Expect(state.TryHello(141) && !state.TryHello(146), "unconfirmed compatible handshake still has only three attempts");
+        Expect(state.TryHello(141) && state.TryHello(146), "a teammate that sent a valid hello keeps retrying until paired");
     }
 
     private static void CompatibleRecovery()

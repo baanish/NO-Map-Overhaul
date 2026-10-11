@@ -71,7 +71,9 @@ internal sealed class DrawingPeerState
     public bool TryHello(double now)
     {
         ObserveHandshake();
-        if (!CanTransmit(now) || now < _nextHello || (!Protocol.IsReady && _attempts >= 3)) return false;
+        // A teammate that has shown it runs the mod keeps trying: a half-open handshake whose replies all failed would
+        // otherwise never pair. Probing teammates who may not have the mod is DrawingDiscovery's sparse schedule.
+        if (!CanTransmit(now) || now < _nextHello || (!Protocol.IsReady && !_compatible && _attempts >= 3)) return false;
         _nextHello = now + 5;
         if (!Protocol.IsReady) _attempts++;
         return true;

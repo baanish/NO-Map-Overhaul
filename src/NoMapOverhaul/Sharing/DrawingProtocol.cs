@@ -265,6 +265,7 @@ public static class DrawingProtocol
             _ => throw new InvalidDataException()
         };
         writer.Write(kind); writer.Write(shape.Id); WriteText(writer, shape.Channel, DrawingChannels.MaxNameLength);
+        Require(shape.Color.A > 0);
         writer.Write(shape.Color.R); writer.Write(shape.Color.G); writer.Write(shape.Color.B); writer.Write(shape.Color.A);
         switch (shape)
         {
@@ -305,6 +306,7 @@ public static class DrawingProtocol
         var id = reader.ReadInt32(); Require(id > 0);
         var channel = ReadText(reader, DrawingChannels.MaxNameLength); Require(CanonicalChannel(channel));
         var color = new ShapeColor(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+        Require(color.A > 0); // an invisible drawing would still draw its label plates, which the eraser skips
         MapShape shape;
         switch (kind)
         {
