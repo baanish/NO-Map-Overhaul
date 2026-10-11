@@ -11,6 +11,12 @@ namespace NoMapOverhaul.Drawing;
 /// </summary>
 internal sealed class FeatheredRectBatch : ModGraphic
 {
+    /// <summary>
+    /// VertexHelper throws at 65000 vertices, inside the canvas update where nothing catches it. A rimmed label plate
+    /// is 16 vertices, so rectangles past about 4,000 plates are dropped instead.
+    /// </summary>
+    private const int MaxVertices = 64000;
+
     private readonly List<Item> _items = new();
     private readonly (float Offset, Color32 Color)[] _profile = new (float, Color32)[EdgeProfile.MaxRings];
     private Vector2 _min;
@@ -75,6 +81,11 @@ internal sealed class FeatheredRectBatch : ModGraphic
         foreach (var item in _items)
         {
             var rings = EdgeProfile.Write(_profile, item.Fill, item.RimWidth, item.Rim, item.Feather);
+            if (vh.currentVertCount + rings * 4 > MaxVertices)
+            {
+                break;
+            }
+
             FeatheredRect.AddTo(vh, item.Center - origin, item.Across, item.Half, _profile, rings);
         }
     }

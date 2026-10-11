@@ -76,10 +76,36 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     private GameObject? _markerPrefab;
     private TextMeshProUGUI? _hudStyle;
     private int _storeVersion = -1;
+    private int _receivedVersion = -1;
     private float _lastTick = -1f;
     private float _factor;
     private float _inverseScale;
-    private (float Line, Color RimColor, float Text, DistanceUnit Units) _style;
+    private (float Line, Color RimColor, float Text, DistanceUnit Units, string DrawingChannel) _style;
+
+    /// <summary>
+    /// The shape drawing now is on a channel other than the one new drawings go to, and draws half as opaque and
+    /// darker, so a channel switch shows which drawings it covers. Overlays draw at full unless they belong to such a
+    /// drawing (<see cref="MapTool.OverlayChannel"/>); the eraser's highlight always does.
+    /// </summary>
+    private bool _dimmed;
+
+    private const float DimmedOpacity = 0.5f;
+    private const float DimmedBrightness = 0.6f;
+
+    private Color32 Shade(ShapeColor color)
+    {
+        var shade = color.ToColor32();
+        if (_dimmed)
+        {
+            shade.r = (byte)(shade.r * DimmedBrightness);
+            shade.g = (byte)(shade.g * DimmedBrightness);
+            shade.b = (byte)(shade.b * DimmedBrightness);
+            shade.a = (byte)(shade.a * DimmedOpacity);
+        }
+
+        return shade;
+    }
+
     private ShapeGraphics? _target;
     /// <summary>The map's rotation when its labels and markers last stood upright, which the labels are placed for.</summary>
     private Quaternion _uprightFor = Quaternion.identity;
@@ -124,7 +150,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// <param name="screenAreas">Menu areas fixed on screen that labels keep clear of.</param>
     /// <param name="screenLayout">Changes whenever <paramref name="screenAreas"/> change.</param>
     public void Render(DynamicMap map, ShapeStore store, IReadOnlyList<MapTool> tools, TextMeshProUGUI? hudStyle,
-        IReadOnlyList<RectTransform> screenAreas, int screenLayout)
+        IReadOnlyList<RectTransform> screenAreas, int screenLayout, IReadOnlyList<MapShape> received, int receivedVersion)
     {
         var fresh = EnsureLayer(map, tools.Count);
         var shown = DynamicMap.mapMaximized || _settings.MapToolShowOnMinimap.Value || _settings.PerfTestShowsDrawings;
@@ -149,9 +175,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 
         var factor = map.mapDisplayFactor;
         var inverseScale = 1f / map.mapImage.transform.localScale.x;
-        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units);
+        var style = (_settings.MapToolLineWidth.Value, _settings.OutlineColor.Value, _settings.MapToolTextSize.Value, Units, store.DrawingChannel);
         var restyle = fresh || factor != _factor || inverseScale != _inverseScale || !style.Equals(_style) || !ReferenceEquals(hudStyle, _hudStyle);
-        var synced = store.Version != _storeVersion;
+        var synced = store.Version != _storeVersion || receivedVersion != _receivedVersion;
         if (restyle || synced || tick || AnyOverlayInvalid(tools))
         {
             _factor = factor;
@@ -161,7 +187,8 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             _markerPrefab = map.mapWaypoint;
             if (synced)
             {
-                Sync(store);
+                Sync(store, received);
+                _receivedVersion = receivedVersion;
             }
 
             // A zoom or a new style moves every label, and a shape gone from the store takes its labels with it.
@@ -173,7 +200,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                 if (graphics.Undrawn || restyle || (tick && graphics.Live))
                 {
                     Begin(graphics);
+                    _dimmed = pair.Key.Channel != store.DrawingChannel;
                     pair.Key.Draw(this);
+                    _dimmed = false;
                     End();
                 }
             }
@@ -184,7 +213,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                 if (restyle || synced || tools[i].OverlayInvalid || (tick && overlay.Live))
                 {
                     Begin(overlay);
+                    _dimmed = tools[i].OverlayChannel is { } channel && channel != store.DrawingChannel;
                     tools[i].DrawOverlay(this);
+                    _dimmed = false;
                     End();
                     tools[i].OverlayInvalid = false;
                     var redrawn = tools[i].RedrawnShape?.Id ?? 0;
@@ -342,6 +373,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _graphics.Clear();
         System.Array.Clear(_overlays, 0, _overlays.Length);
         _storeVersion = -1;
+        _receivedVersion = -1;
         _placedForScreenLayout = -1;
         _uprightFor = Quaternion.identity; // how every label and marker is made
     }
@@ -437,7 +469,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     public void Marker(FlatVector position, ShapeColor color)
     {
         if (_markerPrefab == null ||
-            !_target!.AddMarker(_markerPrefab, Local(position), _inverseScale, color.ToColor32(), Quaternion.Inverse(_uprightFor)))
+            !_target!.AddMarker(_markerPrefab, Local(position), _inverseScale, Shade(color), Quaternion.Inverse(_uprightFor)))
         {
             Circle(position, MapCanvasMetrics.MarkerRadius * MetersPerIconUnit, color);
         }
@@ -449,7 +481,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// </summary>
     public void Label(LabelAnchor anchor, string text, ShapeColor color) =>
         _labelsChanged |= _target!.NextLabel().Set(anchor.Scaled(_factor / _inverseScale), text, _settings.MapToolTextSize.Value,
-            color.ToColor32(), _settings.OutlineColor.Value, _hudStyle, _inverseScale);
+            Shade(color), _settings.OutlineColor.Value, _hudStyle, _inverseScale);
 
     /// <summary>A scene change destroys the map and our layer with it, so a missing layer means every cached graphic is gone too.</summary>
     private bool EnsureLayer(DynamicMap map, int toolCount)
@@ -512,13 +544,13 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     }
 
     /// <summary>Makes graphics for new shapes, drops those of shapes gone from the store, and orders them as the store does, overlays on top.</summary>
-    private void Sync(ShapeStore store)
+    private void Sync(ShapeStore store, IReadOnlyList<MapShape> received)
     {
         _seen.Clear();
         var shapes = store.Shapes;
-        for (var i = 0; i < shapes.Count; i++)
+        for (var i = 0; i < shapes.Count + received.Count; i++)
         {
-            var shape = shapes[i];
+            var shape = i < shapes.Count ? shapes[i] : received[i - shapes.Count];
             if (!_graphics.TryGetValue(shape, out var graphics))
             {
                 graphics = new ShapeGraphics(_layer!, _markerRoot!, _labelRoot!, _plateText!, "MapShape");
@@ -602,7 +634,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// </summary>
     private void EndStroke(ShapeColor color, bool closed)
     {
-        var fill = color.ToColor32();
+        var fill = Shade(color);
         _target!.Strokes.EndStroke(closed, _settings.MapToolLineWidth.Value * 0.5f * _inverseScale, fill, 0f, fill,
             EdgeProfile.AntiAliasWidth * _inverseScale);
     }

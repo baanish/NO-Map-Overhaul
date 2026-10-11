@@ -23,7 +23,18 @@ internal sealed class MapToolContext : IMapToolContext
 
     public ShapeStore Shapes { get; }
 
-    public ShapeColor Color => _settings.MapToolColor.Value.ToShapeColor();
+    /// <summary>
+    /// The colour setting with any alpha but zero. An invisible drawing would still draw its label plates, the eraser
+    /// skips it, and the wire format refuses it, so a zero alpha draws opaque instead.
+    /// </summary>
+    public ShapeColor Color
+    {
+        get
+        {
+            var color = _settings.MapToolColor.Value.ToShapeColor();
+            return color.A == 0 ? new ShapeColor(color.R, color.G, color.B) : color;
+        }
+    }
 
     public DistanceUnit Units =>
         NavFormat.Resolve(_settings.MapToolUnits.Value, PlayerSettings.unitSystem == PlayerSettings.UnitSystem.Metric);
@@ -101,6 +112,14 @@ internal sealed class MapToolContext : IMapToolContext
     }
 
     public bool IsUnitGone(uint unitId) => !TryGetUnit(unitId, out _);
+
+    /// <summary>Remote anchors require live recipient faction tracks; local spectator and lost-position fallbacks cannot make them visible.</summary>
+    public bool KnowsSharedUnit(uint unitId)
+    {
+        var map = SceneSingleton<DynamicMap>.i;
+        return map != null && map.HQ != null && TryGetUnit(unitId, out var unit) &&
+            map.HQ.IsTargetBeingTracked(unit) && map.HQ.TryGetKnownPosition(unit, out _);
+    }
 
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>
     public void ForgetUnits() => _known.Forget();

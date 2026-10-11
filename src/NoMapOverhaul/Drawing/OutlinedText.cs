@@ -33,6 +33,7 @@ internal sealed class OutlinedText
         _rim = NewRect("Rim", Rect).gameObject.AddComponent<TextRim>();
         _rim.raycastTarget = false;
         _face = NewRect("Text", Rect).gameObject.AddComponent<TextMeshProUGUI>();
+        _face.richText = false;
         _face.rectTransform.pivot = pivot;
         _face.raycastTarget = false;
         _face.enableWordWrapping = false;

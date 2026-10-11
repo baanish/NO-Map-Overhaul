@@ -29,7 +29,8 @@ internal static class PenTextTests
         ("typed text is placed on enter", TypedTextPlacedOnEnter),
         ("escape drops the text", EscapeDropsText),
         ("backspace deletes and the length is capped", BackspaceAndLengthCap),
-        ("blank text places nothing", BlankTextPlacesNothing),
+        ("text preserves whole Unicode pairs at the limit and through backspace", UnicodePairs),
+        ("blank or invisible text places nothing", BlankTextPlacesNothing),
         ("clicking elsewhere places the note and starts the next", ClickElsewherePlacesNote),
         ("a note labels the 3D view at ground height", NoteLabelsThreeDView),
         ("a text note undoes and erases", TextNoteUndoesAndErases),
@@ -209,6 +210,42 @@ internal static class PenTextTests
         Expect(OnlyNote(context).Text.Length == TextTool.MaxLength, $"expected the note cut at {TextTool.MaxLength} characters");
     }
 
+    private static void UnicodePairs()
+    {
+        var cases = new (string Input, string Expected)[]
+        {
+            (new string('a', 62) + "\ud83d\ude80x", new string('a', 62) + "\ud83d\ude80"),
+            (new string('a', 63) + "\ud83d\ude80x", new string('a', 63) + "x"),
+            ("A\ud83d\ude80\bB", "AB"),
+            ("A\ud83d\ude80\b\bC", "C"),
+            ("A\ud83d", "A"),
+            ("A\ude80B", "AB"),
+            ("A\ud83dB", "AB"),
+            ("A\ud83d\ud83d\ude80", "A\ud83d\ude80"),
+            ("A\ud83d\bB", "AB"),
+        };
+        foreach (var (input, expected) in cases)
+        {
+            var context = new FakeContext();
+            var tool = new TextTool(context);
+            tool.OnClick(At(0, 0));
+            Type(tool, input + "\n");
+            var actual = OnlyNote(context).Text;
+            ExpectText(actual, expected);
+            Expect(actual.Length <= 64, "note exceeds the UTF-16 limit");
+            _ = new System.Text.UTF8Encoding(false, true).GetBytes(actual);
+        }
+
+        var clicked = new FakeContext();
+        var text = new TextTool(clicked);
+        text.OnClick(At(0, 0));
+        Type(text, "A\ud83d");
+        text.OnClick(At(100, 100));
+        ExpectText(OnlyNote(clicked).Text, "A");
+        Type(text, "\ude80B\n");
+        ExpectText(((TextNote)clicked.Shapes.Shapes[1]).Text, "B");
+    }
+
     private static void BlankTextPlacesNothing()
     {
         var context = new FakeContext();
@@ -216,6 +253,9 @@ internal static class PenTextTests
         text.OnClick(At(0, 0));
         Type(text, "   \n");
         Expect(context.Shapes.Shapes.Count == 0 && !context.Shapes.CanUndo, "expected no note and no undo step");
+        text.OnClick(At(0, 0));
+        Type(text, "­ ​\n"); // a soft hyphen and a zero-width space: nothing visible, and unshareable
+        Expect(context.Shapes.Shapes.Count == 0, "expected no note of invisible characters");
     }
 
     private static void ClickElsewherePlacesNote()

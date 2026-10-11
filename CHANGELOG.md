@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.0 - local preview
+
+- A Steam transport compatibility patch filters gameplay callbacks by connection ownership, preventing Mirage from accepting or closing drawing connections. Sharing stays unavailable if that protection cannot load.
+- Asynchronous Steam failures rotate the drawing session and back off for 30 seconds. Incoming handshakes remain eligible during backoff. A teammate not yet known to run the mod gets three probes per mission, at 0, 60 and 300 seconds, and channel changes don't renew them.
+- Paired teammates exchange a small heartbeat every 5 seconds; full drawings are resent only after an edit, a new pairing, or a heartbeat showing the teammate is behind.
+- Handshake, acknowledgement and erase messages are never dropped at the receive limit, and only the newest of a teammate's queued snapshots is decoded. A burst over 40 messages a second resets that teammate's channel instead of quarantining them. A teammate on another protocol version is shown as such rather than quarantined.
+- A frame gap over 5 seconds and any Steam call blocking past 250 ms are logged, with network logging off.
+- Diagnostics → Log network records sharing handshakes, resets, snapshot counts, exclusions and rejection reasons. Off by default, with anonymous peer labels and bounded output when enabled.
+
+- Optional sharing of fixed map drawings and unit-linked BRA arrows with compatible Steam teammates. Broadcast channels send, receive and collaborate; Receive only adds read-only subscriptions. Each list supports ten channels; sharing starts off.
+- Tools → Channels on the full map edits both lists and sharing on/off. A visible Draw to indicator and numbered Broadcast buttons select the drawing destination; F1 is no longer needed.
+- Shift+1 through Shift+9, and Shift+0, select only Broadcast channels for subsequent drawings. The tool strip shows the destination and sharing status.
+- Receive-only channels are read-only. Shared routes appear on the map without changing the receiver's navigation.
+- Mission, faction, subscription, and peer-session checks reject stale or unrelated packets. Bounded packets and received-drawing budgets limit remote work.
+- Periodic sharing work runs at most five times per second and supports 32 peers. Disablement and local session changes remain immediate; frame stalls do not trigger catch-up batches.
+- Shared BRA arrows transmit unit references without unit positions or altitude. Recipients calculate measurements from their own live tracks; arrows hide while either endpoint is untracked. Other unit-anchored drawings stay local-only, and incoming anchored fallback coordinates and elevation are rejected. Protocol 5 requires this updated build on both clients. Opposing factions, spectators, and dedicated-server sessions receive no drawings in this client-only preview.
+- Eraser and right-click allow broadcasters to request removal of another broadcaster's drawing on the same channel through its owner. The drawing remains visible until the owner publishes the deletion; redraw a replacement to edit it.
+- A team change keeps existing drawings and undo history local-only. Performance-test drawings stay local.
+- Drawings on a channel other than the one you're drawing to show half as opaque and darker, yours and teammates', with the Waypoint tool's guide line dimming with its route.
+- Limits: 100 drawings and 2,500 pen points by default and at most; routes of up to 50 waypoints, five per shared snapshot. If your drawings exceed what one snapshot carries, the oldest that fit are shared and the status counts the rest. Teammates' drawings share the received space evenly.
+- The Waypoint tool keeps working on the route you fly when the drawing channel changes. The Text tool refuses notes with nothing visible in them.
+- Label plates stop below Unity's mesh vertex limit instead of failing to draw.
+
+Built for private playtesting. Two-PC Steam tests covered pairing in both join orders, a teammate without the mod as client and as host, opposite teams, reconnects, channel changes, late enablement, switching sharing off and on, owner and collaborative erase, and received drawings on the map, minimap and HUD.
+
 ## 0.5.1 - 2026-10-01
 
 ### Changed

@@ -166,6 +166,7 @@ internal sealed class WorldLabelPool : IWorldLabels
 
         var label = Object.Instantiate(_source!, _source!.transform.parent);
         label.name = "BaanishWorldLabel";
+        label.richText = false;
         label.raycastTarget = false;
         label.alignment = TextAlignmentOptions.Center;
         label.enableWordWrapping = false;

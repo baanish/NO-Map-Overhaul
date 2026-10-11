@@ -1,10 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 
 namespace NoMapOverhaul.MapTools.Eraser;
 
 /// <summary>
-/// Click near any drawing to delete it; undo brings it back. The shape a click would take is redrawn in
+/// Click near a local drawing to delete it; undo brings it back. Shared erases ask the owner to publish removal.
+/// The shape a click would take is redrawn in
 /// <see cref="HighlightColor"/> under the cursor, so it's clear what goes. Works on every tool's shapes through
 /// <see cref="ShapeHitTest"/>.
 /// </summary>
@@ -16,31 +18,44 @@ public sealed class EraserTool : MapTool
     private static readonly ShapeColor HighlightColor = new(255, 64, 64, 200);
 
     private readonly ShapeHitTest _hitTest;
+    private readonly Func<IReadOnlyList<MapShape>>? _receivedShapes;
+    private readonly Func<MapShape, bool>? _canEraseReceived;
+    private readonly Func<MapShape, bool>? _requestEraseReceived;
     private readonly RecolorCanvas _highlight = new();
     private MapShape? _hovered;
     private Vector2? _cursor;
+    private string _status = "Click a drawing to delete it.";
 
-    public EraserTool(IMapToolContext context, ILabelPlacements? placements = null)
-        : base(context) =>
+    public EraserTool(IMapToolContext context, ILabelPlacements? placements = null,
+        Func<IReadOnlyList<MapShape>>? receivedShapes = null, Func<MapShape, bool>? canEraseReceived = null,
+        Func<MapShape, bool>? requestEraseReceived = null) : base(context)
+    {
         _hitTest = new ShapeHitTest(context, placements);
+        _receivedShapes = receivedShapes;
+        _canEraseReceived = canEraseReceived;
+        _requestEraseReceived = requestEraseReceived;
+    }
 
     public override string Name => "Eraser";
 
-    public override string Status => "Click a drawing to delete it.";
+    public override string Status => _status;
 
-    public override MapShape? RedrawnShape => _hovered;
+    public override MapShape? RedrawnShape => _hovered is { } shape && CanErase(shape) ? shape : null;
+
+    public override void OnActivate() => _status = "Click a drawing to delete it.";
 
     public override void OnDeactivate()
     {
         _hovered = null;
         _cursor = null;
+        _status = "Click a drawing to delete it.";
     }
 
     public override void OnClick(MapPointer pointer)
     {
-        if (Find(pointer.Position) is { } shape)
+        if (FindAt(pointer.Position) is { } shape)
         {
-            Context.Shapes.Remove(shape);
+            TryErase(shape);
         }
 
         _hovered = null;
@@ -61,7 +76,8 @@ public sealed class EraserTool : MapTool
             return;
         }
 
-        var hovered = Find(cursor);
+        var candidate = FindAt(cursor);
+        var hovered = candidate != null && CanErase(candidate) ? candidate : null;
         if (!ReferenceEquals(hovered, _hovered))
         {
             _hovered = hovered;
@@ -72,13 +88,40 @@ public sealed class EraserTool : MapTool
     /// <summary>An undo or Clear can take the hovered shape away before the cursor moves again.</summary>
     public override void DrawOverlay(IMapCanvas canvas)
     {
-        if (_hovered is { } shape && Context.Shapes.Contains(shape))
+        if (_hovered is { } shape && CanErase(shape))
         {
             shape.Draw(_highlight.Over(canvas, HighlightColor));
         }
     }
 
-    private MapShape? Find(Vector2 position) => _hitTest.Find(Context.Shapes.Shapes, position, Reach * Context.MetersPerIconUnit);
+    public MapShape? FindAt(Vector2 position) => _hitTest.Find(Context.Shapes.Shapes,
+        _receivedShapes?.Invoke() ?? Array.Empty<MapShape>(), position, Reach * Context.MetersPerIconUnit);
+
+    public bool TryErase(MapShape shape)
+    {
+        _hovered = null;
+        InvalidateOverlay();
+        if (Context.Shapes.Contains(shape))
+        {
+            _status = "Click a drawing to delete it.";
+            return Context.Shapes.Remove(shape);
+        }
+
+        var requested = CanErase(shape) && _requestEraseReceived!(shape);
+        _status = requested ? "Erase requested; waiting for the owner's update."
+            : "Erase not sent. Check sharing and channel membership, or try again shortly.";
+        return requested;
+    }
+
+    private bool CanErase(MapShape shape)
+    {
+        if (Context.Shapes.Contains(shape)) return true;
+        if (_receivedShapes == null || _canEraseReceived == null || _requestEraseReceived == null) return false;
+        var received = _receivedShapes();
+        for (var i = 0; i < received.Count; i++)
+            if (ReferenceEquals(received[i], shape)) return _canEraseReceived(shape);
+        return false;
+    }
 
     /// <summary>Passes draw calls through with one colour, to draw a shape again as a highlight.</summary>
     private sealed class RecolorCanvas : IMapCanvas

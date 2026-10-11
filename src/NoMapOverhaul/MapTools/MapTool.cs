@@ -118,6 +118,12 @@ public abstract class MapTool
     /// </summary>
     public virtual MapShape? RedrawnShape => null;
 
+    /// <summary>
+    /// The channel of the stored drawing the overlay belongs to, such as the waypoint guide line's route, so it dims
+    /// with that drawing on another channel. Null draws at full, as the eraser's highlight must.
+    /// </summary>
+    public virtual string? OverlayChannel => null;
+
     /// <summary>Set by <see cref="InvalidateOverlay"/>; the map layer clears it once it has redrawn the overlay.</summary>
     internal bool OverlayInvalid { get; set; }
 

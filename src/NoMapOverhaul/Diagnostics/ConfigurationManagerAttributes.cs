@@ -24,6 +24,8 @@ internal sealed class ConfigurationManagerAttributes
     /// <summary>Hidden until "Advanced settings" is ticked at the top of F1, or a search finds it.</summary>
     public bool? IsAdvanced;
 
+    public bool? Browsable;
+
     /// <summary>F1 shows a 0 to 1 range as a whole percentage with no text box unless this is false.</summary>
     public bool? ShowRangeAsPercent;
 }

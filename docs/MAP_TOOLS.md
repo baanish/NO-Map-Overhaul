@@ -1,6 +1,6 @@
 # Map tools
 
-The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Only you see what you draw, and it all clears when you leave the mission.
+The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Drawings are local unless you enable sharing, and clear when you leave the mission. Multiplayer sharing in the 0.6.0 preview still needs playtesting.
 
 Every setting mentioned here is listed in the [user guide's settings table](USER_GUIDE.md#settings), in the **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
 
@@ -20,15 +20,16 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | --- | --- |
 | Left click or drag | Use the picked tool. |
 | Right click while drawing | Cancel what you're halfway through. |
-| Right click a drawing | Delete it. Undo brings it back. |
+| Right click a drawing | Delete your drawing, or request a shared erase on a collaborative channel. Undo restores only your work. |
 | `H` | Open or close the rail, like clicking **Tools**. |
 | `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
 | `1` twice, quickly | Pick Bearing/range and measure from your aircraft: your next click sets the other end. |
+| `Shift+1` to `Shift+9`, `Shift+0` | Pick the next drawing's Broadcast channel, slots 1 through 10. Receive channels have no shortcut slots. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, while the game menu is open, or with Shift or Ctrl held. Change them with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels; ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
 
 A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
 
@@ -44,6 +45,8 @@ When the screen leaves no room outside the map, the rail or the strip moves insi
 
 ## Waypoint
 
+You fly one route at a time. New waypoints, Skip and Restart always act on it, whichever drawing channel is selected, and it stays on the channel it started on. Received routes are map references and never become your active navigation route.
+
 Click the map to add a waypoint to the end of your route. Waypoints are numbered in order and joined by one line. Click on or beside a unit's icon to put the waypoint on that unit, and it moves with the unit.
 
 ![A seven-waypoint route with numbered markers, and a line from the aircraft to the next waypoint](images/waypoint-route.jpg)
@@ -56,7 +59,7 @@ While you fly, a line runs from your aircraft to the next waypoint. A waypoint c
 - **Restart** goes back to waypoint 1. A waypoint already behind you then waits until you've turned toward it.
 - **Undo** takes back the last waypoint. The Eraser deletes the whole route.
 
-The next two waypoints show in the 3D view with their distance and bearing from you. A waypoint on a unit that's destroyed, or no longer tracked by your side, reads `lost` and stays where the unit was last seen. A route holds up to 99 waypoints.
+The next two waypoints show in the 3D view with their distance and bearing from you. A waypoint on a unit that's destroyed, or no longer tracked by your side, reads `lost` and stays where the unit was last seen. A route holds up to 50 waypoints.
 
 With NOAutopilot installed, both routes work side by side. Plan the autopilot's route with right clicks while the tools rail is closed. The rail holds NOAutopilot's right clicks back while it's open, so a right click to delete a drawing doesn't also drop an autopilot waypoint.
 
@@ -108,7 +111,9 @@ Each circle also shows in the 3D view as a thin ring, level with its centre: at 
 
 ## Eraser, undo, and clear
 
-With the Eraser, the drawing under the cursor turns red, and a click deletes it. A right click deletes a drawing with any tool picked. **Clear** deletes everything at once, as one step, so Undo brings it all back.
+With the Eraser, an editable drawing under the cursor turns red, and a click deletes it. A right click erases a drawing with any tool picked. **Clear** deletes your drawings at once, as one step, so Undo brings them all back.
+
+On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels receive automatically; Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings; the owner can undo a shared erase. See [sharing behavior](SHARING.md).
 
 ## Planning ideas
 

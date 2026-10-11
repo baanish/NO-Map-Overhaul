@@ -16,6 +16,7 @@ internal static class SettingSections
     public const string HudRunwayCallout = "HUD / Runway Callout";
     public const string MapToolsGeneral = "Map Tools / General";
     public const string MapToolsDrawing = "Map Tools / Drawing";
+    public const string MapToolsSharing = "Map Tools / Sharing";
     public const string MapToolsWaypoints = "Map Tools / Waypoints";
     public const string MapToolsKeysAndLimits = "Map Tools / Keys and Limits";
     public const string Diagnostics = "Diagnostics";

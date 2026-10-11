@@ -5,6 +5,7 @@ using NoMapOverhaul.Airbases;
 using NoMapOverhaul.Diagnostics;
 using NoMapOverhaul.MapTools;
 using NoMapOverhaul.Runways;
+using NoMapOverhaul.Sharing;
 using BepInEx;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
@@ -13,10 +14,9 @@ using FlatVector = System.Numerics.Vector2;
 namespace NoMapOverhaul;
 
 /// <summary>
-/// Client-side HUD and map additions. Nothing in the game is patched: the plugin reads the game's own singletons
-/// (DynamicMap, CombatHUD, the local faction's airbases) and draws on top, so a game update that moves
-/// something fails loudly in the log instead of corrupting game state. Its one patch is on NOAutopilot
-/// (<see cref="AutopilotRightClickPatch"/>), which it soft-depends on so that NOAutopilot is loaded before Awake looks for it.
+/// Client-side HUD, map additions, and bounded team drawing sharing. The Steam transport ownership patch
+/// keeps drawing connection callbacks out of the game's Mirage connections. The optional NOAutopilot
+/// patch holds back right-clicks while drawing.
 /// Map work runs on the game's own 10 Hz map refresh (<see cref="DynamicMap.onMapChanged"/>), the same
 /// cadence as its airbase icons. Only what must track the camera or the turning minimap runs every frame.
 /// </summary>
@@ -27,7 +27,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.baanish.nuclearoption.mapoverhaul";
     public const string PluginName = "NO Map Overhaul";
-    public const string PluginVersion = "0.5.1";
+    public const string PluginVersion = "0.6.0";
 
     /// <summary>This plugin's GUID up to 0.4.0, as Baanish UI Improvements: its settings carry over, and a leftover install is switched off.</summary>
     private const string OldPluginGuid = "com.baanish.nuclearoption.uiimprovements";
@@ -48,6 +48,7 @@ public sealed class Plugin : BaseUnityPlugin
     private MapToolHost _mapTools = null!;
     private PerformanceLog _performance = null!;
     private PerfTest _perfTest = null!;
+    private SteamDrawingSharing _sharing = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
     private Airbase.Runway.RunwayUsage? _approach;
@@ -66,6 +67,10 @@ public sealed class Plugin : BaseUnityPlugin
         _mapTools = new MapToolHost(_settings);
         _performance = new PerformanceLog(_settings, Logger);
         _perfTest = new PerfTest(_settings, _performance, _mapTools, Logger);
+        SteamConnectionOwnershipPatch.Apply(Logger);
+        _sharing = new SteamDrawingSharing(_mapTools, _mapTools.Received, Logger);
+        _mapTools.RequestSharedErase = _sharing.RequestErase;
+        _mapTools.CanRequestSharedErase = _sharing.CanRequestErase;
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -157,7 +162,10 @@ public sealed class Plugin : BaseUnityPlugin
         var start = _performance.Start();
         Guard(() =>
         {
+            _mapTools.RefreshChannels();
+            _mapTools.TrackMission(SceneSingleton<DynamicMap>.i);
             _perfTest.Update();
+            _sharing.Update(ModOn && _settings.ShowMapTools.Value && !_settings.PerfTestShowsDrawings, _settings.LogNetwork.Value);
             if (!ModOn)
             {
                 // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
@@ -222,6 +230,7 @@ public sealed class Plugin : BaseUnityPlugin
     /// <summary>As the game quits, its scene may be half torn down, so the perf test leaves the map alone.</summary>
     private void Shutdown(bool gameQuitting)
     {
+        _sharing?.Dispose();
         DynamicMap.onMapChanged -= OnMapChanged;
         AutopilotRightClickPatch.Remove();
         RemoveOverlays();

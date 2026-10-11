@@ -1,0 +1,226 @@
+using System;
+using System.Collections.Generic;
+using NoMapOverhaul.MapTools;
+using NoMapOverhaul.MapTools.BearingRange;
+using NoMapOverhaul.MapTools.Circle;
+using NoMapOverhaul.MapTools.Pen;
+using NoMapOverhaul.MapTools.Text;
+using NoMapOverhaul.MapTools.Waypoint;
+
+namespace NoMapOverhaul.Sharing;
+
+public sealed class ReceivedDrawings
+{
+    // Remote drawings have a separate fixed budget so teammates cannot consume the local drawing allowance.
+    public const int MaxPeers = 32;
+    /// <summary>
+    /// Drawn across all teammates, split evenly between them: each shows its oldest drawings up to an equal share, so
+    /// nobody's plan is pushed off the map by whoever filled the pool first. Up to four teammates show everything.
+    /// </summary>
+    public const int MaxShapes = 400;
+    public const int MaxGeometryPoints = 10000;
+
+    private readonly Dictionary<ulong, Dictionary<int, MapShape>> _owners = new();
+    private MapShape[] _shapes = Array.Empty<MapShape>();
+
+    public IReadOnlyList<MapShape> Shapes => _shapes;
+    public int Version { get; private set; }
+
+    public bool TryFindOwner(MapShape shape, out ulong owner, out int sourceId)
+    {
+        foreach (var sender in _owners)
+        {
+            foreach (var entry in sender.Value)
+            {
+                if (!ReferenceEquals(entry.Value, shape)) continue;
+                owner = sender.Key;
+                sourceId = entry.Key;
+                return true;
+            }
+        }
+
+        owner = 0;
+        sourceId = 0;
+        return false;
+    }
+
+    public bool TryReplace(ulong sender, MapShape[] wireShapes) => TryReplace(sender, wireShapes, out _);
+
+    public bool TryReplace(ulong sender, MapShape[] wireShapes, out bool capacityExceeded)
+    {
+        capacityExceeded = false;
+        if (sender == 0 || wireShapes == null || wireShapes.Length > DrawingProtocol.MaxShapes) return false;
+        if (wireShapes.Length == 0)
+        {
+            Remove(sender);
+            return true;
+        }
+
+        _owners.TryGetValue(sender, out var previous);
+        if (previous == null && _owners.Count >= MaxPeers)
+        {
+            capacityExceeded = true;
+            return false;
+        }
+        var replacement = new Dictionary<int, MapShape>();
+        var channels = new DrawingChannels();
+        var points = 0;
+        foreach (var shape in wireShapes)
+        {
+            if (shape == null || shape.Id <= 0 || replacement.ContainsKey(shape.Id) || string.IsNullOrEmpty(shape.Channel) ||
+                !channels.TryConfigure(shape.Channel, out _) || channels.Names.Count != 1 ||
+                channels.Names[0] != shape.Channel) return false;
+            int count;
+            try { count = DrawingProtocol.GeometryPointCount(shape); }
+            catch (ArgumentException) { return false; }
+            if (count < 1 || count > DrawingProtocol.MaxGeometryPoints - points) return false;
+            points += count;
+            replacement.Add(shape.Id, previous != null && previous.TryGetValue(shape.Id, out var old) && SameContent(old, shape)
+                ? old : shape);
+        }
+
+        // Heartbeats retain instances and label placements until content or draw order changes.
+        if (previous != null && SameOrder(previous, replacement)) return true;
+
+        // Every retained drawing keeps its ID, shown or not, so one revealed by a departure never collides.
+        var usedIds = new HashSet<int>();
+        foreach (var owner in _owners.Values)
+            foreach (var shape in owner.Values) usedIds.Add(shape.Id);
+        var nextId = -1;
+        foreach (var entry in replacement)
+        {
+            if (previous != null && previous.TryGetValue(entry.Key, out var old))
+            {
+                entry.Value.Id = old.Id;
+            }
+            else
+            {
+                while (usedIds.Contains(nextId)) nextId--;
+                entry.Value.Id = nextId;
+                usedIds.Add(nextId);
+            }
+        }
+
+        _owners[sender] = replacement;
+        Rebuild();
+        return true;
+    }
+
+    private static bool SameOrder(Dictionary<int, MapShape> previous, Dictionary<int, MapShape> replacement)
+    {
+        if (previous.Count != replacement.Count) return false;
+        using var before = previous.Values.GetEnumerator();
+        foreach (var shape in replacement.Values)
+        {
+            if (!before.MoveNext() || !ReferenceEquals(before.Current, shape)) return false;
+        }
+        return true;
+    }
+
+    private static bool SamePoint(MapPoint left, MapPoint right) =>
+        left.Position == right.Position && left.UnitId == right.UnitId;
+
+    private static bool SameContent(MapShape left, MapShape right)
+    {
+        if (left.Color != right.Color || left.Channel != right.Channel) return false;
+        switch (left)
+        {
+            case BearingRangeShape a when right is BearingRangeShape b:
+                return SamePoint(a.From, b.From) && SamePoint(a.To, b.To) &&
+                    a.FromElevation == b.FromElevation && a.ToElevation == b.ToElevation;
+            case CircleShape a when right is CircleShape b:
+                return SamePoint(a.Center, b.Center) && a.Radius == b.Radius && a.CenterElevation == b.CenterElevation;
+            case TextNote a when right is TextNote b:
+                return SamePoint(a.At, b.At) && a.Elevation == b.Elevation && a.Text == b.Text;
+            case PenStroke a when right is PenStroke b:
+                if (a.Points.Count != b.Points.Count) return false;
+                for (var i = 0; i < a.Points.Count; i++)
+                    if (a.Points[i] != b.Points[i]) return false;
+                return true;
+            case WaypointRoute a when right is WaypointRoute b:
+                if (a.Count != b.Count) return false;
+                for (var i = 0; i < a.Count; i++)
+                    if (!SamePoint(a[i].Point, b[i].Point) || a[i].Elevation != b[i].Elevation) return false;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public void Remove(ulong sender)
+    {
+        if (_owners.Remove(sender)) Rebuild();
+    }
+
+    public void Clear()
+    {
+        if (_owners.Count == 0) return;
+        _owners.Clear();
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        var shapes = new List<MapShape>();
+        var shareShapes = _owners.Count == 0 ? 0 : MaxShapes / _owners.Count;
+        var sharePoints = _owners.Count == 0 ? 0 : MaxGeometryPoints / _owners.Count;
+        foreach (var owner in _owners.Values)
+        {
+            var count = 0;
+            var points = 0;
+            foreach (var shape in owner.Values)
+            {
+                points += DrawingProtocol.GeometryPointCount(shape);
+                if (++count > shareShapes || points > sharePoints) break;
+                shapes.Add(shape);
+            }
+        }
+        _shapes = shapes.ToArray();
+        Version++;
+    }
+}
+
+public static class SharedShapeVisibility
+{
+    /// <summary>Only BRA drawings may share unit references; the codec excludes anchored positions and elevations.</summary>
+    public static bool CanShare(MapShape shape) => shape is BearingRangeShape || HasNoAnchors(shape);
+
+    public static bool HasNoAnchors(MapShape shape) => shape switch
+    {
+        BearingRangeShape bearing => !bearing.From.IsAnchored && !bearing.To.IsAnchored,
+        CircleShape circle => !circle.Center.IsAnchored,
+        PenStroke => true,
+        TextNote note => !note.At.IsAnchored,
+        WaypointRoute route => RouteHasNoAnchors(route),
+        _ => false
+    };
+
+    private static bool RouteHasNoAnchors(WaypointRoute route)
+    {
+        for (var i = 0; i < route.Count; i++) if (route[i].Point.IsAnchored) return false;
+        return true;
+    }
+
+    /// <summary>Every anchor must pass the recipient's visibility check; sender fallback data cannot establish visibility.</summary>
+    public static bool HasKnownAnchors(MapShape shape, Func<uint, bool> known)
+    {
+        bool Visible(MapPoint point) => !point.IsAnchored || known(point.UnitId);
+        switch (shape)
+        {
+            case BearingRangeShape bearing:
+                return Visible(bearing.From) && Visible(bearing.To);
+            case CircleShape circle:
+                return Visible(circle.Center);
+            case PenStroke:
+                return true;
+            case TextNote note:
+                return Visible(note.At);
+            case WaypointRoute route:
+                for (var i = 0; i < route.Count; i++)
+                    if (!Visible(route[i].Point)) return false;
+                return true;
+            default:
+                return false;
+        }
+    }
+}

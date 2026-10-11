@@ -7,6 +7,9 @@ using NoMapOverhaul.MapTools.Text;
 using NoMapOverhaul.MapTools.Waypoint;
 using BepInEx.Configuration;
 using TMPro;
+using UnityEngine;
+using System.Collections.Generic;
+using NoMapOverhaul.Sharing;
 
 namespace NoMapOverhaul.MapTools;
 
@@ -14,7 +17,7 @@ namespace NoMapOverhaul.MapTools;
 /// The map tools: a Tools button on the full map opens a menu of drawing tools, and what they draw shows on both maps
 /// and, for some shapes, in the 3D view. The host owns the drawings (<see cref="ShapeStore"/>) and the tools, and
 /// connects them to the game through the menu, the input routing, the map layer, and the 3D labels.
-/// Drawings are local and last until the player leaves the mission, which shows as the scene's DynamicMap changing.
+/// Local drawings and undo belong to this player; received drawings never enter the store.
 /// </summary>
 internal sealed class MapToolHost
 {
@@ -37,17 +40,44 @@ internal sealed class MapToolHost
     /// <summary>The Bearing/range key pressed twice puts the measurement's start on the player's aircraft.</summary>
     private readonly DoubleTap _bearingKeyTap = new();
     private readonly WorldLabelPool _worldLabels;
-    private readonly ShapeHitTest _hitTest;
+    private readonly EraserTool _eraser;
     private DynamicMap? _map;
+    private FactionHQ? _hq;
+    private MissionManager? _mission;
+    private double _missionStart;
+    private List<MapShape> _visibleReceived = new();
+    private List<MapShape> _receivedCandidates = new();
+    private readonly System.Func<uint, bool> _knowsSharedUnit;
+    private int _visibleReceivedVersion;
     private int _active = -1;
     private int _unfinished = -1;
+    private string? _broadcastConfiguration;
+    private string? _receiveConfiguration;
+    private (string Channel, string Error, bool Enabled, string Transport) _sharingStatusKey;
+    private string _sharingStatus = string.Empty;
+    private bool _editingChannels;
+
+    public DrawingChannels Channels { get; } = new();
+    public DrawingChannels ReceiveChannels { get; } = new();
+    public bool ChannelsValid { get; private set; }
+    public string ChannelError { get; private set; } = string.Empty;
+    public bool SharingEligible => ChannelsValid && (Channels.Names.Count > 0 || ReceiveChannels.Names.Count > 0) &&
+        _settings.MapSharingEnabled.Value &&
+        _settings.Enabled.Value && _settings.ShowMapTools.Value && !_settings.PerfTestShowsDrawings;
+    public string SharingStatus { get; set; } = "waiting for session";
+    public ReceivedDrawings Received { get; } = new();
+    public int MissionVersion { get; private set; }
+    public System.Func<MapShape, bool>? RequestSharedErase { private get; set; }
+    public System.Func<MapShape, bool>? CanRequestSharedErase { private get; set; }
 
     public MapToolHost(ModSettings settings)
     {
         _settings = settings;
         _context = new MapToolContext(settings, _store);
+        _knowsSharedUnit = _context.KnowsSharedUnit;
         _layer = new MapShapeLayer(settings, _context);
-        _hitTest = new ShapeHitTest(_context, _layer);
+        _eraser = new EraserTool(_context, _layer, () => _visibleReceived, CanEraseReceived,
+            shape => RequestSharedErase?.Invoke(shape) ?? false);
         // Rail order, each with its icon and the key that picks it, 1 to 6 by default. Each tool lives in its own folder under MapTools.
         var tools = new (MapTool Tool, RailIcon Icon, ConfigEntry<KeyboardShortcut> Key)[]
         {
@@ -56,7 +86,7 @@ internal sealed class MapToolHost
             (new TextTool(_context), RailIcon.Text, settings.MapToolTextKey),
             (new PenTool(_context), RailIcon.Pen, settings.MapToolPenKey),
             (new WaypointTool(_context, settings), RailIcon.Waypoint, settings.MapToolWaypointKey),
-            (new EraserTool(_context, _layer), RailIcon.Eraser, settings.MapToolEraserKey),
+            (_eraser, RailIcon.Eraser, settings.MapToolEraserKey),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
         _openingTool = System.Array.FindIndex(_tools, tool => tool is BearingRange.BearingRangeTool);
@@ -80,6 +110,7 @@ internal sealed class MapToolHost
     public void Update(TextMeshProUGUI? hudStyle)
     {
         FinishDeactivation();
+        RefreshChannels();
         var map = SceneSingleton<DynamicMap>.i;
         TrackMission(map);
         if (map == null || !(_settings.ShowMapTools.Value || _settings.PerfTestShowsDrawings))
@@ -95,11 +126,16 @@ internal sealed class MapToolHost
         if (open)
         {
             Apply(_menu.TakeCommand());
+            ApplySharingMenu();
             // Keys before the render, which switches the pointer catcher on or off, so the next click goes where the rail now says.
-            if (!_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu) &&
+            if (!_editingChannels && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu | CursorFlags.Dialogue | CursorFlags.SelectionMenu) &&
                 !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
             {
-                if (_settings.MapToolUndoKey.Value.IsDown())
+                if (TakeChannelShortcut())
+                {
+                    // Shift+digits belong to channel selection even when that channel is not configured.
+                }
+                else if (_settings.MapToolUndoKey.Value.IsDown())
                 {
                     _store.Undo();
                 }
@@ -129,16 +165,26 @@ internal sealed class MapToolHost
                 }
             }
 
-            _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, hudStyle);
+            _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, hudStyle, ChannelStatus(), Channels, ReceiveChannels);
         }
         else
         {
             Select(-1);
             _menu.Hide();
+            _editingChannels = false;
         }
 
-        _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null);
-        if (_active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
+        var receivedVersion = _visibleReceivedVersion;
+        RefreshReceived();
+        if (receivedVersion != _visibleReceivedVersion)
+        {
+            // Snapshot replacements must have their displayed label boxes before a click can select them.
+            _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion,
+                _visibleReceived, _visibleReceivedVersion);
+        }
+
+        _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null, _editingChannels);
+        if (!_editingChannels && _active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
         {
             RightClick(map, _tools[_active], rightClick);
         }
@@ -151,9 +197,20 @@ internal sealed class MapToolHost
             tool.OnFrame(_worldLabels);
         }
 
+        foreach (var shape in _visibleReceived)
+        {
+            switch (shape)
+            {
+                case BearingRangeShape bearing: bearing.AddWorldLabel(_context, _worldLabels); break;
+                case TextNote note: note.AddWorldLabel(_context, _worldLabels); break;
+                case CircleShape circle: circle.AddWorldRing(_context, _worldLabels); break;
+            }
+        }
+
         _worldLabels.End();
         ModTimings.Stop(ModSection.WorldLabels, world);
-        _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion);
+        _layer.Render(map, _store, _tools, hudStyle, _menu.Areas, _menu.LayoutVersion,
+            _visibleReceived, _visibleReceivedVersion);
     }
 
     /// <summary>
@@ -163,6 +220,7 @@ internal sealed class MapToolHost
     /// </summary>
     public void Reset()
     {
+        _editingChannels = false;
         _input.Reset();
         _menu.Reset();
         _layer.Reset();
@@ -184,27 +242,182 @@ internal sealed class MapToolHost
         }
     }
 
+    public void RefreshChannels()
+    {
+        var broadcast = _settings.MapBroadcastChannels.Value;
+        var receive = _settings.MapReceiveChannels.Value;
+        if (broadcast == _broadcastConfiguration && receive == _receiveConfiguration)
+        {
+            return;
+        }
+
+        _broadcastConfiguration = broadcast;
+        _receiveConfiguration = receive;
+        ChannelsValid = DrawingChannels.TryConfigurePair(Channels, ReceiveChannels, broadcast, receive, out var error);
+        ChannelError = error;
+        SetDrawingChannel(ChannelsValid ? Channels.Selected : string.Empty);
+    }
+
+    private void ApplySharingMenu()
+    {
+        var panel = _menu.Sharing;
+        if (panel == null)
+        {
+            _editingChannels = false;
+            return;
+        }
+
+        var command = panel.TakeCommand();
+        if (command.Command == SharingPanelCommand.Apply)
+        {
+            if (!DrawingChannels.TryConfigurePair(Channels, ReceiveChannels, panel.DraftBroadcast, panel.DraftReceive, out var error))
+            {
+                panel.ShowError(error);
+            }
+            else
+            {
+                _settings.MapBroadcastChannels.Value = string.Join(",", Channels.Names);
+                _settings.MapReceiveChannels.Value = string.Join(",", ReceiveChannels.Names);
+                _settings.MapSharingEnabled.Value = panel.DraftEnabled;
+                RefreshChannels();
+                panel.Close();
+            }
+        }
+        else if (command.Command == SharingPanelCommand.SelectChannel && ChannelsValid && Channels.TrySelect(command.Index))
+        {
+            SetDrawingChannel(Channels.Selected);
+        }
+
+        if (panel.Open && !_editingChannels && _active >= 0)
+        {
+            Drop(_tools[_active]);
+        }
+
+        if (panel.Open && (Input.GetKeyDown(KeyCode.Escape) || !_input.CaptureMenuKeyboard()))
+        {
+            panel.Close();
+        }
+
+        _editingChannels = panel.Open;
+    }
+
+    private void SetDrawingChannel(string channel)
+    {
+        if (_store.DrawingChannel == channel)
+        {
+            return;
+        }
+
+        if (_active >= 0 && _tools[_active].InProgress)
+        {
+            Drop(_tools[_active]);
+        }
+
+        _store.DrawingChannel = channel;
+    }
+
+    private bool TakeChannelShortcut()
+    {
+        if (!(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) ||
+            Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+            Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
+        {
+            return false;
+        }
+
+        for (var index = 0; index < DrawingChannels.MaxChannels; index++)
+        {
+            var key = index == 9 ? KeyCode.Alpha0 : (KeyCode)((int)KeyCode.Alpha1 + index);
+            if (!Input.GetKeyDown(key))
+            {
+                continue;
+            }
+
+            if (ChannelsValid && Channels.TrySelect(index))
+            {
+                SetDrawingChannel(Channels.Selected);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private string ChannelStatus()
+    {
+        var key = (_store.DrawingChannel, ChannelError, _settings.MapSharingEnabled.Value, SharingStatus);
+        if (key != _sharingStatusKey || _sharingStatus.Length == 0)
+        {
+            _sharingStatusKey = key;
+            _sharingStatus = !ChannelsValid ? "Local. " + ChannelError
+                : _store.DrawingChannel.Length == 0 ? "Receive only. " + (_settings.MapSharingEnabled.Value ? SharingStatus : "Sharing off.")
+                : "Broadcast: " + _store.DrawingChannel + ". " + (_settings.MapSharingEnabled.Value ? SharingStatus : "Sharing off.");
+        }
+
+        return _sharingStatus;
+    }
+
     /// <summary>
-    /// A different map, or none (a destroyed one counts as none), means the player left the mission: drawings and history
-    /// go. Checked every update, which doesn't run while the mod is off, so the perf test checks before saving the drawings.
+    /// Missions discard drawings; team changes make all prior work local-only, including undo, and discard cached knowledge.
     /// </summary>
     public void TrackMission(DynamicMap? map)
     {
         var current = map == null ? null : map;
-        if (ReferenceEquals(current, _map))
+        var hq = current != null ? current.HQ : null;
+        var mission = MissionManager.i;
+        var start = mission != null ? mission.multiplayerStartTime : 0;
+        var newMission = !ReferenceEquals(current, _map) || !ReferenceEquals(mission, _mission) || start != _missionStart;
+        if (!newMission && ReferenceEquals(hq, _hq))
         {
             return;
         }
 
         _map = current;
+        _hq = hq;
+        _mission = mission;
+        _missionStart = start;
+        MissionVersion++;
         Select(-1);
-        _store.Reset();
+        FinishDeactivation();
+        if (newMission) _store.Reset();
+        else _store.KeepLocal();
+        Received.Clear();
         _context.ForgetUnits();
-        foreach (var tool in _tools)
+        if (newMission) foreach (var tool in _tools)
         {
             tool.OnMissionStart();
         }
     }
+
+    private void RefreshReceived()
+    {
+        // Tracks can disappear between map ticks; filter before rendering, HUD labels, and eraser input every frame.
+        _receivedCandidates.Clear();
+        var received = Received.Shapes;
+        for (var i = 0; i < received.Count; i++) // foreach over the interface would allocate an enumerator every frame
+        {
+            if (SharedShapeVisibility.HasKnownAnchors(received[i], _knowsSharedUnit))
+            {
+                _receivedCandidates.Add(received[i]);
+            }
+        }
+
+        var changed = _receivedCandidates.Count != _visibleReceived.Count;
+        for (var i = 0; !changed && i < _receivedCandidates.Count; i++)
+        {
+            changed = !ReferenceEquals(_receivedCandidates[i], _visibleReceived[i]);
+        }
+
+        if (changed)
+        {
+            (_visibleReceived, _receivedCandidates) = (_receivedCandidates, _visibleReceived);
+            _visibleReceivedVersion++;
+        }
+    }
+
+    private bool CanEraseReceived(MapShape shape) => SharingEligible && RequestSharedErase != null &&
+        (CanRequestSharedErase?.Invoke(shape) ?? false);
 
     private void Apply((MenuCommand Command, int Index) command)
     {
@@ -246,14 +459,14 @@ internal sealed class MapToolHost
     /// </summary>
     private void RightClick(DynamicMap map, MapTool tool, MapPointer pointer)
     {
-        var shape = _hitTest.Find(_store.Shapes, pointer.Position, EraserTool.Reach * _context.MetersPerIconUnit);
+        var shape = _eraser.FindAt(pointer.Position);
         switch (RightClickRule.Decide(menuOpen: true, GameOrdersRightClick(map), tool.InProgress, shape != null))
         {
             case RightClickAction.Cancel:
                 Drop(tool);
                 break;
             case RightClickAction.Delete:
-                _store.Remove(shape!);
+                _eraser.TryErase(shape!);
                 break;
         }
     }
