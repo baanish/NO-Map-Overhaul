@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 - local preview
+## 0.6.0 beta 2
 
 - A Steam transport compatibility patch filters gameplay callbacks by connection ownership, preventing Mirage from accepting or closing drawing connections. Sharing stays unavailable if that protection cannot load.
 - Asynchronous Steam failures rotate the drawing session and back off for 30 seconds. Incoming handshakes remain eligible during backoff. A teammate not yet known to run the mod gets three probes per mission, at 0, 60 and 300 seconds, and channel changes don't renew them.
