@@ -179,13 +179,46 @@ internal sealed class RunwayMapOverlay
     /// <summary>
     /// The numbers for a runway's Start and End, shared by the map labels and the HUD callout. Every number comes
     /// from the runway heading, then the paint table. A runway's <c>name</c> is ignored: missions set names that
-    /// disagree with the paint (Ignus free flight calls a runway painted 06 "Runway 07").
+    /// disagree with the paint (Ignus free flight calls a runway painted 06 "Runway 07"). A parallel runway adds its
+    /// side letter, as Feldspar's 06L and 06R.
     /// </summary>
     internal static (string Start, string End) EndNumbers(Airbase.Runway runway)
     {
         var airbase = runway.airbase?.SavedAirbase?.DisplayName;
-        return (RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: false))),
-                RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: true))));
+        var side = ParallelSide(runway);
+        return (RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: false))) + side,
+                RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: true))) + RunwayNames.Mirrored(side));
+    }
+
+    /// <summary>The side letter for landing at the runway's Start, among every runway at its airbase.</summary>
+    private static string ParallelSide(Airbase.Runway runway)
+    {
+        var runways = runway.airbase?.runways;
+        if (runways == null)
+        {
+            return string.Empty;
+        }
+
+        var lines = new List<RunwayLine>(runways.Length);
+        var index = -1;
+        foreach (var other in runways)
+        {
+            if (other?.Start == null || other.End == null)
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(other, runway))
+            {
+                index = lines.Count;
+            }
+
+            var start = other.Start.GlobalPosition();
+            var end = other.End.GlobalPosition();
+            lines.Add(new RunwayLine(new System.Numerics.Vector2(start.x, start.z), new System.Numerics.Vector2(end.x, end.z)));
+        }
+
+        return index < 0 ? string.Empty : RunwayNames.ParallelSide(lines, index);
     }
 
     /// <summary>The same arithmetic as <c>Airbase.Runway.GetName</c> for an unnamed runway, so the numbers match its clearance.</summary>
