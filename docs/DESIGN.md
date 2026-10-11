@@ -27,7 +27,7 @@ Plugin.LateUpdate   (every frame)
 | --- | --- |
 | Friendly airbases | `DynamicMap.HQ.GetAirbases()` |
 | Runway ends, width, flags | `Airbase.Runway.Start`, `.End`, `.GetWidth()`, `.Reversable`, `.Landing` |
-| Runway numbers | The runway heading, rounded the way `Airbase.Runway.GetName` does for an unnamed runway, then `RunwayNames.PaintedNumbers`, then L, C or R from `RunwayNames.ParallelSide` among the airbase's parallel runways |
+| Runway numbers | The runway heading, rounded the way `Airbase.Runway.GetName` does for an unnamed runway, then `RunwayNames.PaintedNumbers` when the PaintedNumbers setting is on, then L, C or R from `RunwayNames.ParallelSide` among the airbase's parallel runways |
 | Carrier check | `Airbase.AttachedAirbase` |
 | Local aircraft | `SceneSingleton<CombatHUD>.i.aircraft` |
 | Helicopter check | `aircraft.GetControlsFilter() is HeloControlsFilter` and no `TiltWingController`, since the Tarantula tiltrotor uses helicopter controls too |
