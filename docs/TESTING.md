@@ -8,10 +8,10 @@ This page separates automated checks from in-game observations. A screenshot fro
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-150 tests pass. They cover:
+156 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
-- callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
+- callout text, painted-number overrides, L, C and R on parallel runways (Feldspar and Harmony Sands from the game data, and three lines), the abbreviation table, and the fallback abbreviation rule;
 - the drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, save and restore, and the 100-step history;
 - bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels (where the map placed them), the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
@@ -72,6 +72,7 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Airbase boundary | Observed | The circle centers on each friendly airbase, also in a helicopter, and the tuned 1% fill and 10% edge read well. |
 | Harmony Sands takeoff-only lane | Observed | The takeoff-only lane is hidden; its garbled custom-name label is gone. |
 | Feldspar painted numbers | Observed | Ignus: 16/34 on the crossing runway, and the free-flight mission's duplicate airbases carry the same numbers. Other fields' paint hasn't been compared. |
+| Parallel runway letters | Checked by agent | 2026-10-11, NO Agentic Framework, Ignus with Feldspar friendly: the long runways read 06L/24R (north) and 06R/24L (south), and the crossing runway keeps 16/34. Main's build showed 06 and 24 on both. Not yet seen by the author. |
 | Airbase names | Observed | Full map with ShowNames on: one name per airbase under its centre, clear of the friendly icon, and Ignus free flight's three Feldspar airbases share one label. |
 | Airbase names zoomed in | Observed | Zooming the full map in moves each name down to its capture circle's edge, below the base's units, up to a limit. |
 | Runway numbers zoomed out | Observed | Zooming the full map far out hides every runway's numbers on the same wheel click; the cutoff of 100 was tuned live at 3K. |

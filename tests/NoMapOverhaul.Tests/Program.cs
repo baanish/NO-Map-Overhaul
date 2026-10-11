@@ -25,6 +25,7 @@ internal static class Program
             ("over the runway shows the closer end", OverTheRunwayShowsCloserEnd),
             ("callout without airbase", CalloutWithoutAirbase),
             ("painted number overrides the heading number", PaintedNumberOverridesHeading),
+            ("parallel runways get side letters", ParallelRunwaysGetSideLetters),
             ("callout uses the squadron table", CalloutUsesTable),
             ("unknown airbase is abbreviated", UnknownAirbaseAbbreviated),
         };
@@ -99,6 +100,38 @@ internal static class Program
         ExpectText(RunwayNames.Painted("Feldspar International Airport", "06"), "06");
         ExpectText(RunwayNames.Painted("Maris Airport", "33"), "33");
         ExpectText(RunwayNames.Painted(null, "33"), "33");
+    }
+
+    /// <summary>Feldspar International on Ignus and Harmony Sands, as <c>tools/dump_runways.py</c> prints them.</summary>
+    private static void ParallelRunwaysGetSideLetters()
+    {
+        var feldspar = new[]
+        {
+            new RunwayLine(new Vector2(610, 3550), new Vector2(2868, 4853)),
+            new RunwayLine(new Vector2(2168, 2801), new Vector2(1088, 4674)),
+            new RunwayLine(new Vector2(782, 3218), new Vector2(3590, 4837)),
+        };
+        ExpectText(RunwayNames.ParallelSide(feldspar, 0), "L");
+        ExpectText(RunwayNames.ParallelSide(feldspar, 1), "");
+        ExpectText(RunwayNames.ParallelSide(feldspar, 2), "R");
+        ExpectText(RunwayNames.Mirrored(RunwayNames.ParallelSide(feldspar, 0)), "R");
+        ExpectText(RunwayNames.Mirrored(RunwayNames.ParallelSide(feldspar, 2)), "L");
+
+        var harmonySands = new[]
+        {
+            new RunwayLine(new Vector2(-77368, 34220), new Vector2(-75105, 31958)),
+            new RunwayLine(new Vector2(-75473, 33852), new Vector2(-74181, 32559)),
+            new RunwayLine(new Vector2(-75333, 33712), new Vector2(-74181, 32559)), // takeoff-only, on top of [1]
+        };
+        ExpectText(RunwayNames.ParallelSide(harmonySands, 0), "R");
+        ExpectText(RunwayNames.ParallelSide(harmonySands, 1), "L");
+        ExpectText(RunwayNames.ParallelSide(harmonySands, 2), "L");
+
+        var three = new[] { EastWest, new RunwayLine(new Vector2(0, 400), new Vector2(2000, 400)), new RunwayLine(new Vector2(0, 800), new Vector2(2000, 800)) };
+        ExpectText(RunwayNames.ParallelSide(three, 0), "R");
+        ExpectText(RunwayNames.ParallelSide(three, 1), "C");
+        ExpectText(RunwayNames.ParallelSide(three, 2), "L");
+        ExpectText(RunwayNames.ParallelSide(new[] { EastWest, NorthSouth }, 0), "");
     }
 
     private static void CalloutUsesTable()

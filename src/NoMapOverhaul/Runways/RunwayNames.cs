@@ -58,6 +58,54 @@ public static class RunwayNames
         ["West"] = "W",
     };
 
+    /// <summary>Runways within 5 degrees of each other's heading are parallel.</summary>
+    private static readonly float ParallelSine = (float)System.Math.Sin(5.0 * System.Math.PI / 180.0);
+
+    /// <summary>
+    /// Parallel runways closer than this side to side are one line: the stock game lays a takeoff-only runway over a
+    /// landing one (Harmony Sands' "Runway14L Short"). Real parallel runways are hundreds of meters apart.
+    /// </summary>
+    private const float SameLineMeters = 100f;
+
+    /// <summary>
+    /// The letter a pilot adds to the number of a parallel runway, landing at the Start of <paramref name="runways"/>[<paramref name="index"/>]:
+    /// "L", "C" or "R" for where its line lies among the parallel lines, seen flying from Start to End. Empty for a
+    /// runway with nothing alongside it, and for more than three lines, which have no standard letters. Landing at the
+    /// End sees the lines the other way round: <see cref="Mirrored"/>.
+    /// </summary>
+    public static string ParallelSide(IReadOnlyList<RunwayLine> runways, int index)
+    {
+        var runway = runways[index];
+        var axis = System.Numerics.Vector2.Normalize(runway.End - runway.Start);
+        var left = new System.Numerics.Vector2(-axis.Y, axis.X);
+        var lines = new List<float>(runways.Count); // each parallel line's offset to the left of this runway's centerline
+        foreach (var other in runways)
+        {
+            var otherAxis = System.Numerics.Vector2.Normalize(other.End - other.Start);
+            if (System.Math.Abs(axis.X * otherAxis.Y - axis.Y * otherAxis.X) > ParallelSine)
+            {
+                continue;
+            }
+
+            var offset = System.Numerics.Vector2.Dot((other.Start + other.End) * 0.5f - runway.Start, left);
+            if (!lines.Exists(line => System.Math.Abs(line - offset) < SameLineMeters))
+            {
+                lines.Add(offset);
+            }
+        }
+
+        var linesLeft = lines.Count(line => line >= SameLineMeters);
+        return lines.Count switch
+        {
+            2 => linesLeft == 0 ? "L" : "R",
+            3 => linesLeft == 0 ? "L" : linesLeft == 1 ? "C" : "R",
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>The same runway's letter from its other end: left and right swap, center stays.</summary>
+    public static string Mirrored(string side) => side == "L" ? "R" : side == "R" ? "L" : side;
+
     /// <summary>The number to show for one runway end: a known paint override, otherwise the heading number itself.</summary>
     public static string Painted(string? airbaseDisplayName, string headingNumber) =>
         airbaseDisplayName != null && PaintedNumbers.TryGetValue((airbaseDisplayName, headingNumber), out var painted)
