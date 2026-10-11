@@ -224,7 +224,12 @@ public sealed class Plugin : BaseUnityPlugin
     {
         ShutdownStep(() => DynamicMap.onMapChanged -= OnMapChanged);
         ShutdownStep(AutopilotRightClickPatch.Remove);
-        ShutdownStep(RemoveOverlays);
+        ShutdownStep(_mapOverlay.Reset);
+        ShutdownStep(_hudCallout.Reset);
+        ShutdownStep(_boundaryOverlay.Reset);
+        ShutdownStep(_labelOverlay.Reset);
+        ShutdownStep(_mapTools.Reset);
+        _approach = null;
         ShutdownStep(() => _perfTest.Shutdown(moveMap: !gameQuitting));
     }
 
