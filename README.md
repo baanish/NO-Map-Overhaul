@@ -8,7 +8,7 @@ My map mod for Nuclear Option: numbered runways with an approach line and a runw
 
 Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
-Drawing sharing is off by default. When enabled, compatible teammates can see your fixed map drawings on matching Broadcast or Receive only subscriptions through Steam networking. A compatibility patch keeps drawing connection callbacks out of the game's Mirage transport; it adds no gameplay messages. Version 0.4.0 was tested in multiplayer; the 0.6.0 sharing code is a local preview with multiplayer reliability still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
+Drawing sharing is off by default. When enabled, compatible teammates can see your fixed map drawings on matching Broadcast or Receive only subscriptions through Steam networking. A compatibility patch keeps drawing connection callbacks out of the game's Mirage transport; it adds no gameplay messages. Shockfront's dev team reviewed this design in October 2026 and said it's fine. Version 0.4.0 was tested in multiplayer; the 0.6.0 sharing code is a local preview with multiplayer reliability still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
