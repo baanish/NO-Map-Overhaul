@@ -72,6 +72,7 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Airbase boundary | Observed | The circle centers on each friendly airbase, also in a helicopter, and the tuned 1% fill and 10% edge read well. |
 | Harmony Sands takeoff-only lane | Observed | The takeoff-only lane is hidden; its garbled custom-name label is gone. |
 | Feldspar painted numbers | Observed | Ignus: 16/34 on the crossing runway, and the free-flight mission's duplicate airbases carry the same numbers. Other fields' paint hasn't been compared. |
+| Harmony Sands painted numbers | Checked by agent | 2026-10-11, NO Agentic Framework free camera over each threshold: all four ends of the parallel pair are painted 14 or 32, with no letter. Main's build labelled the southwest runway 13/31. |
 | Parallel runway letters | Checked by agent | 2026-10-11, NO Agentic Framework, Ignus with Feldspar friendly: the long runways read 06L/24R (north) and 06R/24L (south), and the crossing runway keeps 16/34. Main's build showed 06 and 24 on both. Not yet seen by the author. |
 | Airbase names | Observed | Full map with ShowNames on: one name per airbase under its centre, clear of the friendly icon, and Ignus free flight's three Feldspar airbases share one label. |
 | Airbase names zoomed in | Observed | Zooming the full map in moves each name down to its capture circle's edge, below the base's units, up to a limit. |

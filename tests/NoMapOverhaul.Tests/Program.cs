@@ -98,6 +98,8 @@ internal static class Program
         ExpectText(RunwayNames.Painted("Feldspar International Airport", "33"), "34");
         ExpectText(RunwayNames.Painted("Feldspar International Airport", "15"), "16");
         ExpectText(RunwayNames.Painted("Feldspar International Airport", "06"), "06");
+        ExpectText(RunwayNames.Painted("Harmony Sands Airstrip", "13"), "14");
+        ExpectText(RunwayNames.Painted("Harmony Sands Airstrip", "31"), "32");
         ExpectText(RunwayNames.Painted("Maris Airport", "33"), "33");
         ExpectText(RunwayNames.Painted(null, "33"), "33");
     }

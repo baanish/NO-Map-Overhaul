@@ -39,6 +39,9 @@ public static class RunwayNames
         // Feldspar's crossing runway on Ignus points at 330.0 degrees.
         [("Feldspar International Airport", "33")] = "34",
         [("Feldspar International Airport", "15")] = "16",
+        // Harmony Sands' two parallel runways both point at 135.0 degrees, which rounds to 13 for one of them; both are painted 14/32.
+        [("Harmony Sands Airstrip", "13")] = "14",
+        [("Harmony Sands Airstrip", "31")] = "32",
     };
 
     private static readonly HashSet<string> DroppedWords = new(System.StringComparer.OrdinalIgnoreCase)
