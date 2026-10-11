@@ -180,12 +180,12 @@ internal static class ReceivedDrawingsTests
         var original = AllKinds();
         Expect(store.TryReplace(1, original), "accept ordered shapes");
         var version = store.Version;
-        Expect(store.TryReplace(1, AllKinds().Reverse().ToArray()), "accept reordered shapes");
+        Expect(store.TryReplace(1, Enumerable.Reverse(AllKinds()).ToArray()), "accept reordered shapes");
         Expect(store.Version == version + 1, "draw order change invalidates renderer");
         for (var i = 0; i < original.Length; i++)
             Expect(ReferenceEquals(store.Shapes[i], original[original.Length - 1 - i]), "reorder retained instances to match the wire order");
         var before = store.Shapes;
-        Expect(store.TryReplace(1, AllKinds().Reverse().ToArray()), "accept reordered heartbeat");
+        Expect(store.TryReplace(1, Enumerable.Reverse(AllKinds()).ToArray()), "accept reordered heartbeat");
         Expect(ReferenceEquals(before, store.Shapes) && store.Version == version + 1, "repeated new order is stable");
     }
 
