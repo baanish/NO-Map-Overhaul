@@ -178,13 +178,13 @@ internal sealed class RunwayMapOverlay
 
     /// <summary>
     /// The numbers for a runway's Start and End, shared by the map labels and the HUD callout. Every number comes
-    /// from the runway heading, then the paint table. A runway's <c>name</c> is ignored: missions set names that
-    /// disagree with the paint (Ignus free flight calls a runway painted 06 "Runway 07"). A parallel runway adds its
-    /// side letter, as Feldspar's 06L and 06R.
+    /// from the runway heading, as the game's clearance numbers it, then with <paramref name="painted"/> the paint
+    /// table. A runway's <c>name</c> is ignored: missions set names that disagree with the paint (Ignus free flight
+    /// calls a runway painted 06 "Runway 07"). A parallel runway adds its side letter, as Feldspar's 06L and 06R.
     /// </summary>
-    internal static (string Start, string End) EndNumbers(Airbase.Runway runway)
+    internal static (string Start, string End) EndNumbers(Airbase.Runway runway, bool painted)
     {
-        var airbase = runway.airbase?.SavedAirbase?.DisplayName;
+        var airbase = painted ? runway.airbase?.SavedAirbase?.DisplayName : null; // no airbase, no paint override
         var side = ParallelSide(runway);
         return (RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: false))) + side,
                 RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: true))) + RunwayNames.Mirrored(side));
@@ -286,7 +286,7 @@ internal sealed class RunwayMapOverlay
 
             // A number sits past the end it names: that is where a pilot landing on that number touches down.
             var gap = axis * (LabelGap * inverseScale);
-            var (startNumber, endNumber) = EndNumbers(_runway);
+            var (startNumber, endNumber) = EndNumbers(_runway, settings.RunwayPaintedNumbers.Value);
             PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
             PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
 
