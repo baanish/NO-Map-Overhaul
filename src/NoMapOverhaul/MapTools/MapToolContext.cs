@@ -23,7 +23,18 @@ internal sealed class MapToolContext : IMapToolContext
 
     public ShapeStore Shapes { get; }
 
-    public ShapeColor Color => _settings.MapToolColor.Value.ToShapeColor();
+    /// <summary>
+    /// The colour setting with any alpha but zero. An invisible drawing would still draw its label plates, the eraser
+    /// skips it, and the wire format refuses it, so a zero alpha draws opaque instead.
+    /// </summary>
+    public ShapeColor Color
+    {
+        get
+        {
+            var color = _settings.MapToolColor.Value.ToShapeColor();
+            return color.A == 0 ? new ShapeColor(color.R, color.G, color.B) : color;
+        }
+    }
 
     public DistanceUnit Units =>
         NavFormat.Resolve(_settings.MapToolUnits.Value, PlayerSettings.unitSystem == PlayerSettings.UnitSystem.Metric);
