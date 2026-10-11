@@ -8,7 +8,7 @@ My map mod for Nuclear Option: numbered runways with an approach line and a runw
 
 Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
-It only draws on your screen. It doesn't patch the game and sends nothing over the network, so nobody else sees what it draws. I've tested it in single-player missions, and version 0.4.0 in a multiplayer session. The map tools haven't been flown in multiplayer yet. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
+Drawing sharing is off by default. When enabled, compatible teammates can see your fixed map drawings on matching Broadcast or Receive only subscriptions through Steam networking. A compatibility patch keeps drawing connection callbacks out of the game's Mirage transport; it adds no gameplay messages. Version 0.4.0 was tested in multiplayer; the 0.6.0 sharing code is a local preview with multiplayer reliability still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
@@ -36,9 +36,9 @@ On the full map, click **Tools** or press `H` to open a rail of planning tools b
 
 ![A BRA arrow to an enemy reading 189° 2.4nm 1.5k ft; two 2 nm range circles; a BRA label with a note stacked under it in the 3D view; and a range circle drawn as a ring on the ground](docs/images/gallery-map-tools.jpg)
 
-Only you see what you draw, and it clears when you leave the mission. Drawings on other units use only what your side knows: when your side loses a contact, its drawings stop where it was last seen and read `lost`.
+Drawings clear when you leave the mission. Sharing is optional. Members who broadcast the same channel can erase and redraw shared drawings; Receive-only channels are read-only. Local drawings on other units use only what your side knows: when your side loses a contact, they stop where it was last seen and read `lost`. Shared BRA arrows follow units using the recipient's own tracks and hide while either endpoint is untracked. Unit-attached circles, notes, and routes stay local-only.
 
-The tools work alongside [NOAutopilot](https://github.com/qwerty1423/no-autopilot-mod). Its right-click waypoints work as usual while the rail is closed. While the rail is open, the mod holds them back, so a right click that deletes a drawing doesn't also move your autopilot route. That hold is the mod's one patch, and it's on NOAutopilot, not on the game.
+The tools work alongside [NOAutopilot](https://github.com/qwerty1423/no-autopilot-mod). Its right-click waypoints work as usual while the rail is closed. While the rail is open, an optional NOAutopilot patch holds them back, so a right click that deletes a drawing doesn't also move your autopilot route.
 
 See the [map tools guide](docs/MAP_TOOLS.md) for every tool, the keys, and planning ideas.
 
@@ -48,10 +48,13 @@ Off by default. Your side's airbases get a faint name label on the full map, so 
 
 ## Coming soon
 
-Planned for 0.6.0, not built yet:
+Implemented in the local 0.6.0 preview, with multiplayer reliability still under test:
 
-- **Shared drawings in multiplayer, by channel.** List the channels you follow in settings, comma-separated, up to 10. A channel can be a squadron, so your drawings reach the people who need them and nobody else.
-- **Picking a channel.** New drawings go to your first channel. `Shift+1` to `Shift+9` pick channels 1 to 9 for your next drawings, and `Shift+0` picks channel 10, so a Medusa crew can work out BRA calls in their own channel without cluttering everyone else's map.
+- **Shared drawings in multiplayer, by channel.** Enable sharing and set Broadcast channels to send, receive and collaborate. Receive only adds read-only subscriptions. Each list takes max 10 comma-separated names. Channel names are subscriptions, not passwords.
+- **Picking a channel.** New drawings go to your first Broadcast channel. `Shift+1` to `Shift+9` pick Broadcast slots 1 to 9 for your next drawings, and `Shift+0` picks Broadcast slot 10. Receive-only channels take no shortcut slots.
+- **Collaborative channels.** Broadcasters on the same channel can erase another broadcaster's drawing through its owner, then redraw a replacement. Channels listed only under Receive only remain read-only.
+
+See the [sharing design and limits](docs/SHARING.md). Live Steam sharing still needs multiplayer testing.
 
 ## Requirements
 

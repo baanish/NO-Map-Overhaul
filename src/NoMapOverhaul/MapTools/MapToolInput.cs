@@ -59,9 +59,20 @@ internal sealed class MapToolInput
     /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
     public bool Typing => _keyboard.IsSuspended;
 
+    public bool CaptureMenuKeyboard() => TakeKeyboard(null);
+
     /// <summary>Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any.</summary>
-    public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool)
+    public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool, bool menuKeyboard = false)
     {
+        if (menuKeyboard)
+        {
+            EndPress();
+            catcher?.TakePress();
+            catcher?.TakeRightPress();
+            TakeKeyboard(null);
+            return;
+        }
+
         if (tool == null || catcher == null)
         {
             EndPress();
@@ -209,20 +220,27 @@ internal sealed class MapToolInput
     }
 
     /// <summary>False, and the typing cancelled, while a game UI that owns the Escape menu is open.</summary>
-    private bool TakeKeyboard(MapTool tool)
+    private bool TakeKeyboard(MapTool? tool)
     {
         if (_keyboard.IsSuspended)
         {
+            _keyboard.KeepSuspended();
             return true;
         }
 
         if (CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind)
         {
-            tool.OnTextInput('\u001b');
+            tool?.OnTextInput('\u001b');
             return false;
         }
 
         _keyboard.Suspend();
+        if (!_keyboard.IsSuspended)
+        {
+            tool?.OnTextInput('\u001b');
+            return false;
+        }
+
         GameplayUI.AllowPauseKeybind = false;
         CursorManager.SetFlag(CursorFlags.Chat, true);
         return true;

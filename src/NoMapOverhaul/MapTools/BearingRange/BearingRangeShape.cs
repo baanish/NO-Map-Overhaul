@@ -68,6 +68,8 @@ public sealed class BearingRangeShape : MapShape
     {
         var fromFound = TryResolveEnd(canvas, From, FromElevation, out var from);
         var toFound = TryResolveEnd(canvas, To, ToElevation, out var to);
+        // Received IDs are negative; remote measurements cannot use a lost endpoint's fallback.
+        if (Id < 0 && (!fromFound || !toFound)) return;
         DrawMeasurement(canvas, _label, from, to, To.IsAnchored, !fromFound || !toFound, Color);
     }
 
@@ -76,6 +78,7 @@ public sealed class BearingRangeShape : MapShape
     {
         var fromFound = TryResolveEnd(context, From, FromElevation, out var from);
         var toFound = TryResolveEnd(context, To, ToElevation, out var to);
+        if (Id < 0 && (!fromFound || !toFound)) return;
         labels.Add(to, _label.BearingRange(from, to, To.IsAnchored, context.Units, !fromFound || !toFound), Color);
     }
 }

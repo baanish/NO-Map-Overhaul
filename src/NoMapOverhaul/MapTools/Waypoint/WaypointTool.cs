@@ -114,6 +114,15 @@ public sealed class WaypointTool : MapTool
     }
 
     /// <summary>The leg being flown, from the aircraft to the next waypoint.</summary>
+    public override string? OverlayChannel
+    {
+        get
+        {
+            _progress.Refresh(Context.Shapes);
+            return _progress.Route?.Channel;
+        }
+    }
+
     public override void DrawOverlay(IMapCanvas canvas)
     {
         _progress.Refresh(Context.Shapes);

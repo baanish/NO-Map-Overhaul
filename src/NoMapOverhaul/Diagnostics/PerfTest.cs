@@ -71,6 +71,7 @@ internal sealed class PerfTest
     private float _radius;
     private DrawingSet? _showing;
     private ShapeStore.Saved? _savedShapes;
+    private int _savedMissionVersion;
     private DynamicMap? _map;
     private bool _mapWasOpen;
     private int _slice = -1;
@@ -129,7 +130,7 @@ internal sealed class PerfTest
         }
 
         var map = SceneSingleton<DynamicMap>.i;
-        if (map == null || !ReferenceEquals(map, _map))
+        if (map == null || !ReferenceEquals(map, _map) || _mapTools.MissionVersion != _savedMissionVersion)
         {
             Stop("the mission ended");
             return;
@@ -211,6 +212,7 @@ internal sealed class PerfTest
         _settings.PerfTestShowsDrawings = true;
         _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
+        _savedMissionVersion = _mapTools.MissionVersion;
         _anchors = null;
         _showing = null;
         foreach (var stats in _stats)
@@ -277,10 +279,16 @@ internal sealed class PerfTest
             _context.Shapes.Reset();
             if (condition.Drawings != DrawingSet.None)
             {
-                foreach (var shape in BuildDrawings(_map!, condition.Drawings))
+                var channel = _context.Shapes.DrawingChannel;
+                _context.Shapes.DrawingChannel = string.Empty;
+                try
                 {
-                    _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
+                    foreach (var shape in BuildDrawings(_map!, condition.Drawings))
+                    {
+                        _context.Shapes.Add(shape); // the store's caps turn away what doesn't fit
+                    }
                 }
+                finally { _context.Shapes.DrawingChannel = channel; }
 
                 _shown[(int)condition.Drawings] = _context.Shapes.Shapes.Count;
             }
@@ -337,7 +345,8 @@ internal sealed class PerfTest
         _render.Stop();
         _settings.PerfTestShowsDrawings = false;
         var map = SceneSingleton<DynamicMap>.i;
-        if (map != null && ReferenceEquals(map, _map)) // a new mission starts with no drawings of its own
+        _mapTools.TrackMission(map);
+        if (map != null && ReferenceEquals(map, _map) && _mapTools.MissionVersion == _savedMissionVersion)
         {
             _context.Shapes.Restore(_savedShapes!);
             if (moveMap && _mapWasOpen != DynamicMap.mapMaximized)
@@ -351,6 +360,10 @@ internal sealed class PerfTest
                     map.Minimize();
                 }
             }
+        }
+        else
+        {
+            _context.Shapes.Reset();
         }
 
         _map = null;

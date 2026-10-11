@@ -40,7 +40,7 @@ Turn on **Map / Airbase Names → Show airbase names** to label your faction's a
 
 ### Map tools
 
-On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Only you see what you draw, and it clears when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
+On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Drawings start local and clear when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
 
 ## How the runway end is chosen
 
@@ -100,12 +100,29 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Keys and Limits | Pen key, *advanced* | PenKey | `Alpha4` | Pick Pen, the same way. |
 | Map Tools / Keys and Limits | Waypoint key, *advanced* | WaypointKey | `Alpha5` | Pick Waypoint, the same way. |
 | Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
-| Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `200` | Most drawings kept at once. |
-| Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `5000` | Most freehand points kept across all pen strokes, so the map stays fast. At most `7500`. |
+| Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `100` | Most drawings kept at once. At most `100`, what one teammate can share. |
+| Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `2500` | Most freehand points kept across all pen strokes, so the map stays fast. At most `2500`. |
 | Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |
 | Diagnostics | Log performance, *advanced* | LogPerformance | `false` | Log the frame rate and the mod's own time every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
+| Diagnostics | Log network | LogNetwork | `false` | Log drawing-sharing events and rejection reasons when troubleshooting. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
+
+Open **Tools → Channels** on the full map to edit **Broadcast** and **Receive only**, turn sharing on or off, and **Apply**. The **Draw to** indicator shows the destination for new drawings; the numbered Broadcast buttons or Shift+1 through Shift+9 and Shift+0 select it. Broadcast channels receive automatically and allow collaboration; Receive only adds read-only subscriptions and has no shortcuts. Both fields display lowercase as you type. Invalid input leaves both active lists unchanged; Cancel, Escape, or closing the map discards unapplied edits. Sharing defaults off and both lists start empty. The persistent keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` remain in `[Map Tools / Sharing]` in the config file, but are hidden from F1.
+
+An accepted shared erase becomes an undo step for its original owner and clears the owner's redo branch, like any new local edit. It does not change the requester's undo history.
+
+Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel appears in your Broadcast list and either of their channel lists. Channel names are visible to same-faction peers, not passwords, and Steam may use direct connections between teammates. Members who broadcast the same channel can use Eraser or right-click to request an erase from its owner, then redraw a replacement. Receive-only channels stay read-only. Unit-linked BRA arrows follow the recipient's own live tracks and hide while either endpoint is untracked; other unit-attached drawing types stay local-only. Both clients need the updated protocol-4 build. Changing teams keeps prior drawings local-only, including undo history. See [sharing behavior and limits](SHARING.md). Disabling sharing removes received drawings immediately on your client; teammates expire your drawings after 15 seconds without a message. Performance tests pause sharing, and a team or mission change during a test cancels it and discards the test drawings.
+
+## Logging multiplayer sharing
+
+**F1 → Diagnostics → Log network** writes timestamped `Network` lines to `BepInEx/LogOutput.log`. It defaults off. Saved settings persist across updates; turn it off if an earlier playtest build enabled it. When troubleshooting, turn it on on both clients before reproducing the issue.
+
+The log records mission eligibility, channel-change resets, anonymous peer labels, handshakes, channel-match counts, Steam send results, connection failure codes, snapshot counts and bytes, exclusions, receive limits, quarantines and erase results. A successful Steam send means queued locally; a receiver's `snapshot applied` line confirms that its drawing store accepted the update. Local-only drawing exclusions and channel mismatches have separate counts.
+
+Peer labels belong to one client and are not comparable between players. The build identifier and protocol version help check that both clients use the same DLL. Logs omit Steam IDs, IPs, session nonces, channel names, note text and drawing coordinates. Network logging allows 128 event lines per five seconds, plus a count of suppressed events. Turning logging off stops those events without changing sharing.
+
+Reproduce the issue, then save **both players'** `BepInEx/LogOutput.log` files before restarting the game, which overwrites them. Include each player's broadcast and receive-only setup in the bug report. Other mods and the game may write personal information to the same file; the omissions above apply to this mod's `Network` lines.
 
 ## Measuring the mod's cost
 
@@ -139,7 +156,7 @@ The perf test does the comparison for you, including a typical and a heavy load 
 
 It measures eight conditions: the minimap with the mod off, with it on, with it on plus typical drawings, and with it on plus heavy drawings, then the same four on the full map. Within each map the four take turns in slices of 2 seconds, each after half a second for the switch to settle, four times over, reversing the order every other round. So each condition gets 8 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly lands on all four alike.
 
-The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, the first one starts on another, and one circle sits on the nearest, so its 3D ring moves with it. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 99-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units each set rode on, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
+The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, the first one starts on another, and one circle sits on the nearest, so its 3D ring moves with it. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 50-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units each set rode on, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
 
 When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
 
@@ -199,4 +216,4 @@ So Dustbowl Highway Strip becomes `DSTBWL HWY STRP`.
 
 - Only runways at your own faction's airbases are shown.
 - The HUD label hides when the runway threshold is behind the camera. It doesn't pin to the screen edge.
-- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter. The mod doesn't patch the game, so it can't hold that click back.
+- If you've bound the game's Select control to the left mouse button, a click with a map tool also selects the nearest unit. The default binding is Enter. The drawing tools don't intercept the game's selection binding.

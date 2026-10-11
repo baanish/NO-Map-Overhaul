@@ -30,7 +30,7 @@ public sealed class WaypointRoute : MapShape
     /// The most waypoints the tool adds. The store's caps count the route as one shape of no points, and each added
     /// waypoint rebuilds every marker and label, so this bound is the route's own.
     /// </summary>
-    public const int MaxWaypoints = 99;
+    public const int MaxWaypoints = 50;
 
     private static readonly List<string> NumberTexts = new();
     private static readonly List<string> LostTexts = new();

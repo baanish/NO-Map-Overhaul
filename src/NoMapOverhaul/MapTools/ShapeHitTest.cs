@@ -42,20 +42,24 @@ public sealed class ShapeHitTest : IMapCanvas
     public MapPoint? OwnAircraft => _view.OwnAircraft;
 
     /// <summary>The shape drawn nearest the point, within reach; on a tie the topmost. Null if none is in reach.</summary>
-    public MapShape? Find(IReadOnlyList<MapShape> shapes, Vector2 point, float reach)
+    public MapShape? Find(IReadOnlyList<MapShape> shapes, Vector2 point, float reach) =>
+        Find(shapes, Array.Empty<MapShape>(), point, reach);
+
+    public MapShape? Find(IReadOnlyList<MapShape> local, IReadOnlyList<MapShape> received, Vector2 point, float reach)
     {
         _point = point;
         MapShape? best = null;
         var bestDistance = float.MaxValue;
-        for (var i = shapes.Count - 1; i >= 0; i--)
+        for (var i = local.Count + received.Count - 1; i >= 0; i--)
         {
             _nearest = float.MaxValue;
-            _shape = shapes[i];
+            _shape = i >= local.Count ? received[i - local.Count] : local[i];
+            if (_shape.Color.A == 0) continue;
             _labelIndex = 0;
             _shape.Draw(this);
             if (_nearest <= reach && _nearest < bestDistance)
             {
-                best = shapes[i];
+                best = _shape;
                 bestDistance = _nearest;
             }
         }

@@ -142,7 +142,10 @@ internal sealed class MapToolMenu
     private int _shownSwatch = -2;
     private RailCell? _shownTag;
     private bool _stripDirty;
+    private int _sharingLayoutVersion;
     private string _status = string.Empty;
+    private string _toolStatus = string.Empty;
+    private string _sharingStatus = string.Empty;
     private bool _warning;
     private IReadOnlyList<string>? _optionLabels;
     private int _optionCount;
@@ -153,6 +156,7 @@ internal sealed class MapToolMenu
     public MapToolMenu(ModSettings settings) => _settings = settings;
 
     public MapPointerCatcher? Catcher { get; private set; }
+    public MapSharingPanel? Sharing { get; private set; }
 
     /// <summary>The rail and the strip while they sit inside the map, for map labels to keep clear of. Inactive ones aren't showing.</summary>
     public IReadOnlyList<RectTransform> Areas => _areas;
@@ -170,7 +174,8 @@ internal sealed class MapToolMenu
 
     /// <summary>Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the rail is closed.</summary>
     public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons,
-        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys, int activeTool, ShapeStore store, ShapeColor color, TextMeshProUGUI? hudStyle)
+        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys, int activeTool, ShapeStore store, ShapeColor color, TextMeshProUGUI? hudStyle,
+        string sharingStatus, DrawingChannels broadcast, DrawingChannels receive)
     {
         EnsureBuilt(map, tools, icons, keys);
         Place(map, tools.Count);
@@ -178,6 +183,13 @@ internal sealed class MapToolMenu
         SetActive(_root!.gameObject, true);
         SetActive(_outside!.gameObject, true);
         SetActive(Catcher!.gameObject, open);
+        Sharing!.Render(broadcast, receive, _settings.MapSharingEnabled.Value, sharingStatus, hudStyle);
+        Sharing.SetVisible(open);
+        if (_sharingLayoutVersion != Sharing.LayoutVersion)
+        {
+            _sharingLayoutVersion = Sharing.LayoutVersion;
+            LayoutVersion++;
+        }
         if (!ReferenceEquals(hudStyle, _fontSource) && hudStyle != null)
         {
             _fontSource = hudStyle;
@@ -202,7 +214,7 @@ internal sealed class MapToolMenu
 
         if (open)
         {
-            ReadStrip(tools[activeTool], store);
+            ReadStrip(tools[activeTool], store, sharingStatus);
         }
 
         if (_stripDirty)
@@ -247,6 +259,7 @@ internal sealed class MapToolMenu
     /// <summary>The map closed or went back to the minimap. A click from the frame it closed is dropped, not replayed on reopening.</summary>
     public void Hide()
     {
+        Sharing?.SetVisible(false);
         _command = default;
         _placedFor = null;
         if (_root != null)
@@ -262,6 +275,7 @@ internal sealed class MapToolMenu
 
     public void Reset()
     {
+        Sharing = null;
         if (_root != null)
         {
             Object.Destroy(_root.gameObject);
@@ -280,6 +294,7 @@ internal sealed class MapToolMenu
         _texts.Clear();
         _swatches.Clear();
         _areas.Clear();
+        _sharingLayoutVersion = 0;
         _placedFor = null;
         _fontSource = null;
         _command = default;
@@ -291,7 +306,7 @@ internal sealed class MapToolMenu
     }
 
     /// <summary>Reads what the strip shows. Compares by reference, so a tool that keeps returning the same strings costs nothing per frame.</summary>
-    private void ReadStrip(MapTool tool, ShapeStore store)
+    private void ReadStrip(MapTool tool, ShapeStore store, string sharingStatus)
     {
         var status = tool.Status;
         var warning = tool.Warning;
@@ -303,7 +318,7 @@ internal sealed class MapToolMenu
 
         var labels = tool.Options;
         var count = Mathf.Min(labels.Count, MaxOptions);
-        var changed = !ReferenceEquals(status, _status) || warning != _warning || !ReferenceEquals(labels, _optionLabels) ||
+        var changed = !ReferenceEquals(status, _toolStatus) || sharingStatus != _sharingStatus || warning != _warning || !ReferenceEquals(labels, _optionLabels) ||
             count != _optionCount || tool.PickedOption != _pickedOption || !ReferenceEquals(tool.OptionSuffix, _optionSuffix) ||
             !ReferenceEquals(tool.Counter, _count);
         for (var i = 0; !changed && i < count; i++)
@@ -316,7 +331,13 @@ internal sealed class MapToolMenu
             return;
         }
 
-        _status = status;
+        if (status != _toolStatus || sharingStatus != _sharingStatus)
+        {
+            _status = status.Length == 0 ? sharingStatus : status + " " + sharingStatus;
+        }
+
+        _toolStatus = status;
+        _sharingStatus = sharingStatus;
         _warning = warning;
         _optionLabels = labels;
         _optionCount = count;
@@ -677,6 +698,7 @@ internal sealed class MapToolMenu
 
         DrawDividers(joined: !_railPlace.Outside && !_stripPlace.Outside);
         _areas.Clear();
+        _areas.Add(Sharing!.Area);
         if (!_railPlace.Outside)
         {
             _areas.Add(_railFill.rectTransform);
@@ -804,6 +826,7 @@ internal sealed class MapToolMenu
 
         _swatchRing = NewGraphic<StrokeGraphic>("SwatchRing", open, raycast: false);
         BuildTag();
+        Sharing = new MapSharingPanel(_root);
     }
 
     /// <summary>The strip's ground, rim, and contents, in design pixels from the strip's top-left corner.</summary>

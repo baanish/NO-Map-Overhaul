@@ -102,6 +102,14 @@ internal sealed class MapToolContext : IMapToolContext
 
     public bool IsUnitGone(uint unitId) => !TryGetUnit(unitId, out _);
 
+    /// <summary>Remote anchors require live recipient faction tracks; local spectator and lost-position fallbacks cannot make them visible.</summary>
+    public bool KnowsSharedUnit(uint unitId)
+    {
+        var map = SceneSingleton<DynamicMap>.i;
+        return map != null && map.HQ != null && TryGetUnit(unitId, out var unit) &&
+            map.HQ.IsTargetBeingTracked(unit) && map.HQ.TryGetKnownPosition(unit, out _);
+    }
+
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>
     public void ForgetUnits() => _known.Forget();
 

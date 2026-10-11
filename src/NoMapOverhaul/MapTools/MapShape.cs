@@ -35,6 +35,9 @@ public abstract class MapShape
     /// <summary>Unique within the mission, set by the store. A replacement keeps the id of the shape it replaces.</summary>
     public int Id { get; internal set; }
 
+    /// <summary>The channel chosen when added. Empty means local; replacements and undo keep the original channel.</summary>
+    public string Channel { get; internal set; } = string.Empty;
+
     public ShapeColor Color { get; }
 
     /// <summary>Freehand points this shape holds, counted against the MaxPenPoints setting. Shapes built from a few anchors leave it 0.</summary>

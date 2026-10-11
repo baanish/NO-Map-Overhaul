@@ -6,7 +6,7 @@ using UnityEngine;
 namespace NoMapOverhaul;
 
 /// <summary>
-/// Every player-facing knob, editable in BepInEx/config or live through ConfigurationManager (F1). F1 lists sections in
+/// Persistent settings, edited through the map UI or ConfigurationManager (F1). F1 lists sections in
 /// the order they are first bound and settings in bind order within a section, so this constructor reads top to bottom
 /// like the window: each feature's on/off switch first, tuning knobs marked advanced so F1 hides them by default.
 /// </summary>
@@ -57,6 +57,10 @@ internal sealed class ModSettings
         MapToolCirclesIn3D = Bind(SettingSections.MapToolsGeneral, "ShowCirclesIn3D", true, "Circles in 3D view", "Draw each circle in the 3D view as well, as a thin ring level with its centre: a unit's altitude, or the ground under a fixed point.");
         MapToolUnits = Bind(SettingSections.MapToolsGeneral, "DistanceUnits", UnitsSetting.Game, "Distance units", "Units for distances the tools show. Game setting follows the game: kilometres for metric, nautical miles for imperial.");
 
+        MapSharingEnabled = Bind(SettingSections.MapToolsSharing, "Enabled", false, "Share drawings", "Managed by Channels in the full map's Tools menu. Off stops sending and receiving drawings.", display: new ConfigurationManagerAttributes { Browsable = false });
+        MapBroadcastChannels = Bind(SettingSections.MapToolsSharing, "BroadcastChannels", string.Empty, "Broadcast channels", "Managed by Channels in the full map's Tools menu. Comma-separated channels where you send, receive and collaborate, up to 10. Empty keeps your drawings local. Shift+1 to Shift+9 and Shift+0 choose the channel for new drawings.", display: new ConfigurationManagerAttributes { Browsable = false });
+        MapReceiveChannels = Bind(SettingSections.MapToolsSharing, "ReceiveChannels", string.Empty, "Receive-only channels", "Managed by Channels in the full map's Tools menu. Extra channels whose drawings you only view, up to 10. Broadcast channels are already received and allow collaboration. Names use ASCII letters, digits, spaces, dots, underscores or hyphens, up to 32 characters.", display: new ConfigurationManagerAttributes { Browsable = false });
+
         MapToolColor = Bind(SettingSections.MapToolsDrawing, "Color", (Color)new Color32(51, 255, 51, 255), "Drawing colour", "Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here.", advanced: true);
         MapToolLineWidth = Bind(SettingSections.MapToolsDrawing, "LineWidth", 1.5f, "Line width", "Width of drawn lines, in map icon units. Arrowheads grow with it.", new AcceptableValueRange<float>(0.5f, 8f), advanced: true);
         MapToolTextSize = Bind(SettingSections.MapToolsDrawing, "TextSize", 10f, "Text size", "Size of text the tools draw on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
@@ -73,15 +77,17 @@ internal sealed class ModSettings
         MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha4);
         MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha5);
         MapToolEraserKey = BindToolKey("EraserKey", "Eraser", KeyCode.Alpha6);
-        MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 200, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 1000), advanced: true);
-        MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 5000, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 7500), advanced: true);
+        MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 100, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 100), advanced: true);
+        MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 2500, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 2500), advanced: true);
 
         PerfTest = Bind(SettingSections.Diagnostics, "PerfTest", false, "Perf test", "In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a typical and a heavy set of drawings, on the minimap and the full map, then puts everything back. About 85 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", display: PerfTestButton);
         LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", false, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
+        LogNetwork = Bind(SettingSections.Diagnostics, "LogNetwork", false, "Log network", "Log drawing-sharing connections, handshakes, channel changes, packet counts and rejection reasons to BepInEx/LogOutput.log. No Steam IDs, IPs, note text or coordinates. Enable when troubleshooting sharing.");
     }
 
     public ConfigEntry<bool> Enabled { get; }
     public ConfigEntry<bool> LogPerformance { get; }
+    public ConfigEntry<bool> LogNetwork { get; }
 
     /// <summary>Drawn as a button in F1, which starts or cancels the test; set true any other way, it does the same and resets.</summary>
     public ConfigEntry<bool> PerfTest { get; }
@@ -118,6 +124,9 @@ internal sealed class ModSettings
     public ConfigEntry<Color> HudColor { get; }
 
     public ConfigEntry<bool> ShowMapTools { get; }
+    public ConfigEntry<bool> MapSharingEnabled { get; }
+    public ConfigEntry<string> MapBroadcastChannels { get; }
+    public ConfigEntry<string> MapReceiveChannels { get; }
     public ConfigEntry<bool> MapToolShowOnMinimap { get; }
 
     /// <summary>

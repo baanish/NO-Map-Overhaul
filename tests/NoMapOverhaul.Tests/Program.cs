@@ -29,8 +29,20 @@ internal static class Program
             ("unknown airbase is abbreviated", UnknownAirbaseAbbreviated),
         };
         tests.AddRange(MapToolTests.All);
+        tests.AddRange(ChannelTests.All);
+        tests.AddRange(DrawingProtocolTests.All);
+        tests.AddRange(DrawingPeerTests.All);
+        tests.AddRange(DrawingPeerStateTests.All);
+        tests.AddRange(DrawingPeerQuarantineTests.All);
+        tests.AddRange(DrawingDiscoveryTests.All);
+        tests.AddRange(DrawingReceiveBudgetTests.All);
+        tests.AddRange(DrawingNetworkScheduleTests.All);
+        tests.AddRange(DrawingNetworkLogTests.All);
+        tests.AddRange(SteamConnectionOwnershipTests.All);
+        tests.AddRange(ReceivedDrawingsTests.All);
         tests.AddRange(WaypointTests.All);
         tests.AddRange(PenTextTests.All);
+        tests.AddRange(CollaborativeEraseTests.All);
         tests.AddRange(MeasureToolTests.All);
         tests.AddRange(LabelLayoutTests.All);
         tests.AddRange(MenuLayoutTests.All);

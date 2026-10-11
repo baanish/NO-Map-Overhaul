@@ -11,7 +11,7 @@ namespace NoMapOverhaul.MapTools.Text;
 /// </summary>
 public sealed class TextTool : MapTool
 {
-    /// <summary>Longest note, in characters: a short callout, not a briefing.</summary>
+    /// <summary>Longest note in UTF-16 code units. A surrogate pair uses two units and is accepted or dropped together.</summary>
     public const int MaxLength = 64;
 
     private const string Caret = "_";
@@ -25,6 +25,7 @@ public sealed class TextTool : MapTool
     private string _preview = Caret;
     private string _counter = string.Empty;
     private bool _typing;
+    private char _pendingHighSurrogate;
 
     public TextTool(IMapToolContext context)
         : base(context)
@@ -69,6 +70,28 @@ public sealed class TextTool : MapTool
         }
 
         InvalidateOverlay();
+        var pending = _pendingHighSurrogate;
+        _pendingHighSurrogate = '\0';
+        if (char.IsHighSurrogate(character))
+        {
+            if (_text.Length <= MaxLength - 2)
+            {
+                _pendingHighSurrogate = character;
+            }
+
+            return;
+        }
+
+        if (char.IsLowSurrogate(character))
+        {
+            if (pending != '\0')
+            {
+                SetText(_text + pending + character);
+            }
+
+            return;
+        }
+
         switch (character)
         {
             case '\n':
@@ -78,9 +101,10 @@ public sealed class TextTool : MapTool
                 Cancel();
                 break;
             case '\b':
-                if (_text.Length > 0)
+                if (pending == '\0' && _text.Length > 0)
                 {
-                    SetText(_text.Substring(0, _text.Length - 1));
+                    var count = char.IsLowSurrogate(_text[_text.Length - 1]) ? 2 : 1;
+                    SetText(_text.Substring(0, _text.Length - count));
                 }
 
                 break;
@@ -128,11 +152,29 @@ public sealed class TextTool : MapTool
         }
     }
 
-    /// <summary>Stores the note being typed, if it has any text, and stops typing.</summary>
+    /// <summary>
+    /// A note with something visible in it: no control characters, and more than whitespace and invisible format
+    /// characters such as a soft hyphen. Shared notes must pass this too, so a note the tool keeps can always be sent.
+    /// </summary>
+    public static bool IsPlaceable(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text!.Length > MaxLength) return false;
+        var hasVisibleText = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsControl(text[i])) return false;
+            if (!char.IsWhiteSpace(text[i]) && CharUnicodeInfo.GetUnicodeCategory(text, i) != UnicodeCategory.Format)
+                hasVisibleText = true;
+            if (char.IsSurrogatePair(text, i)) i++;
+        }
+        return hasVisibleText;
+    }
+
+    /// <summary>Stores the note being typed, if it has any visible text, and stops typing.</summary>
     private void Place()
     {
         var text = _text.Trim();
-        if (_typing && text.Length > 0)
+        if (_typing && IsPlaceable(text))
         {
             Context.Shapes.Add(new TextNote(_at, _at.IsAnchored ? 0f : Context.GroundElevation(_at.Position), text, Context.Color));
         }
@@ -143,6 +185,7 @@ public sealed class TextTool : MapTool
     private void Cancel()
     {
         _typing = false;
+        _pendingHighSurrogate = '\0';
         SetText(string.Empty);
     }
 

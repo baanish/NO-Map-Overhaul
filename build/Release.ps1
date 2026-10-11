@@ -89,6 +89,17 @@ function Assert-Package([string]$Path, [string[]]$ExpectedEntries) {
             if ($reader.ReadToEnd() -match '@VERSION@') { throw "Package '$Path' contains an unresolved version token." }
         }
         finally { $reader.Dispose() }
+        $metadata = $archive.Entries | Where-Object { $_.Name -eq 'meta.json' } | Select-Object -First 1
+        if ($metadata) {
+            $reader = [IO.StreamReader]::new($metadata.Open(), [Text.Encoding]::UTF8, $true)
+            try { $localMod = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+            $dllEntry = $archive.Entries | Where-Object { $_.Name -eq 'NoMapOverhaul.dll' } | Select-Object -First 1
+            $dllStream = $dllEntry.Open()
+            try { $dllHash = (Get-FileHash -InputStream $dllStream -Algorithm SHA256).Hash.ToLowerInvariant() } finally { $dllStream.Dispose() }
+            if ($localMod.id -ne 'NoMapOverhaul' -or $localMod.artifact.fileName -ne 'NoMapOverhaul.dll' -or
+                $localMod.artifact.version -ne $version -or $localMod.artifact.downloadUrl -ne '' -or
+                $localMod.artifact.hash -ne "sha256:$dllHash") { throw "Package '$Path' has invalid local NOMM metadata." }
+        }
     }
     finally { $archive.Dispose() }
 
@@ -110,7 +121,25 @@ if ($builtFiles.Count -ne 1) { throw "The build output contains copied assemblie
 if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $nommStage, $pluginStage | Out-Null
 Copy-PackageFiles $nommStage $pluginDll
-Copy-PackageFiles (Join-Path $pluginStage 'BepInEx\plugins\NoMapOverhaul') $pluginDll
+$pluginFolder = Join-Path $pluginStage 'BepInEx\plugins\NoMapOverhaul'
+Copy-PackageFiles $pluginFolder $pluginDll
+# Folder installs use the same local NOMM record as Build.ps1 -Install.
+$pluginHash = (Get-FileHash -LiteralPath $pluginDll -Algorithm SHA256).Hash.ToLowerInvariant()
+$localMod = [ordered]@{
+    id = 'NoMapOverhaul'
+    artifact = [ordered]@{
+        fileName = 'NoMapOverhaul.dll'
+        version = $version
+        category = 'preRelease'
+        type = 'plugin'
+        gameVersion = '0.34.2'
+        downloadUrl = ''
+        hash = "sha256:$pluginHash"
+        dependencies = @()
+        incompatibilities = @()
+    }
+}
+[IO.File]::WriteAllText((Join-Path $pluginFolder 'meta.json'), ($localMod | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
 
 $nommZip = Join-Path $artifacts "NoMapOverhaul-v$version-nomm.zip"
 $pluginZip = Join-Path $artifacts "NoMapOverhaul-v$version-plugin-only.zip"
@@ -122,6 +151,7 @@ Assert-Package $nommZip @('NoMapOverhaul.dll', 'LICENSE.txt', 'README.txt', 'THI
 Assert-Package $pluginZip @(
     'BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll',
     'BepInEx/plugins/NoMapOverhaul/LICENSE.txt',
+    'BepInEx/plugins/NoMapOverhaul/meta.json',
     'BepInEx/plugins/NoMapOverhaul/README.txt',
     'BepInEx/plugins/NoMapOverhaul/THIRD_PARTY_NOTICES.txt')
 

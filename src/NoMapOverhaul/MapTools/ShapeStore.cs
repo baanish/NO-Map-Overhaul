@@ -6,7 +6,7 @@ namespace NoMapOverhaul.MapTools;
 /// <summary>
 /// Every drawing on the map, from every tool, with undo and redo. Each change stores a new snapshot of the shape list,
 /// so undo and redo only move between snapshots, and every Add, Remove, Replace, and Clear is exactly one undo step.
-/// Shapes are immutable, so snapshots share them.
+/// Snapshots share immutable geometry; <see cref="KeepLocal"/> can revoke channels throughout their history.
 /// List order is draw order: the last shape draws on top.
 /// </summary>
 public sealed class ShapeStore
@@ -23,6 +23,9 @@ public sealed class ShapeStore
 
     /// <summary>The most <see cref="MapShape.PointCount"/> summed over all shapes that Add and Replace accept.</summary>
     public int MaxPoints { get; set; } = int.MaxValue;
+
+    /// <summary>The selected channel for new drawings. Existing drawings keep their assigned channel.</summary>
+    public string DrawingChannel { get; set; } = string.Empty;
 
     /// <summary>The current shapes. Index it with a for loop in per-frame code: foreach over the interface allocates.</summary>
     public IReadOnlyList<MapShape> Shapes => _history[_current];
@@ -81,6 +84,7 @@ public sealed class ShapeStore
         }
 
         shape.Id = _nextId++;
+        shape.Channel = DrawingChannel;
         var next = new MapShape[shapes.Length + 1];
         shapes.CopyTo(next, 0);
         next[shapes.Length] = shape;
@@ -154,6 +158,7 @@ public sealed class ShapeStore
         }
 
         replacement.Id = shape.Id;
+        replacement.Channel = shape.Channel;
         var next = (MapShape[])shapes.Clone();
         next[index] = replacement;
         Commit(next);
@@ -191,6 +196,27 @@ public sealed class ShapeStore
         _current++;
         Version++;
         return true;
+    }
+
+    /// <summary>
+    /// A team change keeps drawings but revokes their sharing channels, including every undo and redo version.
+    /// This deliberately changes metadata on shared shape objects so undo cannot publish the previous team's work.
+    /// Adds no history step and keeps the selected channel for new drawings.
+    /// </summary>
+    public void KeepLocal()
+    {
+        var changed = false;
+        foreach (var shapes in _history)
+        {
+            foreach (var shape in shapes)
+            {
+                if (shape.Channel.Length == 0) continue;
+                shape.Channel = string.Empty;
+                changed = true;
+            }
+        }
+
+        if (changed) Version++;
     }
 
     /// <summary>Leaving the mission: no shapes and no history, so nothing can be undone back into the next one.</summary>

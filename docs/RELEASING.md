@@ -43,11 +43,14 @@ The plugin-only archive extracts beside `NuclearOption.exe`:
 ```text
 BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
 BepInEx/plugins/NoMapOverhaul/LICENSE.txt
+BepInEx/plugins/NoMapOverhaul/meta.json
 BepInEx/plugins/NoMapOverhaul/README.txt
 BepInEx/plugins/NoMapOverhaul/THIRD_PARTY_NOTICES.txt
 ```
 
 The same inputs always produce the same archive bytes, because entries have fixed order and timestamps.
+
+For a private playtest, send the plugin-only archive. Its `meta.json` records the DLL hash and version with no download URL, so NOMM can manage the extracted folder without a public release. Extract beside `NuclearOption.exe`, then restart NOMM. NOMM's Add from File does not extract ZIP archives.
 
 ## Publish the GitHub prerelease
 

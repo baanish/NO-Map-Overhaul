@@ -7,7 +7,7 @@ using UnityEngine;
 namespace NoMapOverhaul.MapTools;
 
 /// <summary>
-/// The mod's one Harmony patch, and it patches NOAutopilot, not the game. NOAutopilot adds an autopilot waypoint on
+/// NOAutopilot adds an autopilot waypoint on
 /// every right-click on the full map, in its postfix on <c>DynamicMap.MapControls</c>
 /// (<c>NOAutopilot.Core.Map.MapInteractionPatch.Postfix</c>), and has no setting to stop it. While the Tools menu is
 /// open the map tools take right-clicks (<see cref="RightClickRule"/>), so without this one click would both delete a
