@@ -132,6 +132,14 @@ internal static class Program
         ExpectText(RunwayNames.ParallelSide(three, 1), "C");
         ExpectText(RunwayNames.ParallelSide(three, 2), "L");
         ExpectText(RunwayNames.ParallelSide(new[] { EastWest, NorthSouth }, 0), "");
+
+        // A mission can list an airbase's runways in any order; the letters mustn't change with it.
+        ExpectText(RunwayNames.ParallelSide(new[] { harmonySands[2], harmonySands[0], harmonySands[1] }, 1), "R");
+        var main = EastWest;
+        var north = new RunwayLine(new Vector2(0, 60), new Vector2(2000, 60));
+        var south = new RunwayLine(new Vector2(0, -60), new Vector2(2000, -60));
+        ExpectText(RunwayNames.ParallelSide(new[] { north, south, main }, 2), "");
+        ExpectText(RunwayNames.ParallelSide(new[] { main, north, south }, 0), "");
     }
 
     private static void CalloutUsesTable()

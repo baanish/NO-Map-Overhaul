@@ -62,7 +62,7 @@ public static class RunwayNames
     private static readonly float ParallelSine = (float)System.Math.Sin(5.0 * System.Math.PI / 180.0);
 
     /// <summary>
-    /// Parallel runways closer than this side to side are one line: the stock game lays a takeoff-only runway over a
+    /// Parallel runways less than this apart side to side are one line: the stock game lays a takeoff-only runway over a
     /// landing one (Harmony Sands' "Runway14L Short"). Real parallel runways are hundreds of meters apart.
     /// </summary>
     private const float SameLineMeters = 100f;
@@ -78,24 +78,32 @@ public static class RunwayNames
         var runway = runways[index];
         var axis = System.Numerics.Vector2.Normalize(runway.End - runway.Start);
         var left = new System.Numerics.Vector2(-axis.Y, axis.X);
-        var lines = new List<float>(runways.Count); // each parallel line's offset to the left of this runway's centerline
-        foreach (var other in runways)
+        var offsets = new List<float>(runways.Count) { 0f }; // each parallel runway's offset to the left of this one's centerline
+        for (var i = 0; i < runways.Count; i++)
         {
+            var other = runways[i];
             var otherAxis = System.Numerics.Vector2.Normalize(other.End - other.Start);
-            if (System.Math.Abs(axis.X * otherAxis.Y - axis.Y * otherAxis.X) > ParallelSine)
+            if (i != index && System.Math.Abs(axis.X * otherAxis.Y - axis.Y * otherAxis.X) <= ParallelSine)
             {
-                continue;
-            }
-
-            var offset = System.Numerics.Vector2.Dot((other.Start + other.End) * 0.5f - runway.Start, left);
-            if (!lines.Exists(line => System.Math.Abs(line - offset) < SameLineMeters))
-            {
-                lines.Add(offset);
+                offsets.Add(System.Numerics.Vector2.Dot((other.Start + other.End) * 0.5f - runway.Start, left));
             }
         }
 
-        var linesLeft = lines.Count(line => line >= SameLineMeters);
-        return lines.Count switch
+        // Sorted, so the lines don't depend on the order a mission lists its runways in: a new line starts at each gap of
+        // SameLineMeters or more, and a gap above this runway's 0 puts a line to its left.
+        offsets.Sort();
+        var lines = 1;
+        var linesLeft = 0;
+        for (var i = 1; i < offsets.Count; i++)
+        {
+            if (offsets[i] - offsets[i - 1] >= SameLineMeters)
+            {
+                lines++;
+                linesLeft += offsets[i - 1] >= 0f ? 1 : 0;
+            }
+        }
+
+        return lines switch
         {
             2 => linesLeft == 0 ? "L" : "R",
             3 => linesLeft == 0 ? "L" : linesLeft == 1 ? "C" : "R",
