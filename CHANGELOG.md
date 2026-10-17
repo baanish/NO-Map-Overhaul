@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 beta 3
+
+- Circles, notes and waypoint routes attached to units now share, the way BRA arrows already did: they carry only the unit's ID, each recipient places them on its own tracks. Shared drawings on units, BRA arrows included, now stop at the recipient's last known position and read `lost` when their side loses the unit, as local ones do, instead of hiding; they stay hidden only while that side has never known the unit. Protocol 6 requires this build on both clients.
+- Quitting the game from a mission with sharing on no longer crashes Steam: drawing sessions close before the game shuts Steam down.
+- A teammate's snapshots apply at most once every 0.5 s, and added or changed drawings spend from per-teammate and shared budgets, so a teammate can't keep your map busy rebuilding. An over-budget snapshot waits and still arrives. Over 256 KiB from one teammate in a second resets their drawing channel, and a frame from another version is skipped before it's copied.
+- Changed drawings, yours and teammates', redraw in place instead of being rebuilt.
+
 ## 0.6.0 beta 2
 
 - A Steam transport compatibility patch filters gameplay callbacks by connection ownership, preventing Mirage from accepting or closing drawing connections. Sharing stays unavailable if that protection cannot load.

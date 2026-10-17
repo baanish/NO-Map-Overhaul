@@ -30,6 +30,7 @@ internal sealed class SteamDrawingSharing : IDisposable
     private readonly IntPtr[] _messages = new IntPtr[DrawingReceiveBudget.MaxMessagesPerTick];
     private readonly DrawingReceiveBudget _receiveBudget;
     private readonly DrawingNetworkSchedule _schedule = new();
+    private readonly DrawingSnapshotBudget _snapshotBudget = new();
     private readonly DrawingNetworkLog _networkLog;
     private Callback<SteamNetworkingMessagesSessionRequest_t>? _request;
     private Callback<SteamNetworkingMessagesSessionFailed_t>? _failure;
@@ -159,7 +160,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                 ready++;
                 if (now >= peer.NextSnapshot && peer.SentVersion != _host.Context.Shapes.Version)
                 {
-                    peer.NextSnapshot = now + 0.5;
+                    peer.NextSnapshot = now + DrawingNetworkSchedule.SnapshotInterval;
                     SendSnapshot(entry.Key, peer);
                 }
                 unshared = Math.Max(unshared, peer.Unshared);
@@ -355,7 +356,20 @@ internal sealed class SteamDrawingSharing : IDisposable
                 if (_messages[i] == IntPtr.Zero) continue;
                 var message = SteamNetworkingMessage_t.FromIntPtr(_messages[i]);
                 var id = message.m_identityPeer.GetSteamID64();
-                if (!Authorized(id) || !_peers.TryGetValue(id, out var peer))
+                _receiveBudget.TryConsume(now); // a batch never exceeds the window's remaining budget
+                if (!_peers.TryGetValue(id, out var peer)) continue;
+                if (!peer.CountReceive(now, out var flooded, message.m_cbSize))
+                {
+                    if (flooded)
+                    {
+                        if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: receive message or byte budget exceeded; resetting its drawing channel.");
+                        _received.Remove(id);
+                        CloseChannel(id);
+                        peer.Restart(now + 5);
+                    }
+                    continue;
+                }
+                if (!Authorized(id))
                 {
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, "rx ignored: sender not eligible.");
                     continue;
@@ -366,16 +380,15 @@ internal sealed class SteamDrawingSharing : IDisposable
                     RejectPeer(id, "invalid native message envelope");
                     continue;
                 }
-                _receiveBudget.TryConsume(now); // a batch never exceeds the window's remaining budget
-                if (!peer.CountReceive(now, out var flooded))
+                if (!DrawingProtocol.TryReadHeader(message.m_pData, message.m_cbSize, out var version, out _))
                 {
-                    if (flooded)
-                    {
-                        if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: over {DrawingPeerState.FloodMessages} messages in a second; resetting its drawing channel.");
-                        _received.Remove(id);
-                        CloseChannel(id);
-                        peer.Restart(now + 5);
-                    }
+                    RejectPeer(id, "invalid packet header");
+                    continue;
+                }
+                if (version != DrawingProtocol.Version)
+                {
+                    if (!peer.OtherVersion && _networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: runs protocol {version}, this build {DrawingProtocol.Version}; ignoring it until it matches.");
+                    peer.OtherVersion = true;
                     continue;
                 }
                 if (WireKind(message) == DrawingPacketKind.Snapshot && _newestSnapshot.TryGetValue(id, out var newestSnapshot) &&
@@ -386,12 +399,6 @@ internal sealed class SteamDrawingSharing : IDisposable
                 }
                 var bytes = new byte[message.m_cbSize];
                 Marshal.Copy(message.m_pData, bytes, 0, bytes.Length);
-                if (DrawingProtocol.IsOtherVersion(bytes))
-                {
-                    if (!peer.OtherVersion && _networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: runs protocol {bytes[4]}, this build {DrawingProtocol.Version}; ignoring it until it matches.");
-                    peer.OtherVersion = true;
-                    continue;
-                }
                 if (!DrawingProtocol.TryDecode(bytes, out var packet) || packet == null)
                 {
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: decode rejected; bytes={bytes.Length}; wireVersion={(bytes.Length > 4 ? bytes[4] : -1)}; expectedVersion={DrawingProtocol.Version}.");
@@ -459,6 +466,15 @@ internal sealed class SteamDrawingSharing : IDisposable
                     RejectPeer(id, "snapshot channel authorization or sharing policy check failed");
                     continue;
                 }
+                peer.ReceivedSnapshots.Pending = snapshot;
+            }
+            foreach (var entry in _peers)
+            {
+                var id = entry.Key;
+                var peer = entry.Value;
+                if (peer.ReceivedSnapshots.Pending == null || !Authorized(id) || !peer.Protocol.IsReady) continue;
+                var snapshot = _snapshotBudget.TryTake(peer.ReceivedSnapshots, id, _received, now);
+                if (snapshot == null) continue;
                 if (!_received.TryReplace(id, snapshot.Shapes, out var capacityExceeded))
                 {
                     if (capacityExceeded)
@@ -468,7 +484,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                     }
                     else RejectPeer(id, "invalid received drawings");
                 }
-                else if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot applied; seq={packet.Sequence}; shapes={snapshot.Shapes.Length}; receivedTotal={_received.Shapes.Count}.");
+                else if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot applied; seq={snapshot.Sequence}; shapes={snapshot.Shapes.Length}; receivedTotal={_received.Shapes.Count}.");
             }
         }
         finally
@@ -481,10 +497,11 @@ internal sealed class SteamDrawingSharing : IDisposable
         }
     }
 
-    /// <summary>The unvalidated kind byte, read only to pick which messages to decode.</summary>
+    /// <summary>Only current-protocol snapshots can supersede each other before decoding.</summary>
     private static DrawingPacketKind WireKind(SteamNetworkingMessage_t message) =>
-        message.m_nChannel == Channel && message.m_cbSize > 5 && message.m_pData != IntPtr.Zero
-            ? (DrawingPacketKind)Marshal.ReadByte(message.m_pData, 5) : 0;
+        message.m_nChannel == Channel && message.m_cbSize <= DrawingProtocol.MaxPacketBytes &&
+        DrawingProtocol.TryReadHeader(message.m_pData, message.m_cbSize, out var version, out var kind) &&
+        version == DrawingProtocol.Version ? kind : 0;
 
     private static bool AllowHelloSession(DrawingPeerState peer, Guid session)
     {
@@ -668,6 +685,7 @@ internal sealed class SteamDrawingSharing : IDisposable
         _peers.Clear(); _roster.Clear(); _received.Clear(); _quarantine.Clear();
         _mission = null; _connection = null; _hq = null;
         _receiveBudget.Clear();
+        _snapshotBudget.Clear();
     }
 
     public void Dispose() { _wanted = false; Reset(); }

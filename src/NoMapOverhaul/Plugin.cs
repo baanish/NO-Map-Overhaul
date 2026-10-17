@@ -225,6 +225,13 @@ public sealed class Plugin : BaseUnityPlugin
         }
     }
 
+    /// <summary>
+    /// The game shuts Steam down in <c>SteamManager.OnDestroy</c>, which can run before this plugin's, and quitting with
+    /// drawing sessions still open crashes Steam. OnApplicationQuit runs before any OnDestroy, and the game closes its own
+    /// Steam connection there too.
+    /// </summary>
+    private void OnApplicationQuit() => _sharing?.Dispose();
+
     private void OnDestroy() => Shutdown(gameQuitting: true);
 
     /// <summary>As the game quits, its scene may be half torn down, so the perf test leaves the map alone.</summary>

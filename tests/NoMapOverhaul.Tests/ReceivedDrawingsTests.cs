@@ -31,8 +31,9 @@ internal static class ReceivedDrawingsTests
         ("received drawing IDs remain distinct after removal reuse and clear", IdLifecycle),
         ("shared shapes require every anchor to pass recipient visibility", Visibility),
         ("shared fixed shapes need no unit lookup", FixedVisibility),
-        ("shared snapshots include unit and mixed BRA while excluding other anchored drawings", ShareableSnapshot),
+        ("shared snapshots include every drawing kind, unit-linked or fixed", ShareableSnapshot),
         ("received BRA map and HUD numbers use recipient tracks instead of sender fallbacks", ReceiverBearing),
+        ("received unit circles and notes sit on recipient tracks instead of sender fallbacks", ReceiverAnchoredShapes),
         ("received BRA hide across map HUD and erase when either track is lost and resume", LostBearing),
         ("received BRA collaborative erase respects broadcast permission and preserves owner confirmation", BearingErase),
     };
@@ -167,6 +168,7 @@ internal static class ReceivedDrawingsTests
         var version = store.Version;
         var replacement = AllKinds();
         replacement[index] = changed;
+        Expect(store.ChangeCost(1, replacement) == 1, "each changed field costs exactly one replacement");
         Expect(store.TryReplace(1, replacement), "accept changed field");
         Expect(store.Version == version + 1 && ReferenceEquals(store.Shapes[index], changed), "changed field replaces reference and increments version once");
         Expect(changed.Id == original[index].Id && !store.TryFindOwner(original[index], out _, out _), "retain render ID but reject stale edit reference");
@@ -348,14 +350,14 @@ internal static class ReceivedDrawingsTests
             Stamp(new UnknownShape(), 12)
         };
         var selected = shapes.Where(SharedShapeVisibility.CanShare).ToArray();
-        Expect(selected.Select(shape => shape.Id).SequenceEqual(new[] { 1, 2, 3, 4, 8, 9, 10, 11 }),
-            "only BRA may carry unit references; fixed drawings remain eligible");
+        Expect(selected.Select(shape => shape.Id).SequenceEqual(Enumerable.Range(1, 11)),
+            "every drawing kind shares, unit-linked or fixed; unknown kinds stay local");
         var packet = new DrawingPacket(DrawingPacketKind.Snapshot, new SharedMissionEpoch(37, 1234.5, 7),
             Guid.NewGuid(), Guid.NewGuid(), 1, Array.Empty<string>(), selected);
         Expect(DrawingProtocol.TryEncode(packet, out var bytes), "eligible snapshot encodes");
         Expect(DrawingProtocol.TryDecode(bytes, out var decoded) && decoded != null, "eligible snapshot decodes");
         var received = new ReceivedDrawings();
-        Expect(received.TryReplace(10, decoded!.Shapes) && received.Shapes.Count == 8,
+        Expect(received.TryReplace(10, decoded!.Shapes) && received.Shapes.Count == 11,
             "recipient accepts every eligible drawing together");
         Expect(received.Shapes.All(shape => shape.Id < 0), "shared drawings retain remote identities");
         Expect(received.TryFindOwner(received.Shapes[0], out var owner, out var sourceId) && owner == 10 && sourceId == 1,
@@ -389,6 +391,20 @@ internal static class ReceivedDrawingsTests
         bearing.AddWorldLabel(context, context);
         ExpectText(context.MapLabels.Single(), "090° 4.0km 400 m");
         Expect(context.WorldLabels.Single().Position == context.Positions[2], "shared BRA follows recipient track movement");
+    }
+
+    private static void ReceiverAnchoredShapes()
+    {
+        var context = new BearingContext();
+        var circle = Stamp(new CircleShape(new MapPoint(new Vector2(-900000, 800000), 1), 500, 0, Color), 1);
+        var note = Stamp(new TextNote(new MapPoint(new Vector2(700000, -600000), 2), 0, "bandit", Color), 2);
+        Expect(new ReceivedDrawings().TryReplace(10, new MapShape[] { circle, note }), "receive unit circle and note");
+        circle.Draw(context);
+        circle.AddWorldRing(context, context);
+        note.AddWorldLabel(context, context);
+        Expect(context.Circles.Single() == new Vector2(1000, 2000) && context.Rings.Single() == context.Positions[1],
+            "unit circle centres on the recipient's track on the map and in the HUD");
+        Expect(context.WorldLabels.Single().Position == context.Positions[2], "unit note sits on the recipient's track in the HUD");
     }
 
     private static void LostBearing()
@@ -467,6 +483,8 @@ internal static class ReceivedDrawingsTests
         public List<(Vector2 From, Vector2 To)> Arrows { get; } = new();
         public List<string> MapLabels { get; } = new();
         public List<(Vector3 Position, string Text)> WorldLabels { get; } = new();
+        public List<Vector2> Circles { get; } = new();
+        public List<Vector3> Rings { get; } = new();
         public ShapeStore Shapes { get; } = new();
         public ShapeColor Color => ReceivedDrawingsTests.Color;
         public float LineWidth => 1f;
@@ -494,9 +512,9 @@ internal static class ReceivedDrawingsTests
         public void Add(Vector3 position, string text, ShapeColor color) => WorldLabels.Add((position, text));
         public void Line(Vector2 from, Vector2 to, ShapeColor color) { }
         public void Polyline(IReadOnlyList<Vector2> points, ShapeColor color) { }
-        public void Circle(Vector2 center, float radius, ShapeColor color) { }
+        public void Circle(Vector2 center, float radius, ShapeColor color) => Circles.Add(center);
         public void Marker(Vector2 position, ShapeColor color) { }
-        public void Ring(Vector3 center, float radius, ShapeColor color) { }
+        public void Ring(Vector3 center, float radius, ShapeColor color) => Rings.Add(center);
     }
 
     private sealed class UnknownShape : MapShape

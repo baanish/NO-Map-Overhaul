@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using NoMapOverhaul.MapTools;
 using NoMapOverhaul.MapTools.BearingRange;
@@ -21,6 +22,7 @@ internal static class DrawingProtocolTests
         ("drawing protocol shares single-click pen dots and rejects empty strokes", PenDots),
         ("drawing protocol preserves handshake subscriptions and sessions", Handshakes),
         ("drawing protocol rejects other versions on every packet kind and tells them from malformed data", PreviousVersion),
+        ("native drawing header reads only the fixed prefix before version filtering", NativeHeader),
         ("drawing protocol fits maximum canonical control frames", ControlPacketBounds),
         ("drawing protocol bounds and validates erase requests", DeleteRequests),
         ("drawing protocol rejects every truncated prefix and trailing bytes", Truncation),
@@ -34,6 +36,32 @@ internal static class DrawingProtocolTests
     };
 
     private static readonly ShapeColor Color = new(1, 2, 3, 4);
+    private static void NativeHeader()
+    {
+        var prefix = Marshal.AllocHGlobal(6);
+        try
+        {
+            Marshal.WriteInt32(prefix, unchecked((int)DrawingProtocol.Magic));
+            Marshal.WriteByte(prefix, 4, DrawingProtocol.Version);
+            foreach (var kind in Enum.GetValues<DrawingPacketKind>())
+            {
+                Marshal.WriteByte(prefix, 5, (byte)kind);
+                Expect(DrawingProtocol.TryReadHeader(prefix, DrawingProtocol.MaxPacketBytes, out var version, out var readKind) &&
+                    version == 6 && readKind == kind, "a declared full frame needs only six native bytes for version and kind");
+                Marshal.WriteByte(prefix, 4, 5);
+                Expect(DrawingProtocol.TryReadHeader(prefix, DrawingProtocol.MaxPacketBytes, out version, out readKind) &&
+                    version == 5 && readKind == kind, "another version is recognized before allocating or copying a payload");
+                Marshal.WriteByte(prefix, 4, DrawingProtocol.Version);
+            }
+            for (var size = 0; size < 6; size++)
+                Expect(!DrawingProtocol.TryReadHeader(prefix, size, out _, out _), "truncated prefix is not read");
+            Expect(!DrawingProtocol.TryReadHeader(IntPtr.Zero, 6, out _, out _), "null native pointer is not read");
+            Marshal.WriteInt32(prefix, 0);
+            Expect(!DrawingProtocol.TryReadHeader(prefix, 6, out _, out _), "wrong magic is rejected before copying");
+        }
+        finally { Marshal.FreeHGlobal(prefix); }
+    }
+
     private static readonly Guid Sender = new("01234567-89ab-cdef-0123-456789abcdef");
     private static readonly Guid Recipient = new("fedcba98-7654-3210-fedc-ba9876543210");
     private static DrawingPacket Packet(params MapShape[] shapes) => new(DrawingPacketKind.Snapshot,
@@ -209,15 +237,17 @@ internal static class DrawingProtocolTests
         foreach (var packet in packets)
         {
             var bytes = Encode(packet);
-            Expect(bytes[4] == 5, "heartbeats that name a snapshot need protocol version five");
+            Expect(bytes[4] == 6, "unit-linked circles, notes and routes need protocol version six");
             Expect(BitConverter.ToUInt32(bytes, DrawingProtocol.SequenceOffset) == packet.Sequence,
                 "the receiver reads a snapshot's sequence before decoding it");
             Decode(bytes);
+            Reject(Replace(bytes, 4, new byte[] { 5 }));
             Reject(Replace(bytes, 4, new byte[] { 4 }));
             Reject(Replace(bytes, 4, new byte[] { 3 }));
             Reject(Replace(bytes, 4, new byte[] { 2 }));
             Expect(!DrawingProtocol.IsOtherVersion(bytes) && DrawingProtocol.IsOtherVersion(Replace(bytes, 4, new byte[] { 3 })) &&
-                DrawingProtocol.IsOtherVersion(Replace(bytes, 4, new byte[] { 6 })), "another release's frames are told apart from malformed data");
+                DrawingProtocol.IsOtherVersion(Replace(bytes, 4, new byte[] { 5 })) &&
+                DrawingProtocol.IsOtherVersion(Replace(bytes, 4, new byte[] { 7 })), "another release's frames are told apart from malformed data");
             Expect(!DrawingProtocol.IsOtherVersion(Replace(bytes, 0, new byte[] { 0 })), "a frame without the magic is malformed, not another version");
         }
     }

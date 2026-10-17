@@ -17,6 +17,7 @@
     <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingDiscovery.cs" Link="Sharing\DrawingDiscovery.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingReceiveBudget.cs" Link="Sharing\DrawingReceiveBudget.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingNetworkSchedule.cs" Link="Sharing\DrawingNetworkSchedule.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingSnapshotBudget.cs" Link="Sharing\DrawingSnapshotBudget.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\DrawingNetworkLog.cs" Link="Diagnostics\DrawingNetworkLog.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingProtocol.cs" Link="Sharing\DrawingProtocol.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\DrawingChannels.cs" Link="MapTools\DrawingChannels.cs" />

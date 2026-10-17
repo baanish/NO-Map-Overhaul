@@ -4,6 +4,7 @@ namespace NoMapOverhaul.Sharing;
 internal sealed class DrawingNetworkSchedule
 {
     public const double TickInterval = 0.2;
+    public const double SnapshotInterval = 0.5;
     private double _nextTick;
 
     public bool TryTick(double now)

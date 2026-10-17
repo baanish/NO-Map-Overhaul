@@ -51,9 +51,13 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
 
     private readonly ModSettings _settings;
     private readonly IMapView _view;
-    private readonly Dictionary<MapShape, ShapeGraphics> _graphics = new();
-    private readonly HashSet<MapShape> _seen = new();
-    private readonly List<MapShape> _stale = new();
+    /// <summary>
+    /// By shape id, not shape: an edit or a teammate's update replaces the shape under the same id, and its graphics
+    /// redraw in place rather than being destroyed and built again.
+    /// </summary>
+    private readonly Dictionary<int, ShapeGraphics> _graphics = new();
+    private readonly HashSet<int> _seen = new();
+    private readonly List<int> _stale = new();
     private ShapeGraphics?[] _overlays = System.Array.Empty<ShapeGraphics?>();
     private readonly LabelLayout _labelLayout = new();
     private readonly LabelObstacles _obstacleFinder = new();
@@ -194,14 +198,14 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             // A zoom or a new style moves every label, and a shape gone from the store takes its labels with it.
             _labelsChanged |= restyle || synced;
 
-            foreach (var pair in _graphics)
+            foreach (var graphics in _graphics.Values)
             {
-                var graphics = pair.Value;
                 if (graphics.Undrawn || restyle || (tick && graphics.Live))
                 {
+                    var shape = graphics.Shape!;
                     Begin(graphics);
-                    _dimmed = pair.Key.Channel != store.DrawingChannel;
-                    pair.Key.Draw(this);
+                    _dimmed = shape.Channel != store.DrawingChannel;
+                    shape.Draw(this);
                     _dimmed = false;
                     End();
                 }
@@ -276,7 +280,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         _placements.Clear();
         foreach (var pair in _graphics)
         {
-            pair.Value.AddLabels(_placing, pair.Key.Id, overlay: false);
+            pair.Value.AddLabels(_placing, pair.Key, overlay: false);
         }
 
         foreach (var overlay in _overlays)
@@ -381,7 +385,8 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
     /// <summary>Only on the full map, the one map the tools take clicks on.</summary>
     public bool TryGetBox(MapShape shape, int index, out LabelBox box)
     {
-        if (_placedOnFullMap && _graphics.TryGetValue(shape, out var graphics) && graphics.TryGetPlacement(index) is { Slot: >= 0 } placement)
+        if (_placedOnFullMap && _graphics.TryGetValue(shape.Id, out var graphics) && ReferenceEquals(graphics.Shape, shape) &&
+            graphics.TryGetPlacement(index) is { Slot: >= 0 } placement)
         {
             box = placement.Box;
             return true;
@@ -543,7 +548,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         }
     }
 
-    /// <summary>Makes graphics for new shapes, drops those of shapes gone from the store, and orders them as the store does, overlays on top.</summary>
+    /// <summary>Makes graphics for new ids, drops those of ids gone from the store, and orders them as the store does, overlays on top.</summary>
     private void Sync(ShapeStore store, IReadOnlyList<MapShape> received)
     {
         _seen.Clear();
@@ -551,12 +556,13 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         for (var i = 0; i < shapes.Count + received.Count; i++)
         {
             var shape = i < shapes.Count ? shapes[i] : received[i - shapes.Count];
-            if (!_graphics.TryGetValue(shape, out var graphics))
+            if (!_graphics.TryGetValue(shape.Id, out var graphics))
             {
                 graphics = new ShapeGraphics(_layer!, _markerRoot!, _labelRoot!, _plateText!, "MapShape");
-                _graphics.Add(shape, graphics);
+                _graphics.Add(shape.Id, graphics);
             }
 
+            graphics.Shape = shape;
             if (graphics.Rect.GetSiblingIndex() != i)
             {
                 graphics.Rect.SetSiblingIndex(i);
@@ -567,7 +573,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
                 graphics.MarkerRect.SetSiblingIndex(i);
             }
 
-            _seen.Add(shape);
+            _seen.Add(shape.Id);
         }
 
         _stale.Clear();
@@ -580,9 +586,9 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
             }
         }
 
-        foreach (var shape in _stale)
+        foreach (var id in _stale)
         {
-            _graphics.Remove(shape);
+            _graphics.Remove(id);
         }
 
         foreach (var overlay in _overlays)
@@ -659,6 +665,7 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         private readonly Transform _labelParent;
         private readonly PlateText _plateText;
         private ImageBatch? _markers;
+        private MapShape? _shape;
         private int _labelsUsed;
 
         /// <summary>How many labels the last finished draw used.</summary>
@@ -686,6 +693,20 @@ internal sealed class MapShapeLayer : IMapCanvas, ILabelPlacements
         public bool Live { get; set; }
 
         public bool Undrawn { get; private set; } = true;
+
+        /// <summary>The stored shape this draws, or null for a tool's overlay. A different one draws on the next render.</summary>
+        public MapShape? Shape
+        {
+            get => _shape;
+            set
+            {
+                if (!ReferenceEquals(_shape, value))
+                {
+                    _shape = value;
+                    Undrawn = true;
+                }
+            }
+        }
 
         /// <summary>For a tool's overlay, the id of the stored shape it draws again (<see cref="MapTool.RedrawnShape"/>), or 0.</summary>
         public int RedrawnId { get; set; }

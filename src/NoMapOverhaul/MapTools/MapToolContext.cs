@@ -113,12 +113,17 @@ internal sealed class MapToolContext : IMapToolContext
 
     public bool IsUnitGone(uint unitId) => !TryGetUnit(unitId, out _);
 
-    /// <summary>Remote anchors require live recipient faction tracks; local spectator and lost-position fallbacks cannot make them visible.</summary>
+    /// <summary>
+    /// A remote anchor needs a position from the recipient's own faction, live or last known, and then draws like a
+    /// local one, reading <c>lost</c> once the track goes stale. A unit the faction never knew has no position to draw
+    /// at, since the sender's isn't sent, and a spectator has no faction to know it.
+    /// </summary>
     public bool KnowsSharedUnit(uint unitId)
     {
         var map = SceneSingleton<DynamicMap>.i;
-        return map != null && map.HQ != null && TryGetUnit(unitId, out var unit) &&
-            map.HQ.IsTargetBeingTracked(unit) && map.HQ.TryGetKnownPosition(unit, out _);
+        if (map == null || map.HQ == null) return false;
+        var state = Locate(unitId, out var global);
+        return _known.TryResolve(unitId, state, new WorldVector(global.x, global.y, global.z), out _);
     }
 
     /// <summary>Units from a mission that ended are gone; the next mission reuses ids.</summary>

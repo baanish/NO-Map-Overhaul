@@ -33,6 +33,8 @@ internal sealed class DrawingPeerState
     public uint Advertised;
     public double ReceiveWindow;
     public int ReceiveCount;
+    public int ReceiveBytes;
+    public readonly DrawingSnapshotBudget.Peer ReceivedSnapshots = new();
     public int SentVersion = -1;
     public int Revision = -1;
     public uint Sequence;
@@ -53,16 +55,20 @@ internal sealed class DrawingPeerState
     /// backlog and re-pairs; it is not quarantine, since a stall or quick channel changes are not an attack.
     /// </summary>
     public const int FloodMessages = 40;
+    public const int FloodBytes = 256 * 1024;
 
     public bool CanTransmit(double now) => now >= _retryAt;
 
-    /// <summary>Counts one received message. Returns false once the peer is over <see cref="FloodMessages"/> this second.</summary>
-    public bool CountReceive(double now, out bool flooded)
+    /// <summary>Counts every dequeued frame, including unauthorized and superseded ones, before any managed copy.</summary>
+    public bool CountReceive(double now, out bool flooded, int bytes = 0)
     {
-        if (now - ReceiveWindow >= 1) { ReceiveWindow = now; ReceiveCount = 0; }
+        if (now - ReceiveWindow >= 1) { ReceiveWindow = now; ReceiveCount = ReceiveBytes = 0; }
+        var wasFlooded = ReceiveCount > FloodMessages || ReceiveBytes > FloodBytes;
         ReceiveCount++;
-        flooded = ReceiveCount == FloodMessages + 1;
-        return ReceiveCount <= FloodMessages;
+        ReceiveBytes = (int)Math.Min((long)FloodBytes + 1, (long)ReceiveBytes + Math.Max(0, bytes));
+        var allowed = ReceiveCount <= FloodMessages && ReceiveBytes <= FloodBytes;
+        flooded = !allowed && !wasFlooded;
+        return allowed;
     }
 
     public bool CanRequestDelete(double now) => Protocol.IsReady && CanTransmit(now) &&
@@ -82,6 +88,7 @@ internal sealed class DrawingPeerState
     public void ObserveHandshake()
     {
         if (Revision == Protocol.Revision) return;
+        ReceivedSnapshots.Pending = null;
         Revision = Protocol.Revision;
         if (Revision > 0)
         {
@@ -113,6 +120,7 @@ internal sealed class DrawingPeerState
 
     public void Restart(double retryAt = 0)
     {
+        ReceivedSnapshots.Pending = null;
         _compatible |= Protocol.Revision > 0;
         Protocol = new DrawingPeer(_epoch, _receive, _broadcast);
         // A transport failure is not evidence that an unknown teammate has the mod.

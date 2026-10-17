@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using NoMapOverhaul.MapTools;
 using NoMapOverhaul.MapTools.BearingRange;
@@ -55,7 +56,7 @@ public sealed class DrawingPacket
 public static class DrawingProtocol
 {
     public const uint Magic = 0x444F4D4E;
-    public const byte Version = 5;
+    public const byte Version = 6;
     public const int MaxPacketBytes = 65536;
     /// <summary>Per owner snapshot. The local drawing and pen-point settings top out at 100 and 2,500, so they fit.</summary>
     public const int MaxShapes = 100;
@@ -104,6 +105,16 @@ public static class DrawingProtocol
     /// </summary>
     public static bool IsOtherVersion(byte[] bytes) =>
         bytes.Length > 4 && BitConverter.ToUInt32(bytes, 0) == Magic && bytes[4] != Version;
+
+    public static bool TryReadHeader(IntPtr data, int size, out byte version, out DrawingPacketKind kind)
+    {
+        version = 0;
+        kind = 0;
+        if (data == IntPtr.Zero || size < 6 || (uint)Marshal.ReadInt32(data) != Magic) return false;
+        version = Marshal.ReadByte(data, 4);
+        kind = (DrawingPacketKind)Marshal.ReadByte(data, 5);
+        return true;
+    }
 
     public static bool TryEncode(DrawingPacket? packet, out byte[] bytes)
     {

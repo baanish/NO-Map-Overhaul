@@ -46,6 +46,15 @@ public sealed class ReceivedDrawings
 
     public bool TryReplace(ulong sender, MapShape[] wireShapes) => TryReplace(sender, wireShapes, out _);
 
+    public int ChangeCost(ulong sender, MapShape[] wireShapes)
+    {
+        _owners.TryGetValue(sender, out var previous);
+        var cost = 0;
+        foreach (var shape in wireShapes)
+            if (previous == null || !previous.TryGetValue(shape.Id, out var old) || !SameContent(old, shape)) cost++;
+        return cost;
+    }
+
     public bool TryReplace(ulong sender, MapShape[] wireShapes, out bool capacityExceeded)
     {
         capacityExceeded = false;
@@ -182,24 +191,12 @@ public sealed class ReceivedDrawings
 
 public static class SharedShapeVisibility
 {
-    /// <summary>Only BRA drawings may share unit references; the codec excludes anchored positions and elevations.</summary>
-    public static bool CanShare(MapShape shape) => shape is BearingRangeShape || HasNoAnchors(shape);
-
-    public static bool HasNoAnchors(MapShape shape) => shape switch
-    {
-        BearingRangeShape bearing => !bearing.From.IsAnchored && !bearing.To.IsAnchored,
-        CircleShape circle => !circle.Center.IsAnchored,
-        PenStroke => true,
-        TextNote note => !note.At.IsAnchored,
-        WaypointRoute route => RouteHasNoAnchors(route),
-        _ => false
-    };
-
-    private static bool RouteHasNoAnchors(WaypointRoute route)
-    {
-        for (var i = 0; i < route.Count; i++) if (route[i].Point.IsAnchored) return false;
-        return true;
-    }
+    /// <summary>
+    /// Every drawing kind shares, unit-linked ones included: the codec sends a unit anchor as its mission ID alone, with
+    /// zero position and elevation, and each recipient places it from its own tracks.
+    /// </summary>
+    public static bool CanShare(MapShape shape) =>
+        shape is BearingRangeShape or CircleShape or PenStroke or TextNote or WaypointRoute;
 
     /// <summary>Every anchor must pass the recipient's visibility check; sender fallback data cannot establish visibility.</summary>
     public static bool HasKnownAnchors(MapShape shape, Func<uint, bool> known)

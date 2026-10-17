@@ -16,10 +16,34 @@ internal static class DrawingPeerStateTests
         ("known drawing peers can reconnect after asynchronous transport failure", CompatibleRecovery),
         ("drawing session restart retains receive and nonce churn budgets", RestartBudgets),
         ("a stall's backlog is received until the flood limit, which flags the peer once per second", FloodLimit),
+        ("drawing receive byte window bounds full frames and survives transport restart", ByteLimit),
         ("erase eligibility respects handshake, request cooldown, sequence, and transport retry", DeleteEligibility),
     };
 
     private static readonly SharedMissionEpoch Epoch = new(42, 100.25, 7);
+    private static void ByteLimit()
+    {
+        Expect(DrawingPeerState.FloodBytes == 256 * 1024, "peer byte policy is exactly two hundred fifty-six KiB per window");
+        var state = State();
+        for (var i = 0; i < 4; i++)
+            Expect(state.CountReceive(i * 0.2, out var flooded, DrawingProtocol.MaxPacketBytes) && !flooded,
+                "four full frames reach but do not exceed the byte budget");
+        Expect(state.ReceiveBytes == 256 * 1024 && state.ReceiveCount == 4, "all frames are charged even when payload handling skips them");
+        Expect(!state.CountReceive(0.8, out var overBytes, 1) && overBytes, "one byte over budget triggers one channel reset");
+        state.Restart(5.8);
+        Expect(!state.CountReceive(0.9, out overBytes, int.MaxValue) && !overBytes, "restart preserves exhausted bytes and overflow cannot renew the budget");
+        Expect(!state.CountReceive(0.999, out overBytes, 1) && !overBytes, "window stays exhausted until one second");
+        Expect(state.CountReceive(1, out overBytes, DrawingProtocol.MaxPacketBytes) && !overBytes &&
+            state.ReceiveBytes == DrawingProtocol.MaxPacketBytes && state.ReceiveCount == 1, "new window renews both receive limits together");
+        for (var second = 2; second < 12; second++)
+        {
+            Expect(state.CountReceive(second, out overBytes, DrawingProtocol.MaxPacketBytes) && !overBytes &&
+                state.CountReceive(second + 0.5, out overBytes, DrawingProtocol.MaxPacketBytes) && !overBytes &&
+                state.CountReceive(second + 0.5, out overBytes, 1024) && !overBytes,
+                "honest two full snapshots and control frames per second fit");
+        }
+    }
+
     private static DrawingPeerState State() => new(Epoch, Array.Empty<string>(), new[] { "command" });
     private static DrawingPeer Peer() => new(Epoch, Array.Empty<string>(), new[] { "command" });
 

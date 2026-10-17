@@ -37,6 +37,7 @@ internal static class Program
         tests.AddRange(DrawingDiscoveryTests.All);
         tests.AddRange(DrawingReceiveBudgetTests.All);
         tests.AddRange(DrawingNetworkScheduleTests.All);
+        tests.AddRange(DrawingSnapshotBudgetTests.All);
         tests.AddRange(DrawingNetworkLogTests.All);
         tests.AddRange(SteamConnectionOwnershipTests.All);
         tests.AddRange(ReceivedDrawingsTests.All);

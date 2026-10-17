@@ -37,9 +37,8 @@ On the full map, open Tools > Channels to set Broadcast, Receive only,
 and Sharing, then click Apply. Each list takes max 10 comma-separated names. Shift+1 to
 Shift+9 or Shift+0 picks only from the Broadcast list. Broadcast channels send
 and receive drawings; Receive only adds read-only subscriptions.
-Unit-linked BRA arrows use each recipient's live tracks and hide when either endpoint
-is untracked. Other unit-attached drawings stay local. Both clients need this updated
-protocol-5 build. Channel names are not passwords. Members who
+Drawings attached to units use each recipient's own tracks and read "lost" at the
+last known position, like local ones. Both clients need this updated protocol-6 build. Channel names are not passwords. Members who
 broadcast a channel can request a shared erase from another broadcaster with Eraser or
 right-click, then redraw a replacement. Receive-only channels stay read-only.
 The drawing stays visible until the owner's update arrives. If NOAutopilot is installed, the mod holds back

@@ -36,7 +36,7 @@ On the full map, click **Tools** or press `H` to open a rail of planning tools b
 
 ![A BRA arrow to an enemy reading 189° 2.4nm 1.5k ft; two 2 nm range circles; a BRA label with a note stacked under it in the 3D view; and a range circle drawn as a ring on the ground](docs/images/gallery-map-tools.jpg)
 
-Drawings clear when you leave the mission. Sharing is optional. Members who broadcast the same channel can erase and redraw shared drawings; Receive-only channels are read-only. Local drawings on other units use only what your side knows: when your side loses a contact, they stop where it was last seen and read `lost`. Shared BRA arrows follow units using the recipient's own tracks and hide while either endpoint is untracked. Unit-attached circles, notes, and routes stay local-only.
+Drawings clear when you leave the mission. Sharing is optional. Members who broadcast the same channel can erase and redraw shared drawings; Receive-only channels are read-only. Local drawings on other units use only what your side knows: when your side loses a contact, they stop where it was last seen and read `lost`. Shared drawings on units work the same way from the recipient's own tracks, and stay hidden only while their side has never known the unit.
 
 The tools work alongside [NOAutopilot](https://github.com/qwerty1423/no-autopilot-mod). Its right-click waypoints work as usual while the rail is closed. While the rail is open, an optional NOAutopilot patch holds them back, so a right click that deletes a drawing doesn't also move your autopilot route.
 
