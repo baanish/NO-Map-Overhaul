@@ -9,7 +9,10 @@ using static NoMapOverhaul.MapTools.RailGrid;
 
 namespace NoMapOverhaul.MapTools;
 
-/// <summary>What a click in the menu asked for. Tool, Option, and Swatch carry an index.</summary>
+/// <summary>
+/// What a click in the menu asked for. Tool, Option, Swatch, and the custom swatch commands carry an index; a custom
+/// swatch's is its slot, where the slot just past the custom colours is the + that opens the colour picker.
+/// </summary>
 internal enum MenuCommand
 {
     None,
@@ -17,6 +20,8 @@ internal enum MenuCommand
     Tool,
     Option,
     Swatch,
+    CustomSwatch,
+    RemoveCustomSwatch,
     Undo,
     Redo,
     Clear,
@@ -25,7 +30,8 @@ internal enum MenuCommand
 /// <summary>
 /// The map tools' menu on the full map: a slim rail of line icons, and a strip that names the picked tool, says
 /// what a click does, and holds the tool's option buttons, in the game's MFD green on dark. The rail holds the Tools head,
-/// which opens and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches. Hovering a cell names it,
+/// which opens and closes it, a cell per tool, Undo, Redo, and Clear, and the colour swatches: the built-in six, then a
+/// row of the player's own colours with a + in the first free slot (<see cref="MapColorPanel"/>). Hovering a cell names it,
 /// with its key. A warning turns the strip amber and badges the tool that raised it.
 /// Where there's room, the rail stands left of the map in columns and the strip above it, so the map stays clear; each
 /// falls back to the map's top-left corner, where together they frame the corner as an L (<see cref="MenuLayout"/>).
@@ -60,6 +66,9 @@ internal sealed class MapToolMenu
     private const float TagHeight = 28f;
     private const float TagPad = 12f;
     private const float WarnIconWidth = 24f;
+
+    /// <summary>Between the colour picker and the map's edge, or the rail or strip inside the map.</summary>
+    private const float PanelMargin = 8f;
 
     private const float NameSize = 13f;
     private const float HintSize = 15f;
@@ -99,6 +108,7 @@ internal sealed class MapToolMenu
     private readonly List<StripButton> _options = new();
     private readonly List<(TextMeshProUGUI Text, FontStyles Extra)> _texts = new();
     private readonly List<RectTransform> _swatches = new();
+    private readonly List<CustomSwatch> _customSwatches = new();
     private readonly List<RectTransform> _areas = new(2);
     private readonly List<Vector2> _outline = new();
     private readonly Vector3[] _corners = new Vector3[4];
@@ -140,9 +150,11 @@ internal sealed class MapToolMenu
 
     private int _shownTool = -2;
     private int _shownSwatch = -2;
+    private IReadOnlyList<ShapeColor>? _shownCustom;
+    private bool _plusBright;
     private RailCell? _shownTag;
     private bool _stripDirty;
-    private int _sharingLayoutVersion;
+    private int _panelLayoutVersion;
     private string _status = string.Empty;
     private string _toolStatus = string.Empty;
     private string _sharingStatus = string.Empty;
@@ -157,6 +169,7 @@ internal sealed class MapToolMenu
 
     public MapPointerCatcher? Catcher { get; private set; }
     public MapSharingPanel? Sharing { get; private set; }
+    public MapColorPanel? ColorPanel { get; private set; }
 
     /// <summary>The rail and the strip while they sit inside the map, for map labels to keep clear of. Inactive ones aren't showing.</summary>
     public IReadOnlyList<RectTransform> Areas => _areas;
@@ -172,10 +185,13 @@ internal sealed class MapToolMenu
         return command;
     }
 
-    /// <summary>Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the rail is closed.</summary>
+    /// <summary>
+    /// Per frame while the full map is open. <paramref name="activeTool"/> is -1 while the rail is closed, and
+    /// <paramref name="customColors"/> are the player's own swatches, a new list whenever they change.
+    /// </summary>
     public void Render(DynamicMap map, IReadOnlyList<MapTool> tools, IReadOnlyList<RailIcon> icons,
-        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys, int activeTool, ShapeStore store, ShapeColor color, TextMeshProUGUI? hudStyle,
-        string sharingStatus, DrawingChannels broadcast, DrawingChannels receive)
+        IReadOnlyList<ConfigEntry<KeyboardShortcut>> keys, int activeTool, ShapeStore store, ShapeColor color, IReadOnlyList<ShapeColor> customColors,
+        TextMeshProUGUI? hudStyle, string sharingStatus, DrawingChannels broadcast, DrawingChannels receive)
     {
         EnsureBuilt(map, tools, icons, keys);
         Place(map, tools.Count);
@@ -185,9 +201,16 @@ internal sealed class MapToolMenu
         SetActive(Catcher!.gameObject, open);
         Sharing!.Render(broadcast, receive, _settings.MapSharingEnabled.Value, sharingStatus, hudStyle);
         Sharing.SetVisible(open);
-        if (_sharingLayoutVersion != Sharing.LayoutVersion)
+        if (!open)
         {
-            _sharingLayoutVersion = Sharing.LayoutVersion;
+            ColorPanel!.Close();
+        }
+
+        ColorPanel!.Render(hudStyle);
+        var panels = Sharing.LayoutVersion + ColorPanel.LayoutVersion; // each only goes up
+        if (_panelLayoutVersion != panels)
+        {
+            _panelLayoutVersion = panels;
             LayoutVersion++;
         }
         if (!ReferenceEquals(hudStyle, _fontSource) && hudStyle != null)
@@ -243,7 +266,8 @@ internal sealed class MapToolMenu
         _undo.Show(false, store.CanUndo, _undo.Hover.Hovered);
         _redo.Show(false, store.CanRedo, _redo.Hover.Hovered);
         _clear.Show(false, store.Shapes.Count > 0, _clear.Hover.Hovered);
-        ShowSwatch(IndexOf(color));
+        ShowCustomSwatches(customColors);
+        ShowSwatch(IndexOf(color, customColors));
 
         foreach (var cell in _cells)
         {
@@ -260,6 +284,7 @@ internal sealed class MapToolMenu
     public void Hide()
     {
         Sharing?.SetVisible(false);
+        ColorPanel?.Close();
         _command = default;
         _placedFor = null;
         if (_root != null)
@@ -276,6 +301,7 @@ internal sealed class MapToolMenu
     public void Reset()
     {
         Sharing = null;
+        ColorPanel = null;
         if (_root != null)
         {
             Object.Destroy(_root.gameObject);
@@ -293,13 +319,15 @@ internal sealed class MapToolMenu
         _options.Clear();
         _texts.Clear();
         _swatches.Clear();
+        _customSwatches.Clear();
         _areas.Clear();
-        _sharingLayoutVersion = 0;
+        _panelLayoutVersion = 0;
         _placedFor = null;
         _fontSource = null;
         _command = default;
         _shownTool = -2;
         _shownSwatch = -2;
+        _shownCustom = null;
         _shownTag = null;
         _optionLabels = null;
         LayoutVersion++;
@@ -623,6 +651,60 @@ internal sealed class MapToolMenu
         Box(_tag, x, y, width, TagHeight);
     }
 
+    /// <summary>
+    /// The custom row: a chip per colour, the + in the first free slot, brighter under the cursor, and nothing in the
+    /// slots after it. Redrawn only when the colours change or the + is hovered or left.
+    /// </summary>
+    private void ShowCustomSwatches(IReadOnlyList<ShapeColor> colors)
+    {
+        var plus = colors.Count < _customSwatches.Count ? _customSwatches[colors.Count] : null;
+        var bright = plus != null && plus.Hover.Hovered;
+        if (ReferenceEquals(colors, _shownCustom) && bright == _plusBright)
+        {
+            return;
+        }
+
+        _plusBright = bright;
+        if (!ReferenceEquals(colors, _shownCustom))
+        {
+            _shownCustom = colors;
+            for (var i = 0; i < _customSwatches.Count; i++)
+            {
+                var slot = _customSwatches[i];
+                SetActive(slot.Rect.gameObject, i <= colors.Count);
+                SetActive(slot.Chip.gameObject, i < colors.Count);
+                SetActive(slot.Plus.gameObject, i == colors.Count);
+                if (i < colors.Count)
+                {
+                    slot.Chip.color = colors[i].ToColor32();
+                }
+            }
+        }
+
+        if (plus != null)
+        {
+            // A dim outline where a chip would be, round a plus in the icons' green.
+            const float inset = (SwatchCell - SwatchChip) * 0.5f;
+            const float middle = SwatchCell * 0.5f;
+            const float arm = 4f;
+            var graphic = plus.Plus;
+            graphic.Clear();
+            graphic.AddPoint(P(inset, inset));
+            graphic.AddPoint(P(inset + SwatchChip, inset));
+            graphic.AddPoint(P(inset + SwatchChip, inset + SwatchChip));
+            graphic.AddPoint(P(inset, inset + SwatchChip));
+            graphic.EndStroke(true, 0.5f * Px, Fade(Green, 0.45f), 0f, Fade(Green, 0.45f), Feather);
+            var color = Fade(Green, bright ? 1f : RestOpacity);
+            graphic.AddPoint(P(middle - arm, middle));
+            graphic.AddPoint(P(middle + arm, middle));
+            graphic.EndStroke(false, 0.75f * Px, color, 0f, color, Feather);
+            graphic.AddPoint(P(middle, middle - arm));
+            graphic.AddPoint(P(middle, middle + arm));
+            graphic.EndStroke(false, 0.75f * Px, color, 0f, color, Feather);
+            graphic.Apply();
+        }
+    }
+
     private void ShowSwatch(int index)
     {
         if (index == _shownSwatch)
@@ -673,14 +755,14 @@ internal sealed class MapToolMenu
         var scale = mapRect.lossyScale.x;
         var mapBox = new PixelBox(key.Map.xMin, key.Height - key.Map.yMax, key.Map.width, key.Map.height);
         (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, mapBox, scale * Px, MenuLayout.GameHud(key.Width, key.Height, scale),
-            toolCount, ShapeColor.Palette.Count);
+            toolCount, ShapeColor.Palette.Count, CustomColors.Max);
 
         _strip.SetParent(_stripPlace.Outside ? outside : _root, false);
         _rail.SetParent(_railPlace.Outside ? outside : _root, false);
         _strip.SetAsLastSibling();
         _rail.SetAsLastSibling(); // over the strip, for the joined rim and the hover tag
         Box(_rail, _railPlace.X, _railPlace.Y, 0f, 0f);
-        _grid = new RailGrid(_railPlace.Columns, toolCount, ShapeColor.Palette.Count);
+        _grid = new RailGrid(_railPlace.Columns, toolCount, ShapeColor.Palette.Count, CustomColors.Max);
         _head.Place(_grid.Head);
         for (var i = 0; i < toolCount; i++)
         {
@@ -697,8 +779,12 @@ internal sealed class MapToolMenu
         }
 
         DrawDividers(joined: !_railPlace.Outside && !_stripPlace.Outside);
+        // The colour picker opens in the map's top-left corner, right of the rail and under the strip where they're inside.
+        ColorPanel!.Place(_railPlace.Outside ? PanelMargin : _railPlace.X + _grid.Width + PanelMargin,
+            _stripPlace.Outside ? PanelMargin : _stripPlace.Y + InsideStripMaxHeight + PanelMargin);
         _areas.Clear();
         _areas.Add(Sharing!.Area);
+        _areas.Add(ColorPanel.Area);
         if (!_railPlace.Outside)
         {
             _areas.Add(_railFill.rectTransform);
@@ -767,6 +853,7 @@ internal sealed class MapToolMenu
 
         var catcher = Stretch(NewRect("PointerCatcher", _root));
         catcher.gameObject.AddComponent<Image>().color = Color.clear;
+        catcher.GetComponent<CanvasRenderer>().cullTransparentMesh = true; // takes clicks, draws nothing over the map
         Catcher = catcher.gameObject.AddComponent<MapPointerCatcher>();
 
         _strip = NewRect("Strip", _root);
@@ -824,9 +911,27 @@ internal sealed class MapToolMenu
             _swatches.Add(cell.rectTransform);
         }
 
+        // The custom row, placed after the built-in swatches. A left click picks a colour or opens the picker, a right click removes one.
+        for (var i = 0; i < CustomColors.Max; i++)
+        {
+            var index = i;
+            var cell = NewGraphic<PolygonGraphic>("CustomSwatch", open, raycast: true);
+            var button = cell.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() => Record(MenuCommand.CustomSwatch, index));
+            cell.gameObject.AddComponent<MenuRightClick>().Clicked = () => Record(MenuCommand.RemoveCustomSwatch, index);
+            var chip = NewGraphic<Image>("Chip", cell.rectTransform, raycast: false);
+            Box(chip.rectTransform, (SwatchCell - SwatchChip) * 0.5f, (SwatchCell - SwatchChip) * 0.5f, SwatchChip, SwatchChip);
+            var plus = NewGraphic<StrokeGraphic>("Add", cell.rectTransform, raycast: false);
+            _customSwatches.Add(new CustomSwatch(cell.rectTransform, chip, plus, cell.gameObject.AddComponent<MenuHover>()));
+            _swatches.Add(cell.rectTransform);
+        }
+
         _swatchRing = NewGraphic<StrokeGraphic>("SwatchRing", open, raycast: false);
         BuildTag();
         Sharing = new MapSharingPanel(_root);
+        ColorPanel = new MapColorPanel(_root);
     }
 
     /// <summary>The strip's ground, rim, and contents, in design pixels from the strip's top-left corner.</summary>
@@ -921,13 +1026,22 @@ internal sealed class MapToolMenu
 
     private void Record(MenuCommand command, int index) => _command = (command, index);
 
-    private static int IndexOf(ShapeColor color)
+    /// <summary>The swatch showing <paramref name="color"/>, counting the built-in ones then the custom ones, or -1.</summary>
+    private static int IndexOf(ShapeColor color, IReadOnlyList<ShapeColor> customColors)
     {
         for (var i = 0; i < ShapeColor.Palette.Count; i++)
         {
             if (ShapeColor.Palette[i] == color)
             {
                 return i;
+            }
+        }
+
+        for (var i = 0; i < customColors.Count; i++)
+        {
+            if (customColors[i] == color)
+            {
+                return ShapeColor.Palette.Count + i;
             }
         }
 
@@ -1101,6 +1215,26 @@ internal sealed class MapToolMenu
             var color = picked ? Ink : Fade(Green, look == 1 ? DisabledOpacity : look == 2 ? 1f : RestOpacity);
             RailIcons.Draw(_icon, _kind, _iconCenter, _iconScale, Feather, color);
         }
+    }
+
+    /// <summary>A slot in the custom row: a chip for a colour, or the + outline in the first free slot.</summary>
+    private sealed class CustomSwatch
+    {
+        public CustomSwatch(RectTransform rect, Image chip, StrokeGraphic plus, MenuHover hover)
+        {
+            Rect = rect;
+            Chip = chip;
+            Plus = plus;
+            Hover = hover;
+        }
+
+        public RectTransform Rect { get; }
+
+        public Image Chip { get; }
+
+        public StrokeGraphic Plus { get; }
+
+        public MenuHover Hover { get; }
     }
 
     /// <summary>An option button in the strip: a 1 px border, a fill the button tints, and a caps label.</summary>

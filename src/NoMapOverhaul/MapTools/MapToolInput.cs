@@ -49,6 +49,7 @@ internal sealed class MapToolInput
 
     private ControllerMapSuspension _mouse = new(ControllerType.Mouse);
     private readonly ControllerMapSuspension _keyboard = new(ControllerType.Keyboard);
+    private bool _holdingPauseKey;
     private bool _pressed;
     private bool _panned;
     private bool _dragging;
@@ -61,17 +62,42 @@ internal sealed class MapToolInput
 
     public bool CaptureMenuKeyboard() => TakeKeyboard(null);
 
-    /// <summary>Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any.</summary>
-    public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool, bool menuKeyboard = false)
+    /// <summary>
+    /// A press on a menu panel: the mouse maps stay off until the button comes up, so a drag on the colour wheel doesn't
+    /// pan the map under it.
+    /// </summary>
+    public void HoldMouseUntilRelease()
     {
-        if (menuKeyboard)
+        _mouse.Suspend();
+        EndPress();
+    }
+
+    /// <summary>
+    /// Per frame. Delivers this frame's pointer and keyboard events to the active tool, if any. While a menu panel is
+    /// open (<paramref name="menuPanel"/>) the map takes no tool input, and the keyboard is the panel's only if it has a
+    /// text field (<paramref name="menuKeyboard"/>).
+    /// </summary>
+    public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool, bool menuPanel = false, bool menuKeyboard = false)
+    {
+        if (menuPanel)
         {
             EndPress();
             catcher?.TakePress();
             catcher?.TakeRightPress();
-            TakeKeyboard(null);
+            if (menuKeyboard)
+            {
+                TakeKeyboard(null);
+            }
+            else
+            {
+                ReleaseKeyboard(immediately: false);
+                HoldPauseKey();
+            }
+
             return;
         }
+
+        ReleasePauseKey(immediately: false);
 
         if (tool == null || catcher == null)
         {
@@ -105,6 +131,7 @@ internal sealed class MapToolInput
     {
         EndPress();
         ReleaseKeyboard(immediately: true);
+        ReleasePauseKey(immediately: true);
     }
 
     private void UpdatePointer(DynamicMap map, MapPointerCatcher catcher, MapTool tool)
@@ -228,7 +255,7 @@ internal sealed class MapToolInput
             return true;
         }
 
-        if (CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind)
+        if (CursorManager.GetFlag(PauseKeyOwners) || (!GameplayUI.AllowPauseKeybind && !_holdingPauseKey))
         {
             tool?.OnTextInput('\u001b');
             return false;
@@ -241,9 +268,41 @@ internal sealed class MapToolInput
             return false;
         }
 
+        _holdingPauseKey = false; // the keyboard's to give back now
         GameplayUI.AllowPauseKeybind = false;
         CursorManager.SetFlag(CursorFlags.Chat, true);
         return true;
+    }
+
+    /// <summary>
+    /// A menu panel without a text field holds only the Escape menu off, so Escape closes the panel instead of opening
+    /// the game's menu, and every other key, the map key among them, reaches the game. Taken and given back as the
+    /// keyboard is: not while a game UI owns the Escape menu, and on again once Escape is up and none of them is open.
+    /// </summary>
+    private void HoldPauseKey()
+    {
+        if (!_holdingPauseKey && (_keyboard.IsSuspended || CursorManager.GetFlag(PauseKeyOwners) || !GameplayUI.AllowPauseKeybind))
+        {
+            return;
+        }
+
+        // Again each frame: the chat box turns it back on as it closes.
+        _holdingPauseKey = true;
+        GameplayUI.AllowPauseKeybind = false;
+    }
+
+    private void ReleasePauseKey(bool immediately)
+    {
+        if (!_holdingPauseKey || (!immediately && Input.GetKey(KeyCode.Escape)))
+        {
+            return;
+        }
+
+        _holdingPauseKey = false;
+        if (!CursorManager.GetFlag(PauseKeyOwners))
+        {
+            GameplayUI.AllowPauseKeybind = true;
+        }
     }
 
     private void ReleaseKeyboard(bool immediately)

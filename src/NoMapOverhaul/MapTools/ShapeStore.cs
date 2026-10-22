@@ -290,5 +290,8 @@ public sealed class ShapeStore
         internal MapShape[][] History { get; }
 
         internal int Current { get; }
+
+        /// <summary>The shapes that were current when saved.</summary>
+        public IReadOnlyList<MapShape> Shapes => History[Current];
     }
 }

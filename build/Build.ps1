@@ -13,12 +13,14 @@ $game = & (Join-Path $PSScriptRoot 'Find-NuclearOption.ps1') -GameDir $GameDir
 
 dotnet run --project (Join-Path $root 'tests\NoMapOverhaul.Tests') -c Release
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
+& (Join-Path $PSScriptRoot 'Build-Shaders.ps1') -Check
 
 $project = Join-Path $root 'src\NoMapOverhaul\NoMapOverhaul.csproj'
 dotnet build $project -c Release "-p:GameDir=$game"
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
 $dll = Join-Path $root 'src\NoMapOverhaul\bin\Release\netstandard2.1\NoMapOverhaul.dll'
+$bundle = Join-Path (Split-Path $dll) 'nomapoverhaul-shaders.bundle'
 if ($Install) {
     # NOMM toggles a mod by moving its folder between plugins and disabledPlugins; reinstall wherever it is now.
     $target = Join-Path $game 'BepInEx\plugins\NoMapOverhaul'
@@ -28,10 +30,12 @@ if ($Install) {
     if (-not (Test-Path $target) -and ((Test-Path $disabled) -or (Test-Path $oldDisabled))) { $target = $disabled }
     New-Item -ItemType Directory -Force $target | Out-Null
     $installed = Join-Path $target 'NoMapOverhaul.dll'
+    $installedBundle = Join-Path $target 'nomapoverhaul-shaders.bundle'
     # This mod was Baanish UI Improvements up to 0.4.0; left installed, that plugin would load beside this one.
     $oldInstalls = @('plugins', 'disabledPlugins' | ForEach-Object { Join-Path $game "BepInEx\$_\BaanishUiImprovements" } | Where-Object { Test-Path $_ })
     # The running game locks the DLL; an identical build needs no copy, so metadata can still refresh mid-session.
-    $copy = -not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $dll).Hash
+    $copy = -not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $dll).Hash -or
+        -not (Test-Path $installedBundle) -or (Get-FileHash $installedBundle).Hash -ne (Get-FileHash $bundle).Hash
     if ($copy -or $oldInstalls) {
         $gameProcess = Get-Process -Name NuclearOption -ErrorAction SilentlyContinue
         if ($gameProcess) {
@@ -39,7 +43,7 @@ if ($Install) {
             $gameProcess | Wait-Process
         }
     }
-    if ($copy) { Copy-Item $dll $target -Force }
+    if ($copy) { Copy-Item $dll, $bundle $target -Force }
     foreach ($old in $oldInstalls) {
         Remove-Item -LiteralPath $old -Recurse -Force
         Write-Output "Removed the old Baanish UI Improvements install at $old"

@@ -164,9 +164,9 @@ internal sealed class RunwayMapOverlay
         {
             var from = i * DashCycleMeters;
             var dash = _approachDashes[i];
-            dash.rectTransform.localPosition = threshold + outward * (from * factor);
-            dash.rectTransform.localRotation = rotation;
-            dash.rectTransform.sizeDelta = new Vector2(width, Mathf.Min(DashMeters, lengthMeters - from) * factor);
+            TransformWrites.SetLocalPosition(dash.rectTransform, threshold + outward * (from * factor));
+            TransformWrites.SetLocalRotation(dash.rectTransform, rotation);
+            TransformWrites.SetSizeDelta(dash.rectTransform, new Vector2(width, Mathf.Min(DashMeters, lengthMeters - from) * factor));
             dash.color = color;
             ApplyEdges(dash, _settings, inverseScale);
         }
@@ -243,11 +243,11 @@ internal sealed class RunwayMapOverlay
             var axis = (end - start).normalized;
 
             var rect = _strip.rectTransform;
-            rect.localPosition = (start + end) * 0.5f;
-            rect.localRotation = MapRotation(axis);
-            rect.sizeDelta = new Vector2(
+            TransformWrites.SetLocalPosition(rect, (start + end) * 0.5f);
+            TransformWrites.SetLocalRotation(rect, MapRotation(axis));
+            TransformWrites.SetSizeDelta(rect, new Vector2(
                 Mathf.Max(_runway.GetWidth() * factor, settings.RunwayMinWidth.Value * inverseScale),
-                Vector2.Distance(start, end));
+                Vector2.Distance(start, end)));
             _strip.color = settings.RunwayColor.Value;
             ApplyEdges(_strip, settings, inverseScale);
 
@@ -276,8 +276,8 @@ internal sealed class RunwayMapOverlay
 
         private static void PlaceLabel(OutlinedText label, string number, Vector2 position, ModSettings settings, float inverseScale, TextMeshProUGUI? hudStyle)
         {
-            label.Rect.localPosition = position;
-            label.Rect.localScale = Vector3.one * inverseScale;
+            TransformWrites.SetLocalPosition(label.Rect, position);
+            TransformWrites.SetLocalScale(label.Rect, Vector3.one * inverseScale);
             label.Set(number, settings.RunwayLabelSize.Value, settings.RunwayLabelColor.Value, settings.OutlineColor.Value, hudStyle);
         }
     }

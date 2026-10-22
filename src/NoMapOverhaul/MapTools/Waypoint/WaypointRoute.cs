@@ -44,6 +44,17 @@ public sealed class WaypointRoute : MapShape
     {
     }
 
+    /// <summary>A route of every waypoint at once, for a teammate's snapshot: adding them one by one copies the route each time.</summary>
+    public static WaypointRoute Of(ShapeColor color, RouteWaypoint[] waypoints)
+    {
+        if (waypoints.Length is < 1 or > MaxWaypoints)
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(waypoints));
+        }
+
+        return new WaypointRoute(color, waypoints);
+    }
+
     private WaypointRoute(ShapeColor color, RouteWaypoint[] waypoints)
         : base(color)
     {

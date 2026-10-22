@@ -45,6 +45,8 @@ internal sealed class DrawingPeerState
     /// <summary>The last frame came from another protocol version; cleared by the next frame that decodes.</summary>
     public bool OtherVersion { get; set; }
     public double NextAccept = 0;
+    /// <summary>This teammate's traffic since the performance log last took it; kept across restarts, since the teammate stays.</summary>
+    public DrawingTraffic LogTraffic = default;
     public Guid LastHelloSession;
     public double HelloWindow;
     public int HelloSessionChanges;

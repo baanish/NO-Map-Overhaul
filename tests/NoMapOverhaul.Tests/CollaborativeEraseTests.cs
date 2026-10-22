@@ -249,6 +249,6 @@ internal static class CollaborativeEraseTests
         public void Marker(Vector2 position, ShapeColor color) { }
         public void Label(LabelAnchor anchor, string text, ShapeColor color) { }
         public void Add(Vector3 position, string text, ShapeColor color) { }
-        public void Ring(Vector3 center, float radius, ShapeColor color) { }
+        public void Ring(Vector3 center, float radius, ShapeColor color, object owner) { }
     }
 }

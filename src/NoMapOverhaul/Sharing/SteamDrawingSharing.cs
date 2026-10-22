@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using BepInEx.Logging;
 using Mirage;
-using Mirage.SteamworksSocket;
 using NoMapOverhaul.Diagnostics;
 using NoMapOverhaul.MapTools;
 using NuclearOption.Networking;
-using Steamworks;
 using UnityEngine;
 
 namespace NoMapOverhaul.Sharing;
@@ -27,13 +25,12 @@ internal sealed class SteamDrawingSharing : IDisposable
     private readonly List<ulong> _removed = new(MaxPeers);
     private readonly Dictionary<ulong, (int Index, uint Sequence)> _newestSnapshot = new(MaxPeers);
     private static readonly string[] ReadyStatuses = CreateReadyStatuses();
-    private readonly IntPtr[] _messages = new IntPtr[DrawingReceiveBudget.MaxMessagesPerTick];
+    private readonly IDrawingTransport _transport;
+    private readonly DrawingMessage[] _messages = new DrawingMessage[DrawingReceiveBudget.MaxMessagesPerTick];
     private readonly DrawingReceiveBudget _receiveBudget;
     private readonly DrawingNetworkSchedule _schedule = new();
     private readonly DrawingSnapshotBudget _snapshotBudget = new();
     private readonly DrawingNetworkLog _networkLog;
-    private Callback<SteamNetworkingMessagesSessionRequest_t>? _request;
-    private Callback<SteamNetworkingMessagesSessionFailed_t>? _failure;
     private SharedMissionEpoch _epoch;
     private object? _mission;
     private INetworkPlayer? _connection;
@@ -45,6 +42,7 @@ internal sealed class SteamDrawingSharing : IDisposable
     private bool _faulted;
     private bool _wanted;
     private int _nextDiagnosticPeer;
+    private int _admitFirst;
     private string? _diagnosticState;
     private double _nextDiagnosticSummary;
     private double _lastUpdate;
@@ -57,21 +55,84 @@ internal sealed class SteamDrawingSharing : IDisposable
     private const double SlowCallSeconds = 0.25;
     private static ManualLogSource? _slowCallLog;
 
-    private static void LogSlowCall(string call, long start)
+    /// <summary>Each message is copied here to be decoded, rather than into a new array per message. Bounded by the envelope check before the copy.</summary>
+    private static readonly byte[] ReceiveScratch = new byte[DrawingProtocol.MaxPacketBytes];
+
+    private static DrawingTraffic _traffic;
+
+    /// <summary>What each <see cref="TrafficReader"/> hasn't taken yet.</summary>
+    private static readonly DrawingTraffic[] Untaken = new DrawingTraffic[2];
+
+    /// <summary>What sharing sent, received and spent in Steam's calls since this reader last took it.</summary>
+    public static DrawingTraffic TakeTraffic(TrafficReader reader)
+    {
+        Collect();
+        var taken = Untaken[(int)reader];
+        Untaken[(int)reader] = default;
+        return taken;
+    }
+
+    private readonly List<TeammateWindow> _teammates = new(MaxPeers);
+    private readonly HashSet<MapShape> _shown = new();
+
+    /// <summary>
+    /// Each teammate on the roster since the performance log last asked: their drawings held and shown, their traffic,
+    /// and the transport's status of the session, one Steam call each. Once per logged window; empty while sharing is off.
+    /// </summary>
+    public IReadOnlyList<TeammateWindow> TakeTeammates()
+    {
+        _teammates.Clear();
+        if (!_active) return _teammates;
+        _shown.Clear();
+        foreach (var shape in _host.VisibleReceived) _shown.Add(shape);
+        foreach (var entry in _peers)
+        {
+            var peer = entry.Value;
+            var (held, shown) = _received.CountOwned(entry.Key, _shown);
+            var start = System.Diagnostics.Stopwatch.GetTimestamp();
+            DrawingSessionStatus? session = null;
+            // The log runs outside the plugin's guard, so a failed diagnostic reads n/a rather than throwing into it.
+            try { if (_transport.TryGetSessionStatus(entry.Key, out var status)) session = status; }
+            catch (Exception) { }
+            WarnSlowCall("GetSessionConnectionInfo", start);
+            _teammates.Add(new TeammateWindow(peer.DiagnosticId, peer.Protocol.IsReady, held, shown, peer.LogTraffic, session));
+            peer.LogTraffic = default;
+        }
+
+        return _teammates;
+    }
+
+    /// <summary>Starts each teammate's logged traffic over, for a new performance log window.</summary>
+    public void DropTeammateTraffic()
+    {
+        foreach (var peer in _peers.Values) peer.LogTraffic = default;
+    }
+
+    private static void Collect()
+    {
+        for (var i = 0; i < Untaken.Length; i++) Untaken[i].Add(_traffic);
+        _traffic = default;
+    }
+
+    private static void LogSlowCall(string call, long start) => _traffic.AddSteamCall(WarnSlowCall(call, start) * 1000.0);
+
+    /// <summary>The call's seconds, with a warning when it blocked the game. Alone for the performance log's own calls, which stay out of the Steam time it reports.</summary>
+    private static double WarnSlowCall(string call, long start)
     {
         var seconds = (System.Diagnostics.Stopwatch.GetTimestamp() - start) / (double)System.Diagnostics.Stopwatch.Frequency;
         if (seconds > SlowCallSeconds) _slowCallLog?.LogWarning($"Steam {call} blocked the game for {seconds:F2}s.");
+        return seconds;
     }
 
-    public SteamDrawingSharing(MapToolHost host, ReceivedDrawings received, ManualLogSource log)
+    public SteamDrawingSharing(MapToolHost host, ReceivedDrawings received, ManualLogSource log, IDrawingTransport transport)
     {
-        _host = host; _received = received; _log = log;
+        _host = host; _received = received; _log = log; _transport = transport;
         _slowCallLog = log;
         _networkLog = new DrawingNetworkLog(message => _log.LogInfo(message));
         _receiveBudget = new DrawingReceiveBudget(count =>
         {
             var start = System.Diagnostics.Stopwatch.GetTimestamp();
-            var received = SteamNetworkingMessages.ReceiveMessagesOnChannel(Channel, _messages, count);
+            var received = _transport.Receive(Channel, _messages, count);
             LogSlowCall("ReceiveMessagesOnChannel", start);
             return received;
         });
@@ -92,6 +153,7 @@ internal sealed class SteamDrawingSharing : IDisposable
             _networkLog.Write(now, $"protocol={DrawingProtocol.Version}; build={typeof(SteamDrawingSharing).Assembly.ManifestModule.ModuleVersionId}; polling=5Hz.");
         }
         var wanted = enabled && _host.SharingEligible;
+        if (wanted) PrepareRelayNetwork();
         if (!wanted) _faulted = false;
         _wanted = wanted;
         try
@@ -107,8 +169,8 @@ internal sealed class SteamDrawingSharing : IDisposable
                     : "Waiting for a Steam team session.";
                 return;
             }
-            var broadcast = _host.Channels.Names;
-            var receive = _host.ReceiveChannels.Names;
+            var broadcast = _host.SharingBroadcast;
+            var receive = _host.SharingReceive;
             if (!_active || !_epoch.Equals(epoch) || _mission != MissionManager.CurrentMission ||
                 !ReferenceEquals(_connection, manager.Client.Player) || _hq != local.HQ || _server != server ||
                 !ReferenceEquals(_broadcastConfiguration, broadcast) || !ReferenceEquals(_receiveConfiguration, receive))
@@ -121,8 +183,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                 _broadcastConfiguration = broadcast; _receiveConfiguration = receive;
                 _discovery.Begin(epoch);
                 _active = true;
-                _request = Callback<SteamNetworkingMessagesSessionRequest_t>.Create(OnSessionRequest);
-                _failure = Callback<SteamNetworkingMessagesSessionFailed_t>.Create(OnSessionFailed);
+                _transport.Listen(OnSessionRequest, OnSessionFailed);
                 if (_networkLog.Enabled) _networkLog.Write(now, $"session started: role={(manager.Server.Active ? "host" : "client")}; broadcast={broadcast.Count}; receiveOnly={receive.Count}.");
             }
             LogState("active Steam team session");
@@ -158,7 +219,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                 }
                 if (!peer.Protocol.IsReady) continue;
                 ready++;
-                if (now >= peer.NextSnapshot && peer.SentVersion != _host.Context.Shapes.Version)
+                if (now >= peer.NextSnapshot && peer.SentVersion != _host.OutgoingVersion)
                 {
                     peer.NextSnapshot = now + DrawingNetworkSchedule.SnapshotInterval;
                     SendSnapshot(entry.Key, peer);
@@ -172,7 +233,7 @@ internal sealed class SteamDrawingSharing : IDisposable
             if (_networkLog.Enabled && now >= _nextDiagnosticSummary)
             {
                 _nextDiagnosticSummary = now + DrawingNetworkLog.WindowSeconds;
-                _networkLog.Write(now, $"summary: eligible={_roster.Count}; ready={ready}; ownedShapes={_host.Context.Shapes.Shapes.Count}; receivedShapes={_received.Shapes.Count}.");
+                _networkLog.Write(now, $"summary: eligible={_roster.Count}; ready={ready}; ownedShapes={_host.OutgoingShapes.Count}; receivedShapes={_received.Shapes.Count}.");
                 foreach (var peer in _peers.Values) LogPeerState(peer, now);
             }
         }
@@ -202,28 +263,28 @@ internal sealed class SteamDrawingSharing : IDisposable
     {
         var incoming = 0;
         foreach (var channel in peer.Protocol.RemoteBroadcastChannels)
-            if (ChannelRouting.CanSend(channel, peer.Protocol.RemoteBroadcastChannels, _host.Channels.Names, _host.ReceiveChannels.Names)) incoming++;
+            if (ChannelRouting.CanSend(channel, peer.Protocol.RemoteBroadcastChannels, _host.SharingBroadcast, _host.SharingReceive)) incoming++;
         var outgoing = 0;
-        foreach (var channel in _host.Channels.Names)
-            if (ChannelRouting.CanSend(channel, _host.Channels.Names, peer.Protocol.RemoteBroadcastChannels, peer.Protocol.RemoteChannels)) outgoing++;
+        foreach (var channel in _host.SharingBroadcast)
+            if (ChannelRouting.CanSend(channel, _host.SharingBroadcast, peer.Protocol.RemoteBroadcastChannels, peer.Protocol.RemoteChannels)) outgoing++;
         _networkLog.Write(now, $"peer {peer.DiagnosticId}: state; ready={peer.Protocol.IsReady}; helloAttempts={peer.HelloAttempts}; retryAllowed={peer.CanTransmit(now)}; receivedAny={peer.LastReceived > 0}; remoteBroadcast={peer.Protocol.RemoteBroadcastChannels.Count}; remoteReceiveOnly={peer.Protocol.RemoteChannels.Count}; incomingChannelMatches={incoming}; outgoingChannelMatches={outgoing}.");
     }
 
-    private static bool TryContext(out NetworkManagerNuclearOption manager, out Player local, out SharedMissionEpoch epoch, out ulong server, out string reason)
+    private bool TryContext(out NetworkManagerNuclearOption manager, out Player local, out SharedMissionEpoch epoch, out ulong server, out string reason)
     {
         manager = NetworkManagerNuclearOption.i; local = null!; epoch = default; server = 0;
-        reason = "Steam connection ownership guard unavailable";
-        if (!SteamConnectionOwnershipPatch.IsApplied) return false;
-        reason = "Steam not initialized or multiplayer mission not ready";
-        if (!SteamManager.ClientInitialized || GameManager.gameState != GameState.Multiplayer || !MissionManager.IsRunning ||
+        reason = "multiplayer mission not ready";
+        if (GameManager.gameState != GameState.Multiplayer || !MissionManager.IsRunning ||
             NetworkManagerNuclearOption.IsLoadingScene || manager == null || !manager.Client.Active) return false;
-        reason = "unsupported transport: Steam player transport required";
-        if (manager.Client.SocketFactory is not SteamworksSocketFactory transport || transport.GameServer) return false;
+        if (_transport.Unavailable(manager) is { } unavailable)
+        {
+            reason = unavailable;
+            return false;
+        }
         reason = "local authenticated player or faction not ready";
         if (manager.Client.Player == null || !manager.Client.Player.IsAuthenticated || !manager.Client.Player.HasCharacter ||
             !GameManager.GetLocalPlayer<Player>(out local) || local == null || local.HQ == null || local.HQ.Identity == null ||
-            local.HQ.Identity.NetId == 0 || local.SteamID == 0 ||
-            local.SteamID != SteamUser.GetSteamID().m_SteamID) return false;
+            local.HQ.Identity.NetId == 0) return false;
         reason = "map faction does not match local player";
         var map = SceneSingleton<DynamicMap>.i;
         if (map == null || map.HQ != local.HQ) return false;
@@ -235,18 +296,39 @@ internal sealed class SteamDrawingSharing : IDisposable
         {
             reason = "host scene not ready";
             if (manager.Server.LocalPlayer == null || !manager.Server.LocalPlayer.SceneIsReady) return false;
-            server = local.SteamID;
         }
-        else if (manager.Client.Player.ConnectionHandle is SteamConnection connection)
-        {
-            reason = "server Steam identity not eligible";
-            server = connection.SteamID.m_SteamID;
-            if (!connection.SteamID.BIndividualAccount()) return false;
-        }
-        else { reason = "Steam connection not ready"; return false; }
+        if (!_transport.TryIdentify(manager, local, out server, out reason)) return false;
         epoch = new SharedMissionEpoch(mission.Identity.NetId, mission.multiplayerStartTime, local.HQ.Identity.NetId);
-        reason = server != 0 ? "active Steam team session" : "server identity missing";
-        return server != 0;
+        return true;
+    }
+
+    private static bool _relayPrepared;
+
+    /// <summary>The transport's set-up (<see cref="IDrawingTransport.Prepare"/>), once, as soon as sharing could run.</summary>
+    private void PrepareRelayNetwork()
+    {
+        if (_relayPrepared) return;
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        _relayPrepared = _transport.Prepare();
+        LogSlowCall("InitRelayNetworkAccess", start);
+        if (!_relayPrepared) return;
+        if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, "relay network access requested.");
+    }
+
+    /// <summary>Senders outside the team roster whose session was closed this session, so each is closed once. Bounded.</summary>
+    private readonly HashSet<ulong> _strangers = new();
+    private const int MaxStrangers = 64;
+
+    /// <summary>
+    /// Closes the session with a sender who isn't a teammate in this mission, once: its messages would otherwise keep
+    /// arriving and take the receive budget the team's need. A stranger who opens a new session is turned away by
+    /// <see cref="OnSessionRequest"/>, which accepts teammates only.
+    /// </summary>
+    private void CloseStranger(ulong id)
+    {
+        if (_strangers.Count >= MaxStrangers || !_strangers.Add(id)) return;
+        CloseChannel(id);
+        if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, "rx from a sender outside the team roster; closed its drawing session.");
     }
 
     private void RefreshRoster(Player local)
@@ -254,13 +336,12 @@ internal sealed class SteamDrawingSharing : IDisposable
         _roster.Clear();
         foreach (var player in UnitRegistry.playerLookup.Values)
         {
-            if (player != null && player != local && player.HQ == local.HQ && player.SteamID != 0 &&
-                player.CSteamID.BIndividualAccount())
+            if (player != null && player != local && player.HQ == local.HQ && _transport.IdOf(player) is var id && id != 0)
             {
-                var index = _roster.BinarySearch(player.SteamID);
+                var index = _roster.BinarySearch(id);
                 if (index >= 0 || ~index >= MaxPeers) continue;
                 if (_roster.Count == MaxPeers) _roster.RemoveAt(MaxPeers - 1);
-                _roster.Insert(~index, player.SteamID);
+                _roster.Insert(~index, id);
             }
         }
         _removed.Clear();
@@ -273,7 +354,7 @@ internal sealed class SteamDrawingSharing : IDisposable
         foreach (var id in _roster)
             if (!_peers.ContainsKey(id))
             {
-                var peer = new DrawingPeerState(_epoch, _host.ReceiveChannels.Names, _host.Channels.Names, ++_nextDiagnosticPeer);
+                var peer = new DrawingPeerState(_epoch, _host.SharingReceive, _host.SharingBroadcast, ++_nextDiagnosticPeer);
                 _peers.Add(id, peer);
                 if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: joined eligible roster.");
             }
@@ -286,20 +367,19 @@ internal sealed class SteamDrawingSharing : IDisposable
             server != _server || _hq != local.HQ || !ReferenceEquals(_connection, manager.Client.Player) ||
             _mission != MissionManager.CurrentMission) return false;
         foreach (var player in UnitRegistry.playerLookup.Values)
-            if (player != null && player != local && player.SteamID == id && player.HQ == local.HQ) return true;
+            if (player != null && player != local && player.HQ == local.HQ && _transport.IdOf(player) == id) return true;
         return false;
     }
 
-    private void OnSessionRequest(SteamNetworkingMessagesSessionRequest_t request)
+    private void OnSessionRequest(ulong id)
     {
         try
         {
-            var id = request.m_identityRemote.GetSteamID64();
             if (Authorized(id) && _peers.TryGetValue(id, out var peer) && Time.unscaledTimeAsDouble >= peer.NextAccept)
             {
                 peer.NextAccept = Time.unscaledTimeAsDouble + 1;
                 var start = System.Diagnostics.Stopwatch.GetTimestamp();
-                var accepted = SteamNetworkingMessages.AcceptSessionWithUser(ref request.m_identityRemote);
+                var accepted = _transport.Accept(id);
                 LogSlowCall("AcceptSessionWithUser", start);
                 if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: native session request; accepted={accepted}.");
             }
@@ -312,14 +392,13 @@ internal sealed class SteamDrawingSharing : IDisposable
         }
     }
 
-    private void OnSessionFailed(SteamNetworkingMessagesSessionFailed_t failure)
+    private void OnSessionFailed(ulong id, string state)
     {
         try
         {
-            var id = failure.m_info.m_identityRemote.GetSteamID64();
             if (!Authorized(id) || !_peers.TryGetValue(id, out var peer)) return;
             var now = Time.unscaledTimeAsDouble;
-            if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: native session failed; state={failure.m_info.m_eState}; endReason={failure.m_info.m_eEndReason}.");
+            if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: native session failed; {state}.");
             if (!peer.RecordSessionFailure(now)) return;
             if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: failed native session cleared; restarting with 30s cooldown.");
             _received.Remove(id);
@@ -343,22 +422,30 @@ internal sealed class SteamDrawingSharing : IDisposable
             _newestSnapshot.Clear();
             for (var i = 0; i < count; i++)
             {
-                if (_messages[i] == IntPtr.Zero) continue;
-                var message = SteamNetworkingMessage_t.FromIntPtr(_messages[i]);
-                if (WireKind(message) != DrawingPacketKind.Snapshot || message.m_cbSize < DrawingProtocol.SequenceOffset + 4) continue;
-                var sender = message.m_identityPeer.GetSteamID64();
-                var sequence = (uint)Marshal.ReadInt32(message.m_pData, DrawingProtocol.SequenceOffset);
+                if (!_messages[i].Present) continue;
+                var message = _messages[i];
+                if (WireKind(message) != DrawingPacketKind.Snapshot || message.Size < DrawingProtocol.SequenceOffset + 4) continue;
+                var sender = message.Sender;
+                var sequence = (uint)Marshal.ReadInt32(message.Data, DrawingProtocol.SequenceOffset);
                 if (!_newestSnapshot.TryGetValue(sender, out var newest) || sequence >= newest.Sequence)
                     _newestSnapshot[sender] = (i, sequence);
             }
             for (var i = 0; i < count; i++)
             {
-                if (_messages[i] == IntPtr.Zero) continue;
-                var message = SteamNetworkingMessage_t.FromIntPtr(_messages[i]);
-                var id = message.m_identityPeer.GetSteamID64();
+                if (!_messages[i].Present) continue;
+                var message = _messages[i];
+                var id = message.Sender;
                 _receiveBudget.TryConsume(now); // a batch never exceeds the window's remaining budget
-                if (!_peers.TryGetValue(id, out var peer)) continue;
-                if (!peer.CountReceive(now, out var flooded, message.m_cbSize))
+                _traffic.ReceivedMessages++;
+                _traffic.ReceivedBytes += message.Size;
+                if (!_peers.TryGetValue(id, out var peer))
+                {
+                    CloseStranger(id);
+                    continue;
+                }
+                peer.LogTraffic.ReceivedMessages++;
+                peer.LogTraffic.ReceivedBytes += message.Size;
+                if (!peer.CountReceive(now, out var flooded, message.Size))
                 {
                     if (flooded)
                     {
@@ -374,13 +461,13 @@ internal sealed class SteamDrawingSharing : IDisposable
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, "rx ignored: sender not eligible.");
                     continue;
                 }
-                if (message.m_nChannel != Channel || message.m_cbSize <= 0 ||
-                    message.m_cbSize > DrawingProtocol.MaxPacketBytes || message.m_pData == IntPtr.Zero)
+                if (message.Channel != Channel || message.Size <= 0 ||
+                    message.Size > DrawingProtocol.MaxPacketBytes || message.Data == IntPtr.Zero)
                 {
                     RejectPeer(id, "invalid native message envelope");
                     continue;
                 }
-                if (!DrawingProtocol.TryReadHeader(message.m_pData, message.m_cbSize, out var version, out _))
+                if (!DrawingProtocol.TryReadHeader(message.Data, message.Size, out var version, out _))
                 {
                     RejectPeer(id, "invalid packet header");
                     continue;
@@ -397,18 +484,18 @@ internal sealed class SteamDrawingSharing : IDisposable
                     if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: rx Snapshot superseded in the same batch; skipped.");
                     continue;
                 }
-                var bytes = new byte[message.m_cbSize];
-                Marshal.Copy(message.m_pData, bytes, 0, bytes.Length);
-                if (!DrawingProtocol.TryDecode(bytes, out var packet) || packet == null)
+                var size = message.Size;
+                Marshal.Copy(message.Data, ReceiveScratch, 0, size);
+                if (!DrawingProtocol.TryDecode(ReceiveScratch, size, out var packet) || packet == null)
                 {
-                    if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: decode rejected; bytes={bytes.Length}; wireVersion={(bytes.Length > 4 ? bytes[4] : -1)}; expectedVersion={DrawingProtocol.Version}.");
+                    if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: decode rejected; bytes={size}; wireVersion={(size > 4 ? ReceiveScratch[4] : -1)}; expectedVersion={DrawingProtocol.Version}.");
                     RejectPeer(id, "invalid packet or incompatible protocol");
                     continue;
                 }
                 if (packet.Kind == DrawingPacketKind.DeleteRequest)
                 {
                     if (peer.Protocol.TryReceiveDelete(packet) &&
-                        ChannelRouting.CanCollaborate(packet.TargetChannel, _host.Channels.Names,
+                        ChannelRouting.CanCollaborate(packet.TargetChannel, _host.SharingBroadcast,
                             peer.Protocol.RemoteBroadcastChannels))
                     {
                         var removed = RemoveOwnedShape(packet.TargetShapeId, packet.TargetChannel, peer);
@@ -440,7 +527,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                 peer.LastReceived = Time.unscaledTimeAsDouble;
                 peer.OtherVersion = false;
                 _discovery.Accepted(id, packet.Kind, peer.Protocol.IsReady);
-                if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: rx {packet.Kind} accepted; seq={packet.Sequence}; bytes={bytes.Length}.");
+                if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: rx {packet.Kind} accepted; seq={packet.Sequence}; bytes={size}.");
                 if (revision != peer.Protocol.Revision)
                 {
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: handshake revision={peer.Protocol.Revision}; ready={peer.Protocol.IsReady}; clearing received drawings.");
@@ -468,10 +555,14 @@ internal sealed class SteamDrawingSharing : IDisposable
                 }
                 peer.ReceivedSnapshots.Pending = snapshot;
             }
-            foreach (var entry in _peers)
+            // Teammates take turns at the front of the queue, so a busy one can't keep taking the shared budget while
+            // another's snapshot waits.
+            var teammates = _roster.Count;
+            _admitFirst = teammates == 0 ? 0 : (_admitFirst + 1) % teammates;
+            for (var k = 0; k < teammates; k++)
             {
-                var id = entry.Key;
-                var peer = entry.Value;
+                var id = _roster[(_admitFirst + k) % teammates];
+                if (!_peers.TryGetValue(id, out var peer)) continue;
                 if (peer.ReceivedSnapshots.Pending == null || !Authorized(id) || !peer.Protocol.IsReady) continue;
                 var snapshot = _snapshotBudget.TryTake(peer.ReceivedSnapshots, id, _received, now);
                 if (snapshot == null) continue;
@@ -484,23 +575,25 @@ internal sealed class SteamDrawingSharing : IDisposable
                     }
                     else RejectPeer(id, "invalid received drawings");
                 }
-                else if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot applied; seq={snapshot.Sequence}; shapes={snapshot.Shapes.Length}; receivedTotal={_received.Shapes.Count}.");
+                else
+                {
+                    _traffic.SnapshotsApplied++;
+                    peer.LogTraffic.SnapshotsApplied++;
+                    if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot applied; seq={snapshot.Sequence}; shapes={snapshot.Shapes.Length}; receivedTotal={_received.Shapes.Count}.");
+                }
             }
         }
         finally
         {
-            for (var i = 0; i < _messages.Length; i++)
-            {
-                if (_messages[i] == IntPtr.Zero) continue;
-                SteamNetworkingMessage_t.Release(_messages[i]); _messages[i] = IntPtr.Zero;
-            }
+            Array.Clear(_messages, 0, _messages.Length);
+            _transport.ReleaseReceived();
         }
     }
 
     /// <summary>Only current-protocol snapshots can supersede each other before decoding.</summary>
-    private static DrawingPacketKind WireKind(SteamNetworkingMessage_t message) =>
-        message.m_nChannel == Channel && message.m_cbSize <= DrawingProtocol.MaxPacketBytes &&
-        DrawingProtocol.TryReadHeader(message.m_pData, message.m_cbSize, out var version, out var kind) &&
+    private static DrawingPacketKind WireKind(DrawingMessage message) =>
+        message.Channel == Channel && message.Size <= DrawingProtocol.MaxPacketBytes &&
+        DrawingProtocol.TryReadHeader(message.Data, message.Size, out var version, out var kind) &&
         version == DrawingProtocol.Version ? kind : 0;
 
     private static bool AllowHelloSession(DrawingPeerState peer, Guid session)
@@ -530,17 +623,18 @@ internal sealed class SteamDrawingSharing : IDisposable
     {
         foreach (var shape in shapes)
             if (!ChannelRouting.CanSend(shape.Channel, peer.Protocol.RemoteBroadcastChannels,
-                    _host.Channels.Names, _host.ReceiveChannels.Names) ||
+                    _host.SharingBroadcast, _host.SharingReceive) ||
                 !SharedShapeVisibility.CanShare(shape)) return false;
         return true;
     }
 
     private bool RemoveOwnedShape(int id, string channel, DrawingPeerState peer)
     {
+        if (_host.OutgoingHeld) return false; // the perf test has the player's drawings set aside
         foreach (var shape in _host.Context.Shapes.Shapes)
         {
             if (shape.Id != id || shape.Channel != channel || !SharedShapeVisibility.CanShare(shape) ||
-                !ChannelRouting.CanCollaborate(channel, _host.Channels.Names,
+                !ChannelRouting.CanCollaborate(channel, _host.SharingBroadcast,
                     peer.Protocol.RemoteBroadcastChannels)) continue;
             return _host.Context.Shapes.Remove(shape);
         }
@@ -552,7 +646,7 @@ internal sealed class SteamDrawingSharing : IDisposable
         SharedShapeVisibility.CanShare(shape) && _received.TryFindOwner(shape, out var owner, out _) &&
         _quarantine.Allows(owner) && _peers.TryGetValue(owner, out var peer) &&
         peer.CanRequestDelete(Time.unscaledTimeAsDouble) && ChannelRouting.CanCollaborate(shape.Channel,
-            _host.Channels.Names, peer.Protocol.RemoteBroadcastChannels);
+            _host.SharingBroadcast, peer.Protocol.RemoteBroadcastChannels);
 
     public bool RequestErase(MapShape shape)
     {
@@ -577,16 +671,49 @@ internal sealed class SteamDrawingSharing : IDisposable
         }
     }
 
+    /// <summary>
+    /// Snapshots already encoded for <see cref="_encodedVersion"/> of the outgoing drawings, one per set of drawings a
+    /// teammate's channels let through. Teammates on the same channels get the same encoding, readdressed.
+    /// </summary>
+    private readonly List<EncodedSnapshot> _encoded = new();
+    private int _encodedVersion = -1;
+    private const int MaxEncoded = 8;
+    private readonly List<MapShape> _snapshotShapes = new();
+
+    private sealed class EncodedSnapshot
+    {
+        public EncodedSnapshot(MapShape[] shapes, MapShape[] sent, byte[] bytes, int unshared)
+        {
+            Shapes = shapes; Sent = sent; Bytes = bytes; Unshared = unshared;
+        }
+
+        public MapShape[] Shapes { get; }
+        public MapShape[] Sent { get; }
+        public byte[] Bytes { get; }
+        public int Unshared { get; }
+
+        public bool Holds(List<MapShape> shapes)
+        {
+            if (shapes.Count != Shapes.Length) return false;
+            for (var i = 0; i < Shapes.Length; i++)
+                if (!ReferenceEquals(shapes[i], Shapes[i])) return false;
+            return true;
+        }
+    }
+
     private void SendSnapshot(ulong id, DrawingPeerState peer)
     {
-        var shapes = new List<MapShape>();
+        var shapes = _snapshotShapes;
+        shapes.Clear();
         var localOnly = 0;
         var unmatched = 0;
         var geometryPoints = 0;
-        foreach (var shape in _host.Context.Shapes.Shapes)
+        var outgoing = _host.OutgoingShapes;
+        var version = _host.OutgoingVersion;
+        foreach (var shape in outgoing)
         {
             if (!SharedShapeVisibility.CanShare(shape)) { localOnly++; continue; }
-            if (ChannelRouting.CanSend(shape.Channel, _host.Channels.Names,
+            if (ChannelRouting.CanSend(shape.Channel, _host.SharingBroadcast,
                 peer.Protocol.RemoteBroadcastChannels, peer.Protocol.RemoteChannels))
             {
                 shapes.Add(shape);
@@ -601,15 +728,31 @@ internal sealed class SteamDrawingSharing : IDisposable
             _received.Remove(id); CloseChannel(id);
             return;
         }
-        var all = new DrawingPacket(DrawingPacketKind.Snapshot, _epoch, peer.Protocol.LocalSession,
-            peer.Protocol.RemoteSession, ++peer.Sequence, Array.Empty<string>(), shapes.ToArray());
-        peer.Unshared = DrawingProtocol.EncodeFitting(all, out var packet, out var bytes);
-        if (peer.Unshared > 0 && _networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot over the wire limits; attemptedShapes={shapes.Count}; geometryPoints={geometryPoints}; leftOut={peer.Unshared}.");
-        if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot prepared; seq={peer.Sequence}; shapes={packet.Shapes.Length}; bytes={bytes.Length}; omittedLocalOnly={localOnly}; omittedChannel={unmatched}.");
-        if (SendBytes(id, peer, bytes, packet.Kind))
+        if (version != _encodedVersion)
         {
-            peer.Protocol.RecordSentSnapshot(packet.Shapes);
-            peer.SentVersion = _host.Context.Shapes.Version;
+            _encoded.Clear();
+            _encodedVersion = version;
+        }
+        EncodedSnapshot? encoded = null;
+        foreach (var entry in _encoded)
+            if (entry.Holds(shapes)) { encoded = entry; break; }
+        if (encoded == null)
+        {
+            var all = new DrawingPacket(DrawingPacketKind.Snapshot, _epoch, peer.Protocol.LocalSession,
+                peer.Protocol.RemoteSession, peer.Sequence + 1, Array.Empty<string>(), shapes.ToArray());
+            var unshared = DrawingProtocol.EncodeFitting(all, out var fitted, out var encodedBytes);
+            encoded = new EncodedSnapshot(all.Shapes, fitted.Shapes, encodedBytes, unshared);
+            if (_encoded.Count == MaxEncoded) _encoded.Clear();
+            _encoded.Add(encoded);
+        }
+        DrawingProtocol.Readdress(encoded.Bytes, peer.Protocol.LocalSession, peer.Protocol.RemoteSession, ++peer.Sequence);
+        peer.Unshared = encoded.Unshared;
+        if (peer.Unshared > 0 && _networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot over the wire limits; attemptedShapes={shapes.Count}; geometryPoints={geometryPoints}; leftOut={peer.Unshared}.");
+        if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: snapshot prepared; seq={peer.Sequence}; shapes={encoded.Sent.Length}; bytes={encoded.Bytes.Length}; omittedLocalOnly={localOnly}; omittedChannel={unmatched}.");
+        if (SendBytes(id, peer, encoded.Bytes, DrawingPacketKind.Snapshot))
+        {
+            peer.Protocol.RecordSentSnapshot(encoded.Sent);
+            peer.SentVersion = version;
         }
     }
 
@@ -623,36 +766,25 @@ internal sealed class SteamDrawingSharing : IDisposable
     {
         var now = Time.unscaledTimeAsDouble;
         if (!peer.CanTransmit(now) || !Authorized(id)) return false;
-        var identity = new SteamNetworkingIdentity(); identity.SetSteamID64(id);
-        var pin = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-        try
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        var success = _transport.Send(id, Channel, bytes, out var result);
+        LogSlowCall("SendMessageToUser", start);
+        _traffic.SentMessages++;
+        _traffic.SentBytes += bytes.Length;
+        peer.LogTraffic.SentMessages++;
+        peer.LogTraffic.SentBytes += bytes.Length;
+        if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: tx {kind}; bytes={bytes.Length}; result={result}.");
+        if (!success && _networkLog.Enabled)
         {
-            // A probe that found the session broken, by an earlier unanswered probe from either side, would fail at once
-            // without the restart flag, and a teammate who enabled sharing late would never pair. DrawingDiscovery's
-            // three probes, not the flag, bound the attempts made towards a teammate without the mod.
-            var start = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = SteamNetworkingMessages.SendMessageToUser(ref identity, pin.AddrOfPinnedObject(), (uint)bytes.Length,
-                Constants.k_nSteamNetworkingSend_Reliable | Constants.k_nSteamNetworkingSend_AutoRestartBrokenSession, Channel);
-            LogSlowCall("SendMessageToUser", start);
-            var success = result == EResult.k_EResultOK;
-            if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: tx {kind}; bytes={bytes.Length}; result={result}.");
-            if (!success && _networkLog.Enabled)
-            {
-                try
-                {
-                    var state = SteamNetworkingMessages.GetSessionConnectionInfo(ref identity, out var info, out _);
-                    _networkLog.Write(now, $"peer {peer.DiagnosticId}: native connection state={state}; endReason={info.m_eEndReason}.");
-                }
-                catch (Exception error) { _networkLog.Write(now, "connection diagnostic query failed: " + error.GetType().Name + "."); }
-            }
-            if (peer.RecordSend(success, now))
-            {
-                if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: three consecutive send failures; restarting with 30s cooldown.");
-                _received.Remove(id); CloseChannel(id);
-            }
-            return success;
+            try { _networkLog.Write(now, $"peer {peer.DiagnosticId}: native connection {_transport.ConnectionState(id)}."); }
+            catch (Exception error) { _networkLog.Write(now, "connection diagnostic query failed: " + error.GetType().Name + "."); }
         }
-        finally { pin.Free(); }
+        if (peer.RecordSend(success, now))
+        {
+            if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: three consecutive send failures; restarting with 30s cooldown.");
+            _received.Remove(id); CloseChannel(id);
+        }
+        return success;
     }
 
     private static string[] CreateReadyStatuses()
@@ -663,29 +795,30 @@ internal sealed class SteamDrawingSharing : IDisposable
         return statuses;
     }
 
-    private static void CloseChannel(ulong id)
+    private void CloseChannel(ulong id)
     {
-        if (!SteamManager.ClientInitialized) return;
-        var identity = new SteamNetworkingIdentity(); identity.SetSteamID64(id);
         var start = System.Diagnostics.Stopwatch.GetTimestamp();
-        SteamNetworkingMessages.CloseChannelWithUser(ref identity, Channel);
+        _transport.Close(id, Channel);
         LogSlowCall("CloseChannelWithUser", start);
     }
 
     private void Reset(string reason = "stopped")
     {
+        // Update resets every frame while sharing can't run (single player, menus, sharing off): once is enough.
+        if (!_active && _peers.Count == 0 && !_transport.Listening && _received.Shapes.Count == 0) return;
         if (_networkLog.Enabled && (_active || _peers.Count > 0)) _networkLog.Write(Time.unscaledTimeAsDouble, $"reset: {reason}; closing {_peers.Count} drawing channels; clearing {_received.Shapes.Count} received shapes.");
         _active = false;
-        _request?.Dispose(); _request = null;
-        _failure?.Dispose(); _failure = null;
+        _transport.StopListening();
         foreach (var id in _peers.Keys)
         {
             try { CloseChannel(id); } catch { /* Cleanup must not affect the game's connection. */ }
         }
-        _peers.Clear(); _roster.Clear(); _received.Clear(); _quarantine.Clear();
+        _peers.Clear(); _roster.Clear(); _received.Clear(); _quarantine.Clear(); _strangers.Clear();
         _mission = null; _connection = null; _hq = null;
         _receiveBudget.Clear();
         _snapshotBudget.Clear();
+        _encoded.Clear(); _encodedVersion = -1; // encodings carry the session's epoch
+        DrawingProtocol.ForgetSnapshots();
     }
 
     public void Dispose() { _wanted = false; Reset(); }

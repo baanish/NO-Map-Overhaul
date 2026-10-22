@@ -21,6 +21,7 @@ Skip this step if `BepInEx/core` already exists in the game folder: another mod 
 
    ```text
    BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
+   BepInEx/plugins/NoMapOverhaul/nomapoverhaul-shaders.bundle
    BepInEx/plugins/NoMapOverhaul/LICENSE.txt
    BepInEx/plugins/NoMapOverhaul/README.txt
    BepInEx/plugins/NoMapOverhaul/THIRD_PARTY_NOTICES.txt

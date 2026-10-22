@@ -12,7 +12,26 @@ internal abstract class ModGraphic : MaskableGraphic
     protected override void UpdateGeometry()
     {
         var start = ModTimings.Start();
+        ModActivity.MeshRebuilds++;
         base.UpdateGeometry();
         ModTimings.Stop(ModSection.MeshRebuilds, start);
+    }
+
+    /// <summary>
+    /// Fits the rect around the mesh, writing only what changed: Unity counts any transform write as a change that
+    /// re-batches the canvas, even one that sets the same value.
+    /// </summary>
+    protected void FitRect(UnityEngine.Vector2 center, UnityEngine.Vector2 size)
+    {
+        var rect = rectTransform;
+        if ((UnityEngine.Vector2)rect.localPosition != center)
+        {
+            rect.localPosition = center;
+        }
+
+        if (rect.sizeDelta != size)
+        {
+            rect.sizeDelta = size;
+        }
     }
 }

@@ -62,6 +62,9 @@ internal sealed class ModSettings
         MapReceiveChannels = Bind(SettingSections.MapToolsSharing, "ReceiveChannels", string.Empty, "Receive-only channels", "Managed by Channels in the full map's Tools menu. Extra channels whose drawings you only view, up to 10. Broadcast channels are already received and allow collaboration. Names use ASCII letters, digits, spaces, dots, underscores or hyphens, up to 32 characters.", display: new ConfigurationManagerAttributes { Browsable = false });
 
         MapToolColor = Bind(SettingSections.MapToolsDrawing, "Color", (Color)new Color32(51, 255, 51, 255), "Drawing colour", "Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here.", advanced: true);
+        MapToolCustomColors = Bind(SettingSections.MapToolsDrawing, "CustomColors", string.Empty, "Custom colours", "Managed by the + swatch in the full map's Tools menu. Up to six comma-separated #RRGGBB colours for the menu's second row of swatches. Entries that aren't #RRGGBB are ignored.", display: new ConfigurationManagerAttributes { Browsable = false });
+        OtherChannelsOpacity = Bind(SettingSections.MapToolsDrawing, "OtherChannelsOpacity", 0.5f, "Other channels opacity", "Opacity of drawings on a channel other than the one you're drawing to, yours and teammates', as a share of their own. 1 shows them like the rest.", new AcceptableValueRange<float>(0f, 1f));
+        OtherChannelsBrightness = Bind(SettingSections.MapToolsDrawing, "OtherChannelsBrightness", 0.6f, "Other channels brightness", "Brightness of drawings on a channel other than the one you're drawing to, as a share of their own colour. 1 keeps their colour.", new AcceptableValueRange<float>(0f, 1f));
         MapToolLineWidth = Bind(SettingSections.MapToolsDrawing, "LineWidth", 1.5f, "Line width", "Width of drawn lines, in map icon units. Arrowheads grow with it.", new AcceptableValueRange<float>(0.5f, 8f), advanced: true);
         MapToolTextSize = Bind(SettingSections.MapToolsDrawing, "TextSize", 10f, "Text size", "Size of text the tools draw on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
 
@@ -81,16 +84,38 @@ internal sealed class ModSettings
         MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 2500, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 2500), advanced: true);
 
         PerfTest = Bind(SettingSections.Diagnostics, "PerfTest", false, "Perf test", "In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a typical and a heavy set of drawings, on the minimap and the full map, then puts everything back. About 85 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", display: PerfTestButton);
-        LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", false, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
-        LogNetwork = Bind(SettingSections.Diagnostics, "LogNetwork", false, "Log network", "Log drawing-sharing connections, handshakes, channel changes, packet counts and rejection reasons to BepInEx/LogOutput.log. No Steam IDs, IPs, note text or coordinates. Enable when troubleshooting sharing.");
+        PerfTestSharing = Bind(SettingSections.Diagnostics, "PerfTestSharing", Diagnostics.PerfTestSharing.LocalOnly, "Perf test sharing", "Where the perf test's drawings go. LocalOnly keeps them on this map. Send also sends them over sharing, Receive draws none and shows a teammate's, Bidirectional does both: start the test on both PCs within the same half minute, in a Steam multiplayer mission on the same team, and their slices line up. The test uses its own perf-test channel and needs no channel set up; your drawings and your teammates' are kept and sent as before.", advanced: true);
+        PerfTestCycles = Bind(SettingSections.Diagnostics, "PerfTestCycles", 4, "Perf test cycles", "How many times the perf test measures each condition. 4 takes about 85 seconds; more measures sustained performance, and the log gets a line per cycle to show any drift.", new AcceptableValueList<int>(4, 8, 16, 32, 64, 128), advanced: true);
+        LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", true, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
+        LogNetwork = Bind(SettingSections.Diagnostics, "LogNetwork", true, "Log network", "Log drawing-sharing connections, handshakes, channel changes, packet counts and rejection reasons to BepInEx/LogOutput.log. No Steam IDs, IPs, note text or coordinates. Enable when troubleshooting sharing.");
+        RingsOnCpu = Bind(SettingSections.Diagnostics, "RingsOnCpu", false, "Draw 3D rings on the CPU", "Build the circles' rings in the 3D view on the CPU, as the mod does when its shader file is missing, instead of drawing them with the shader. For comparing the two, or if the rings look wrong on your graphics card.", advanced: true);
+
+        // The beta's testers ran earlier builds with both logs saved off, which a new default doesn't change: they're
+        // switched on once, and a tester who turns them off afterwards keeps them off.
+        var logsOnFor = Bind(SettingSections.Diagnostics, "LogsTurnedOnFor", string.Empty, "Logs turned on for", "The beta that last switched Log performance and Log network on once.", display: new ConfigurationManagerAttributes { Browsable = false });
+        if (logsOnFor.Value != LogsOnBeta)
+        {
+            LogPerformance.Value = true;
+            LogNetwork.Value = true;
+            logsOnFor.Value = LogsOnBeta;
+        }
     }
+
+    /// <summary>The beta whose first start switches both logs on once, whatever an earlier build saved.</summary>
+    private const string LogsOnBeta = "0.6.0-beta-4";
+
+    public ConfigEntry<float> OtherChannelsOpacity { get; }
+    public ConfigEntry<float> OtherChannelsBrightness { get; }
 
     public ConfigEntry<bool> Enabled { get; }
     public ConfigEntry<bool> LogPerformance { get; }
     public ConfigEntry<bool> LogNetwork { get; }
+    public ConfigEntry<bool> RingsOnCpu { get; }
 
     /// <summary>Drawn as a button in F1, which starts or cancels the test; set true any other way, it does the same and resets.</summary>
     public ConfigEntry<bool> PerfTest { get; }
+    public ConfigEntry<Diagnostics.PerfTestSharing> PerfTestSharing { get; }
+    public ConfigEntry<int> PerfTestCycles { get; }
 
     /// <summary>The F1 button's look. <see cref="Diagnostics.PerfTest"/> sets its drawer.</summary>
     public ConfigurationManagerAttributes PerfTestButton { get; } = new() { HideDefaultButton = true };
@@ -136,6 +161,9 @@ internal sealed class ModSettings
     public bool PerfTestShowsDrawings { get; set; }
     public ConfigEntry<bool> MapToolCirclesIn3D { get; }
     public ConfigEntry<Color> MapToolColor { get; }
+
+    /// <summary>The menu's custom swatches as <c>#RRGGBB</c>, comma-separated (<see cref="MapTools.CustomColors"/>). Hidden from F1, like the sharing lists.</summary>
+    public ConfigEntry<string> MapToolCustomColors { get; }
     public ConfigEntry<float> MapToolLineWidth { get; }
     public ConfigEntry<float> MapToolTextSize { get; }
     public ConfigEntry<UnitsSetting> MapToolUnits { get; }

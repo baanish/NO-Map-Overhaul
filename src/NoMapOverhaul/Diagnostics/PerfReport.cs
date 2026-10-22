@@ -10,14 +10,20 @@ namespace NoMapOverhaul.Diagnostics;
 /// </summary>
 public readonly struct PerfPhase
 {
-    public PerfPhase(string name, FrameSummary summary, int baseline, RenderSummary render = default, float[]? sectionMs = null)
+    public PerfPhase(string name, FrameSummary summary, int baseline, RenderSummary render = default, float[]? sectionMs = null,
+        PerfSharingSummary? sharing = null, float[]? sectionWorstMs = null)
     {
+        SectionWorstMs = sectionWorstMs;
         Name = name;
         Summary = summary;
         Baseline = baseline;
         Render = render;
         SectionMs = sectionMs;
+        Sharing = sharing;
     }
+
+    /// <summary>Sharing's traffic and the garbage collections over the phase, or null if they weren't counted.</summary>
+    public PerfSharingSummary? Sharing { get; }
 
     public string Name { get; }
 
@@ -29,6 +35,9 @@ public readonly struct PerfPhase
 
     /// <summary>Milliseconds per frame in each <see cref="ModSection"/>, in its order, or null if they weren't timed.</summary>
     public float[]? SectionMs { get; }
+
+    /// <summary>Each <see cref="ModSection"/>'s costliest single frame in the phase, or null if they weren't timed.</summary>
+    public float[]? SectionWorstMs { get; }
 }
 
 /// <summary>
@@ -77,15 +86,21 @@ public static class PerfReport
     }
 
     /// <summary>Column heads of the third table, one per <see cref="ModSection"/>, then the rest of the mod's frame.</summary>
-    private static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Runways", "Meshes", "Other" };
+    internal static readonly string[] SectionHeads = { "Draw", "Labels", "Upright", "3D text", "3D rings", "Input", "Runways", "Sharing", "Meshes", "Other" };
 
     /// <param name="method">How the phases were measured, for the header.</param>
     /// <param name="drawings">What the typical and heavy phases drew, for the header.</param>
-    public static string Table(IReadOnlyList<PerfPhase> phases, string method, string drawings)
+    /// <param name="sharing">Which way the test's drawings went and how sharing stood at the end, for the header.</param>
+    public static string Table(IReadOnlyList<PerfPhase> phases, string method, string drawings, string? sharing = null)
     {
         var text = new StringBuilder();
         text.AppendFormat(CultureInfo.InvariantCulture,
             "Perf test: {0}. Drawings: {1}. Changes are against the same view with the mod off.", method, drawings).AppendLine();
+        if (sharing != null)
+        {
+            text.Append("Mode: ").Append(sharing).AppendLine();
+        }
+
         text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36} {1,8} {2,8} {3,14} {4,20} {5,16} {6,16}",
             "Phase", "Avg fps", "1% low", "Mod ms avg/max", "Refresh ms avg/max", "Avg fps change", "1% low change").AppendLine();
         foreach (var phase in phases)
@@ -115,7 +130,73 @@ public static class PerfReport
         }
 
         AppendSections(text, phases);
+        AppendSharing(text, phases);
         return text.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Sharing's traffic per second, the main thread's time in Steam's calls, what the mod allocated and the game's
+    /// garbage collections, per phase, when the test counted them.
+    /// </summary>
+    private static void AppendSharing(StringBuilder text, IReadOnlyList<PerfPhase> phases)
+    {
+        var any = false;
+        foreach (var phase in phases)
+        {
+            any |= phase.Sharing != null;
+        }
+
+        if (!any)
+        {
+            return;
+        }
+
+        text.AppendLine("Sharing and memory. Per second unless marked; Steam ms is the game's main thread inside Steam's calls; Shown is teammates' drawings on the map.");
+        text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36} {1,9} {2,8} {3,9} {4,8} {5,8} {6,12} {7,11} {8,13} {9,6} {10,6}",
+            "Phase", "Sent KB", "Sent", "Recv KB", "Recv", "Applied", "Steam ms/fr", "Steam worst", "Alloc KB/fr", "GC", "Shown").AppendLine();
+        foreach (var phase in phases)
+        {
+            if (phase.Sharing is not { } s)
+            {
+                continue;
+            }
+
+            text.AppendFormat(CultureInfo.InvariantCulture,
+                "{0,-36} {1,9:0.00} {2,8:0.0} {3,9:0.00} {4,8:0.0} {5,8:0.00} {6,12:0.000} {7,11:0.0} {8,13:0.00} {9,6:0.00} {10,6}",
+                phase.Name, s.SentKb, s.SentMessages, s.ReceivedKb, s.ReceivedMessages, s.SnapshotsApplied, s.SteamMsPerFrame,
+                s.SteamWorstMs, phase.Summary.AllocKbPerFrame, s.Collections, s.ReceivedShown).AppendLine();
+        }
+    }
+
+    /// <summary>
+    /// Each cycle's average frame rate per phase, for a test of more cycles than the default to show whether the frame
+    /// rate drifts as it runs. Empty for a short test. Rows are cycles, columns phases.
+    /// </summary>
+    public static string Cycles(IReadOnlyList<string> names, IReadOnlyList<(int Frames, double Ms)[]> cycles)
+    {
+        if (cycles.Count <= PerfSchedule.Cycles)
+        {
+            return string.Empty;
+        }
+
+        var text = new StringBuilder();
+        text.AppendLine().Append("Avg fps per cycle, in phase order:");
+        for (var i = 0; i < names.Count; i++)
+        {
+            text.Append(i == 0 ? " " : " | ").Append(names[i]);
+        }
+
+        for (var cycle = 0; cycle < cycles.Count; cycle++)
+        {
+            text.AppendLine().AppendFormat(CultureInfo.InvariantCulture, "Cycle {0,3}:", cycle + 1);
+            for (var i = 0; i < names.Count && i < cycles[cycle].Length; i++)
+            {
+                var (frames, ms) = cycles[cycle][i];
+                text.AppendFormat(CultureInfo.InvariantCulture, " {0,7}", ms > 0 ? (frames * 1000.0 / ms).ToString("0.0", CultureInfo.InvariantCulture) : "-");
+            }
+        }
+
+        return text.ToString();
     }
 
     /// <summary>
@@ -159,6 +240,41 @@ public static class PerfReport
             }
 
             text.AppendFormat(CultureInfo.InvariantCulture, " {0,9:0.000}", System.Math.Max(0f, phase.Summary.ModAvgMs - inFrame)).AppendLine();
+        }
+
+        var anyWorst = false;
+        foreach (var phase in phases)
+        {
+            anyWorst |= phase.SectionWorstMs != null;
+        }
+
+        if (!anyWorst)
+        {
+            return;
+        }
+
+        text.AppendLine("Worst frame ms by part: each part's costliest single frame without a garbage collection, the spikes behind a 1% low.");
+        text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36}", "Phase");
+        for (var i = 0; i < ModTimings.Count; i++)
+        {
+            text.AppendFormat(CultureInfo.InvariantCulture, " {0,9}", SectionHeads[i]);
+        }
+
+        text.AppendLine();
+        foreach (var phase in phases)
+        {
+            if (phase.SectionWorstMs is not { } worst)
+            {
+                continue;
+            }
+
+            text.AppendFormat(CultureInfo.InvariantCulture, "{0,-36}", phase.Name);
+            foreach (var ms in worst)
+            {
+                text.AppendFormat(CultureInfo.InvariantCulture, " {0,9:0.000}", ms);
+            }
+
+            text.AppendLine();
         }
     }
 

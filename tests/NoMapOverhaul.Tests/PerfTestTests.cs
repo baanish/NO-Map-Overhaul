@@ -26,13 +26,93 @@ internal static class PerfTestTests
         ("perf slices take turns within each view so drift cancels", SlicesTakeTurnsSoDriftCancels),
         ("a condition's slices add up to one window", SlicesAddUpToOneWindow),
         ("a timed section leaves out the sections inside it", TimedSectionLeavesOutNestedSections),
+        ("each part's worst frame is its costliest single frame", WorstFrameByPart),
         ("the per-part table puts the rest of the mod's frame in Other", PerPartTableShowsOther),
+        ("a longer test keeps the order and settles alike on every PC", LongerTestKeepsOrderAndSettles),
+        ("sharing modes start on the next shared half minute", SharingModesStartOnSharedHalfMinute),
+        ("the command line names a mode and an optional start", CommandLineNamesModeAndStart),
+        ("the sharing table reads per second and the cycle lines show drift", SharingTableAndCycleLines),
+        ("failed drawing waits longer each time it fails again soon", DrawingRecoveryBacksOff),
     };
+
+    private static void LongerTestKeepsOrderAndSettles()
+    {
+        const int cycles = 8;
+        var slices = PerfSchedule.SliceCountFor(cycles);
+        Expect(slices == 64, $"expected 64 slices in 8 cycles, got {slices}");
+        var minimap = string.Join(",", Enumerable.Range(0, 16).Select(slice => PerfSchedule.Condition(slice, cycles)));
+        ExpectText(minimap, "0,1,2,3,3,2,1,0,0,1,2,3,3,2,1,0");
+        Expect(PerfSchedule.View(31, cycles) == 0 && PerfSchedule.View(32, cycles) == 1 && PerfSchedule.Condition(32, cycles) == 4,
+            "expected the full map to start after the minimap's 32 slices");
+        Expect(PerfSchedule.Cycle(0, cycles) == 0 && PerfSchedule.Cycle(31, cycles) == 7 && PerfSchedule.Cycle(36, cycles) == 1,
+            "expected each slice's cycle within its view");
+        ExpectNear((float)PerfSchedule.SettleSeconds(0, cycles, 5, 2, 1.5), 5, "the first slice settles for the first wait");
+        ExpectNear((float)PerfSchedule.SettleSeconds(1, cycles, 5, 2, 1.5), 1.5f, "a condition switch settles");
+        ExpectNear((float)PerfSchedule.SettleSeconds(4, cycles, 5, 2, 1.5), 0, "a cycle's last condition measured again needs none");
+        ExpectNear((float)PerfSchedule.SettleSeconds(32, cycles, 5, 2, 1.5), 2, "the view switch settles for the map");
+    }
+
+    private static void SharingModesStartOnSharedHalfMinute()
+    {
+        ExpectNear((float)PerfSchedule.FirstSliceAt(1000, 5, aligned: false, null), 1005, "locally, one settle away");
+        ExpectNear((float)PerfSchedule.FirstSliceAt(1000, 5, aligned: true, null), 1020, "shared, the next half minute");
+        ExpectNear((float)PerfSchedule.FirstSliceAt(1016, 5, aligned: true, null), 1050, "shared, past one too close");
+        ExpectNear((float)PerfSchedule.FirstSliceAt(1000, 5, aligned: true, 1100), 1100, "a named start in time");
+        ExpectNear((float)PerfSchedule.FirstSliceAt(1000, 5, aligned: true, 1003), 1020, "a named start too soon falls back");
+    }
+
+    private static void CommandLineNamesModeAndStart()
+    {
+        var (mode, start) = PerfSchedule.ReadAutoFlag(new[] { "NuclearOption.exe", "-autoConnect", "1", "-nomo-perftest", "receive" });
+        Expect(mode == PerfTestSharing.Receive && start == null, "expected receive with no start");
+        (mode, start) = PerfSchedule.ReadAutoFlag(new[] { "-NOMO-PERFTEST", "local-only@1790000000" });
+        Expect(mode == PerfTestSharing.LocalOnly && start == 1790000000, "expected a start after @, with the hyphen dropped");
+        Expect(PerfSchedule.ReadAutoFlag(new[] { "-nomo-perftest", "fast" }).Mode == null, "an unknown mode starts nothing");
+        Expect(PerfSchedule.ReadAutoFlag(new[] { "-nomo-perftest", "7" }).Mode == null, "a number isn't a mode");
+        Expect(PerfSchedule.ReadAutoFlag(new[] { "-nomo-perftest" }).Mode == null, "a flag with no mode starts nothing");
+    }
+
+    private static void SharingTableAndCycleLines()
+    {
+        var stats = new PerfSharingStats();
+        stats.Add(new NoMapOverhaul.Sharing.DrawingTraffic { SentBytes = 4096, SentMessages = 4, SnapshotsApplied = 2, SteamMs = 3, SteamWorstMs = 1.5 },
+            collections: 1, shown: 12, seconds: 2);
+        var summary = stats.Summarize(frames: 100);
+        ExpectNear(summary.SentKb, 2f, "sent KB per second");
+        ExpectNear(summary.SentMessages, 2f, "sent messages per second");
+        ExpectNear(summary.SnapshotsApplied, 1f, "snapshots applied per second");
+        ExpectNear(summary.SteamMsPerFrame, 0.03f, "Steam ms per frame");
+        ExpectNear(summary.Collections, 0.5f, "collections per second");
+        Expect(summary.ReceivedShown == 12, "the most received drawings shown");
+        var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1, sharing: summary) }, "slices", "none", "Receive");
+        Expect(table.Contains("Mode: Receive") && table.Contains("Sharing and memory"), "expected the mode and the sharing table");
+        var names = new[] { "a", "b" };
+        Expect(PerfReport.Cycles(names, new[] { new (int, double)[2], new (int, double)[2] }).Length == 0, "a short test has no cycle lines");
+        var cycles = Enumerable.Range(0, 6).Select(i => new[] { (100, 1000.0), (50, 1000.0 + 100 * i) }).ToList();
+        var lines = PerfReport.Cycles(names, cycles).Trim().Split('\n');
+        Expect(lines.Length == 7, $"expected a header and 6 cycle lines, got {lines.Length}");
+        ExpectText(System.Text.RegularExpressions.Regex.Replace(lines[6].Trim(), " +", " "), "Cycle 6: 100.0 33.3");
+    }
+
+    private static void DrawingRecoveryBacksOff()
+    {
+        var recovery = new DrawingRecovery();
+        Expect(recovery.CanDraw(0), "draws before any failure");
+        ExpectNear((float)recovery.Fail(10), 1f, "the first failure waits a second");
+        Expect(!recovery.CanDraw(10.5) && recovery.CanDraw(11), "waits out the pause");
+        ExpectNear((float)recovery.Fail(12), 2f, "a failure soon after doubles the wait");
+        ExpectNear((float)recovery.Fail(15), 4f, "and again");
+        for (var i = 0; i < 10; i++) recovery.Fail(20);
+        ExpectNear((float)recovery.Fail(20), (float)DrawingRecovery.MaxPauseSeconds, "the wait stops at a minute");
+        var resumed = 20 + DrawingRecovery.MaxPauseSeconds;
+        ExpectNear((float)recovery.Fail(resumed + DrawingRecovery.HealthySeconds), 1f, "after drawing a while without failing, back to a second");
+        Expect(recovery.Failures == 15, $"expected every failure counted, got {recovery.Failures}");
+    }
 
     private static void SlicesTakeTurnsSoDriftCancels()
     {
         Expect(PerfSchedule.SliceCount == PerfSchedule.Views * PerfSchedule.ConditionsPerView * PerfSchedule.Cycles, "expected every condition once per cycle");
-        var order = string.Join(",", Enumerable.Range(0, PerfSchedule.SlicesPerView).Select(PerfSchedule.Condition));
+        var order = string.Join(",", Enumerable.Range(0, PerfSchedule.SlicesPerView).Select(slice => PerfSchedule.Condition(slice)));
         ExpectText(order, "0,1,2,3,3,2,1,0,0,1,2,3,3,2,1,0");
         for (var condition = 0; condition < PerfSchedule.Views * PerfSchedule.ConditionsPerView; condition++)
         {
@@ -73,6 +153,7 @@ internal static class PerfTestTests
     private static void TimedSectionLeavesOutNestedSections()
     {
         var ms = new double[ModTimings.Count];
+        ModTimings.EndFrame();
         ModTimings.TakeMs(ms);
         Array.Clear(ms, 0, ms.Length);
         var outer = ModTimings.Start(1000L);
@@ -81,6 +162,7 @@ internal static class PerfTestTests
         ModTimings.Stop(ModSection.WorldLabels, outer, 2000L);
         var after = ModTimings.Start(3000L);
         ModTimings.Stop(ModSection.ShapeDrawing, after, 3500L);
+        ModTimings.EndFrame();
         ModTimings.TakeMs(ms);
         var perTick = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         ExpectNear((float)(ms[(int)ModSection.WorldRings] / perTick), 300f, "inner ticks");
@@ -90,6 +172,34 @@ internal static class PerfTestTests
         var again = new double[ModTimings.Count];
         ModTimings.TakeMs(again);
         Expect(again.All(value => value == 0), "expected TakeMs to start every section from zero");
+    }
+
+    /// <summary>A part's worst frame is its single costliest frame, however many times it ran within that frame.</summary>
+    private static void WorstFrameByPart()
+    {
+        ModTimings.EndFrame();
+        ModTimings.TakeMs(new double[ModTimings.Count]);
+        ModTimings.TakeWorstMs(new double[ModTimings.Count]);
+        void Time(long from, long to) => ModTimings.Stop(ModSection.ShapeDrawing, ModTimings.Start(from), to);
+        Time(0L, 500L);
+        ModTimings.EndFrame();
+        Time(1000L, 1300L);
+        Time(2000L, 2300L); // two runs in one frame: 600 ticks
+        ModTimings.EndFrame();
+        Time(3000L, 3100L);
+        ModTimings.EndFrame();
+        Time(4000L, 4900L);
+        ModTimings.EndFrame(collected: true); // a garbage collection's pause, not the part's own cost
+        var worst = new double[ModTimings.Count];
+        var total = new double[ModTimings.Count];
+        ModTimings.TakeWorstMs(worst);
+        ModTimings.TakeMs(total);
+        var perTick = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        ExpectNear((float)(worst[(int)ModSection.ShapeDrawing] / perTick), 600f, "the costliest frame without a collection, both runs in it summed");
+        ExpectNear((float)(total[(int)ModSection.ShapeDrawing] / perTick), 2100f, "every frame still counts in the total");
+        var again = new double[ModTimings.Count];
+        ModTimings.TakeWorstMs(again);
+        Expect(again.All(value => value == 0), "expected TakeWorstMs to start every section's worst frame over");
     }
 
     private static void PerPartTableShowsOther()
@@ -102,7 +212,7 @@ internal static class PerfTestTests
         stats.AddFrame(10f, 0.4f, modOn: true);
         var table = PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", stats.Summarize(), -1, default, sections) }, "slices", "71 shapes");
         var row = System.Text.RegularExpressions.Regex.Replace(table.Split('\n').Last().TrimEnd(), " +", " ");
-        ExpectText(row, "Minimap, mod on 0.100 0.200 0.000 0.000 0.000 0.000 0.000 0.500 0.100");
+        ExpectText(row, "Minimap, mod on 0.100 0.200 0.000 0.000 0.000 0.000 0.000 0.000 0.500 0.100");
         Expect(!PerfReport.Table(new[] { new PerfPhase("Minimap, mod on", Fps(100f), -1) }, "slices", "71 shapes").Contains("by part"),
             "expected no per-part table without timings");
     }

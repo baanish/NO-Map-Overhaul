@@ -23,6 +23,7 @@ internal static class WaypointTests
         ("undo takes back waypoints but not progress", UndoTakesBackWaypointsNotProgress),
         ("a redone waypoint behind isn't passed until seen ahead", RedoneWaypointBehindStaysNext),
         ("undoing an erase keeps the route's progress", UndoingEraseKeepsProgress),
+        ("progress saved around the perf test's own route comes back", SavedProgressComesBack),
         ("a new route starts at its first waypoint", NewRouteStartsAtFirstWaypoint),
         ("undoing back to an older route keeps its progress", UndoBackToOlderRouteKeepsProgress),
         ("the route draws numbered markers on one line", RouteDrawsNumberedMarkers),
@@ -134,6 +135,27 @@ internal static class WaypointTests
         context.Shapes.Undo();
         progress.Refresh(context.Shapes);
         Expect(ReferenceEquals(progress.Route, route) && progress.Next == 1, "expected the route back with waypoint 2 next");
+    }
+
+    /// <summary>The perf test swaps the store for its own route and back; the player's route must not restart.</summary>
+    private static void SavedProgressComesBack()
+    {
+        var context = new FakeContext();
+        var progress = new RouteProgress();
+        var route = AddRoute(context.Shapes, new Vector2(0, 1000), new Vector2(0, 2000), new Vector2(0, 3000));
+        progress.Refresh(context.Shapes);
+        progress.Skip();
+        progress.Skip();
+        var savedShapes = context.Shapes.Save();
+        var saved = progress.Save();
+        context.Shapes.Reset();
+        AddRoute(context.Shapes, new Vector2(5000, 0), new Vector2(6000, 0));
+        progress.Refresh(context.Shapes);
+        Expect(progress.Next == 0, "the test's route starts at its first waypoint");
+        context.Shapes.Restore(savedShapes);
+        progress.Restore(saved);
+        progress.Refresh(context.Shapes);
+        Expect(ReferenceEquals(progress.Route, route) && progress.Next == 2, $"expected the player's route back at waypoint 3, got {progress.Next + 1}");
     }
 
     private static void NewRouteStartsAtFirstWaypoint()

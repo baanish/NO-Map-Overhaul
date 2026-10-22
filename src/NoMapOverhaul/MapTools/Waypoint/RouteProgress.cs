@@ -118,6 +118,41 @@ public sealed class RouteProgress
         _seenAhead = false;
     }
 
+    /// <summary>Everything flown so far, for <see cref="Restore"/> after the perf test has swapped its own route in.</summary>
+    public Saved Save() => new(_routeId, Next, _seenAhead, new Dictionary<int, (int Next, bool SeenAhead)>(_others));
+
+    /// <summary>Puts back a <see cref="Save"/>. The route is found again on the next <see cref="Refresh"/>.</summary>
+    public void Restore(Saved saved)
+    {
+        _routeId = saved.RouteId;
+        Next = saved.Next;
+        _seenAhead = saved.SeenAhead;
+        _others.Clear();
+        foreach (var pair in saved.Others)
+        {
+            _others.Add(pair.Key, pair.Value);
+        }
+
+        _storeVersion = -1;
+        Route = null;
+    }
+
+    public sealed class Saved
+    {
+        internal Saved(int routeId, int next, bool seenAhead, Dictionary<int, (int Next, bool SeenAhead)> others)
+        {
+            RouteId = routeId;
+            Next = next;
+            SeenAhead = seenAhead;
+            Others = others;
+        }
+
+        internal int RouteId { get; }
+        internal int Next { get; }
+        internal bool SeenAhead { get; }
+        internal Dictionary<int, (int Next, bool SeenAhead)> Others { get; }
+    }
+
     /// <summary>A new mission: the old route's id means nothing now.</summary>
     public void Forget()
     {

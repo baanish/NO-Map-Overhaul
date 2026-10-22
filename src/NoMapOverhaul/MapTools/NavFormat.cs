@@ -80,13 +80,7 @@ public static class NavFormat
     public static string Distance(float meters, DistanceUnit unit)
     {
         var (value, precision) = Display(meters, unit);
-        var invariant = CultureInfo.InvariantCulture;
-        return precision switch
-        {
-            Precision.Meters => value.ToString(invariant) + "m",
-            Precision.Tenths => (value / 10).ToString(invariant) + "." + (value % 10).ToString(invariant) + Suffix(unit),
-            _ => value.ToString(invariant) + Suffix(unit),
-        };
+        return Number(value, precision, precision == Precision.Meters ? "m" : Suffix(unit));
     }
 
     /// <summary>Equal for two distances that show the same text, so a label refreshed every frame can skip re-formatting.</summary>
@@ -104,13 +98,25 @@ public static class NavFormat
     public static string Altitude(float meters, DistanceUnit unit)
     {
         var (value, precision) = AltitudeDisplay(meters, unit);
+        return Number(value, precision, precision == Precision.Meters ? " m" : "k ft");
+    }
+
+    /// <summary>A shown value and its suffix as one string, with no partial strings on the way: 42 in tenths is "4.2".</summary>
+    private static string Number(long value, Precision precision, string suffix)
+    {
+        Span<char> chars = stackalloc char[48];
         var invariant = CultureInfo.InvariantCulture;
-        return precision switch
+        var tenths = precision == Precision.Tenths;
+        (tenths ? value / 10 : value).TryFormat(chars, out var length, default, invariant);
+        if (tenths)
         {
-            Precision.Meters => value.ToString(invariant) + " m",
-            Precision.Tenths => (value / 10).ToString(invariant) + "." + (value % 10).ToString(invariant) + "k ft",
-            _ => value.ToString(invariant) + "k ft",
-        };
+            chars[length++] = '.';
+            (value % 10).TryFormat(chars.Slice(length), out var digit, default, invariant);
+            length += digit;
+        }
+
+        suffix.AsSpan().CopyTo(chars.Slice(length));
+        return new string(chars.Slice(0, length + suffix.Length));
     }
 
     /// <summary>Equal for two altitudes that show the same text, and never negative.</summary>

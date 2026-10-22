@@ -7,9 +7,27 @@ namespace NoMapOverhaul.Tests;
 
 internal static class ChannelTests
 {
+    /// <summary>The allocation-free check agrees with configuring the name as a one-channel list, on names near every rule.</summary>
+    private static void CanonicalNames()
+    {
+        foreach (var name in new[]
+        {
+            "a", "alpha", "perf-test", "a.b_c-d 9", "a b", new string('x', 32), new string('x', 33), "", " a", "a ", "Alpha",
+            "a,b", "a!", "ä", "\t", "-", " ", "a  b",
+        })
+        {
+            var channels = new DrawingChannels();
+            var kept = channels.TryConfigure(name, out _) && channels.Names.Count == 1 && channels.Names[0] == name;
+            Expect(DrawingChannels.IsCanonicalName(name) == kept, $"'{name}': expected canonical {kept}");
+        }
+
+        Expect(!DrawingChannels.IsCanonicalName(null), "null is not a name");
+    }
+
     public static readonly (string Name, Action Test)[] All =
     {
         ("channels normalize names and deduplicate in first occurrence order", Normalize),
+        ("a canonical channel name is exactly what configuring it keeps", CanonicalNames),
         ("empty channel settings select local drawings", Empty),
         ("channel settings accept ten distinct names and reject eleven", CountLimit),
         ("channel names accept 32 characters and reject 33", NameLimit),

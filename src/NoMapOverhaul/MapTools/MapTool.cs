@@ -62,12 +62,14 @@ public interface IWorldLabels
     /// Draws a level ring around a point in the 3D view as a thin line, radius in meters, with the centre in the same
     /// global meters as <see cref="Add"/>. Hidden with the HUD, and where it passes behind the camera.
     /// </summary>
-    void Ring(Vector3 center, float radius, ShapeColor color);
+    /// <param name="owner">The drawing the ring belongs to, which keeps one ring slot from frame to frame.</param>
+    void Ring(Vector3 center, float radius, ShapeColor color, object owner);
 }
 
 /// <summary>
 /// One entry in the map tools menu. Unity-free, so a tool can be tested with a fake context. Everything is called from
-/// the plugin's guarded update, so a throw disables the mod rather than the game.
+/// the plugin's guarded drawing, so a throw takes the mod's graphics down and builds them again after a pause, without
+/// touching the game, the drawings or sharing.
 /// While the tool is active, left clicks on the full map come here instead of the game. Right clicks go to the host,
 /// which cancels <see cref="InProgress"/> work or deletes a drawing (see <see cref="RightClickRule"/>).
 /// </summary>

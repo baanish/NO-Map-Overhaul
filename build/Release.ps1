@@ -26,7 +26,7 @@ if ($gitStatus.Count -ne 0 -and -not $AllowDirty) {
 }
 
 [xml]$projectXml = Get-Content -LiteralPath $project
-$version = [string]($projectXml.Project.PropertyGroup.Version | Select-Object -First 1)
+$version = [string]$projectXml.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid project version '$version'." }
 
 $pluginVersion = [regex]::Match([IO.File]::ReadAllText($pluginSource), 'const\s+string\s+PluginVersion\s*=\s*"(?<version>[^"]+)"')
@@ -50,7 +50,12 @@ function Invoke-DotNet([string[]]$Arguments) {
 
 function Copy-PackageFiles([string]$Destination, [string]$PluginDll) {
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    # The loopback sharing transport (build/Build-Loopback.ps1) takes unauthenticated drawings from anything on the PC.
+    if ([IO.File]::ReadAllText($PluginDll).Contains('LoopbackDrawingTransport')) {
+        throw "$PluginDll contains the loopback sharing transport, which is for tests only. Build with build/Build.ps1."
+    }
     Copy-Item -LiteralPath $PluginDll -Destination (Join-Path $Destination 'NoMapOverhaul.dll')
+    Copy-Item -LiteralPath (Join-Path (Split-Path $PluginDll) 'nomapoverhaul-shaders.bundle') -Destination $Destination
     $readme = [IO.File]::ReadAllText((Join-Path $root 'packaging\README.txt'))
     if ($readme -notlike '*@VERSION@*') { throw 'packaging/README.txt does not contain its @VERSION@ token.' }
     [IO.File]::WriteAllText((Join-Path $Destination 'README.txt'), $readme.Replace('@VERSION@', $version), [Text.UTF8Encoding]::new($false))
@@ -109,6 +114,7 @@ function Assert-Package([string]$Path, [string[]]$ExpectedEntries) {
 }
 
 Invoke-DotNet @('run', '--project', $tests, '-c', 'Release')
+& (Join-Path $PSScriptRoot 'Build-Shaders.ps1') -Check
 Invoke-DotNet @('clean', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
 Invoke-DotNet @('build', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
 
@@ -147,9 +153,10 @@ New-DeterministicZip $nommStage $nommZip
 New-DeterministicZip $pluginStage $pluginZip
 Remove-Item -LiteralPath $staging -Recurse -Force
 
-Assert-Package $nommZip @('NoMapOverhaul.dll', 'LICENSE.txt', 'README.txt', 'THIRD_PARTY_NOTICES.txt')
+Assert-Package $nommZip @('NoMapOverhaul.dll', 'nomapoverhaul-shaders.bundle', 'LICENSE.txt', 'README.txt', 'THIRD_PARTY_NOTICES.txt')
 Assert-Package $pluginZip @(
     'BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll',
+    'BepInEx/plugins/NoMapOverhaul/nomapoverhaul-shaders.bundle',
     'BepInEx/plugins/NoMapOverhaul/LICENSE.txt',
     'BepInEx/plugins/NoMapOverhaul/meta.json',
     'BepInEx/plugins/NoMapOverhaul/README.txt',

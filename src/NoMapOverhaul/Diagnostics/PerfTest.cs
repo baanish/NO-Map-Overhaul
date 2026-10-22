@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using NoMapOverhaul.MapTools;
+using NoMapOverhaul.MapTools.Text;
+using NoMapOverhaul.Sharing;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using UnityEngine;
@@ -13,23 +15,43 @@ namespace NoMapOverhaul.Diagnostics;
 /// the mod off, on, on with typical drawings, and on with heavy drawings (both from <see cref="StressDrawings"/>), then
 /// the same on the full map. Within each view the four conditions take turns in short slices
 /// (<see cref="PerfSchedule"/>), so drift while flying spreads over all four,
-/// and each slice waits <see cref="SliceSettleSeconds"/> after a switch so the switch (graphics rebuilt, the map
-/// opened) stays out of the numbers. The mod-off conditions override General.Enabled through <see cref="ModOn"/>, and
+/// and each slice waits after a switch so the switch (graphics rebuilt, the map opened, a teammate's drawings arriving)
+/// stays out of the numbers. The mod-off conditions override General.Enabled through <see cref="ModOn"/>, and
 /// the drawings show through <see cref="ModSettings.PerfTestShowsDrawings"/>, instead of writing the settings, so a
 /// crash mid-test can't leave any of them saved. Afterwards the player's drawings come back with their undo history,
 /// along with the map. Leaving the mission, losing the aircraft, opening or closing the map, or a second press stops it
 /// early and puts everything back the same way.
+/// Sharing keeps running throughout, mod-off slices included: teammates go on getting the player's own drawings, and
+/// theirs are kept, out of sight until the test ends. The Perf test sharing setting picks whether the test's drawings
+/// also travel (<see cref="PerfTestSharing"/>), on a channel of the test's own that joins the channel lists in memory
+/// (<see cref="PerfSharing"/>). A test that sends replaces one note every <see cref="ChurnSeconds"/> while it shows
+/// drawings, so they go out at the rate a teammate's may change. Slices run on the wall clock, from the next half
+/// minute in a sharing mode, so a test started on each of two PCs within the same half minute measures each condition
+/// at the same time on both.
 /// </summary>
 internal sealed class PerfTest
 {
     /// <summary>Time to close F1, whose window costs frames too.</summary>
-    private const float FirstSettleSeconds = 5f;
+    private const double FirstSettleSeconds = 5;
 
     /// <summary>After opening the full map.</summary>
-    private const float ViewSettleSeconds = 2f;
+    private const double ViewSettleSeconds = 2;
 
-    private const float SliceSettleSeconds = 0.5f;
-    private const float SliceSeconds = 2f;
+    private const double SliceSettleSeconds = 0.5;
+
+    /// <summary>A sending teammate's snapshot every 0.5 s and the receiver's 0.5 s cadence, plus the trip between them.</summary>
+    private const double SharedSliceSettleSeconds = 1.5;
+
+    private const double SliceSeconds = 2;
+
+    /// <summary>Sharing modes start on a whole multiple of this many seconds of UTC, so two PCs line up.</summary>
+    private const double AlignSeconds = 30;
+
+    /// <summary>How often a test that sends changes one of its drawings: the fastest a receiver takes a teammate's changes.</summary>
+    private const double ChurnSeconds = DrawingNetworkSchedule.SnapshotInterval;
+
+    /// <summary>How long an aircraft must have been flown before a test the command line asked for starts.</summary>
+    private const double AutoStartSeconds = 15;
 
     /// <summary>How far ahead of the aircraft <c>DynamicMap.CenterMinimizedMap</c> centres the minimap.</summary>
     private const float MinimapLead = 4000f;
@@ -60,7 +82,12 @@ internal sealed class PerfTest
     private readonly FrameStats[] _stats = new FrameStats[Conditions.Length];
     private readonly double[][] _sectionMs = new double[Conditions.Length][];
     private readonly double[] _settlingMs = new double[ModTimings.Count];
+    private readonly double[][] _sectionWorstMs = new double[Conditions.Length][];
     private readonly RenderCounters _render = new(Conditions.Length);
+    private readonly PerfSharingStats[] _sharing = new PerfSharingStats[Conditions.Length];
+
+    /// <summary>Each cycle's frames and frame time per condition, for the drift line of a long test.</summary>
+    private readonly List<(int Frames, double Ms)[]> _cycles = new();
 
     /// <summary>How many of each <see cref="DrawingSet"/>'s shapes the store took, by its value.</summary>
     private readonly int[] _shown = new int[3];
@@ -71,13 +98,36 @@ internal sealed class PerfTest
     private float _radius;
     private DrawingSet? _showing;
     private ShapeStore.Saved? _savedShapes;
+    private NoMapOverhaul.MapTools.Waypoint.RouteProgress.Saved? _savedProgress;
+
+    /// <summary>Set before the test changes anything, so a failure part way through starting still puts everything back.</summary>
+    private bool _started;
     private int _savedMissionVersion;
     private DynamicMap? _map;
     private bool _mapWasOpen;
+    private PerfTestSharing _mode;
+    private int _cycleCount = PerfSchedule.Cycles;
     private int _slice = -1;
-    private float _sliceStart;
+
+    /// <summary>On <see cref="Clock"/>: when the current slice starts settling, and when it starts and stops measuring.</summary>
+    private double _measureAt;
+
+    private double _measureEnd;
+    private double _nextChurn;
+    private int _churned;
+    private int _collections;
     private bool _measuring;
     private bool _requested;
+
+    /// <summary>The wall clock at the test's start, and the stopwatch then, so the clock ticks steadily from there.</summary>
+    private double _clockUtc;
+
+    private long _clockTicks;
+
+    private readonly PerfTestSharing? _autoMode;
+    private readonly double? _autoStartAt;
+    private double _autoAircraftSince = -1;
+    private bool _autoDone;
 
     public PerfTest(ModSettings settings, PerformanceLog performance, MapToolHost mapTools, ManualLogSource log)
     {
@@ -90,6 +140,7 @@ internal sealed class PerfTest
         {
             _stats[i] = new FrameStats();
             _sectionMs[i] = new double[ModTimings.Count];
+            _sectionWorstMs[i] = new double[ModTimings.Count];
         }
 
         settings.PerfTestButton.CustomDrawer = DrawButton;
@@ -101,10 +152,12 @@ internal sealed class PerfTest
                 _requested = true;
             }
         };
+
+        (_autoMode, _autoStartAt) = PerfSchedule.ReadAutoFlag(System.Environment.GetCommandLineArgs());
     }
 
     /// <summary>Whether the mod runs this frame while the test is on, overriding General.Enabled; null otherwise.</summary>
-    public bool? ModOn => _slice >= 0 ? Conditions[PerfSchedule.Condition(_slice)].ModOn : null;
+    public bool? ModOn => _slice >= 0 ? Conditions[PerfSchedule.Condition(_slice, _cycleCount)].ModOn : null;
 
     /// <summary>Per frame, first thing in the plugin's guarded update. Between slice switches it only compares a few numbers.</summary>
     public void Update()
@@ -118,7 +171,7 @@ internal sealed class PerfTest
             }
             else
             {
-                Begin();
+                TryBegin(_settings.PerfTestSharing.Value, _settings.PerfTestCycles.Value, null);
             }
 
             return;
@@ -126,6 +179,7 @@ internal sealed class PerfTest
 
         if (_slice < 0)
         {
+            AutoStart();
             return;
         }
 
@@ -142,22 +196,25 @@ internal sealed class PerfTest
             return;
         }
 
-        var condition = PerfSchedule.Condition(_slice);
+        var condition = PerfSchedule.Condition(_slice, _cycleCount);
         if (DynamicMap.mapMaximized != Conditions[condition].FullMap)
         {
             Stop("the map was opened or closed");
             return;
         }
 
-        var elapsed = Time.realtimeSinceStartup - _sliceStart;
-        var settle = SettleSeconds(_slice);
+        var now = Clock();
+        Churn(condition, now);
         if (!_measuring)
         {
-            if (elapsed >= settle)
+            if (now >= _measureAt)
             {
                 _measuring = true;
                 _render.BeginSlice();
                 ModTimings.TakeMs(_settlingMs); // the settling frames' times, dropped
+                ModTimings.TakeWorstMs(_settlingMs);
+                SteamDrawingSharing.TakeTraffic(TrafficReader.PerfTest);
+                _collections = System.GC.CollectionCount(0);
                 _performance.Phase = _stats[condition];
             }
 
@@ -165,17 +222,22 @@ internal sealed class PerfTest
         }
 
         _render.Sample(condition);
-        if (elapsed < settle + SliceSeconds)
+        if (now < _measureEnd)
         {
             return;
         }
 
+        var frames = _stats[condition].Frames;
         _performance.Phase = null;
         ModTimings.TakeMs(_sectionMs[condition]);
+        ModTimings.TakeWorstMs(_sectionWorstMs[condition]);
         _render.CountGraphics(condition);
-        if (_slice + 1 < PerfSchedule.SliceCount)
+        _sharing[condition].Add(SteamDrawingSharing.TakeTraffic(TrafficReader.PerfTest), System.GC.CollectionCount(0) - _collections,
+            _mapTools.VisibleReceived.Count, now - _measureAt);
+        RecordCycle(condition);
+        if (_slice + 1 < PerfSchedule.SliceCountFor(_cycleCount))
         {
-            StartSlice(_slice + 1);
+            StartSlice(_slice + 1, _measureEnd);
         }
         else
         {
@@ -190,7 +252,7 @@ internal sealed class PerfTest
     {
         var label = _slice >= 0
             ? "Cancel perf test (slice " + (_slice + 1).ToString(CultureInfo.InvariantCulture) + " of " +
-              PerfSchedule.SliceCount.ToString(CultureInfo.InvariantCulture) + ")"
+              PerfSchedule.SliceCountFor(_cycleCount).ToString(CultureInfo.InvariantCulture) + ")"
             : "Run perf test";
         if (GUILayout.Button(label, GUILayout.ExpandWidth(true)))
         {
@@ -198,7 +260,49 @@ internal sealed class PerfTest
         }
     }
 
-    private void Begin()
+    /// <summary>Starts the one test the command line asked for, once an aircraft has been flown for a while.</summary>
+    private void AutoStart()
+    {
+        if (_autoMode is not { } mode || _autoDone)
+        {
+            return;
+        }
+
+        var now = Time.realtimeSinceStartupAsDouble;
+        if (PlayerAircraft() == null || SceneSingleton<DynamicMap>.i == null)
+        {
+            _autoAircraftSince = -1;
+            return;
+        }
+
+        if (_autoAircraftSince < 0)
+        {
+            _autoAircraftSince = now;
+        }
+
+        if (now - _autoAircraftSince >= AutoStartSeconds)
+        {
+            _autoDone = true;
+            TryBegin(mode, _settings.PerfTestCycles.Value, _autoStartAt);
+        }
+    }
+
+    /// <summary>Starts the test, and on any failure while starting puts back what it changed rather than leaving it half set up.</summary>
+    private void TryBegin(PerfTestSharing mode, int cycles, double? startAt)
+    {
+        try
+        {
+            Begin(mode, cycles, startAt);
+        }
+        catch (System.Exception error)
+        {
+            _log.LogError("Perf test couldn't start; everything it changed is put back. " + error);
+            Restore(moveMap: true);
+            Tell("Perf test couldn't start; see LogOutput.log.");
+        }
+    }
+
+    private void Begin(PerfTestSharing mode, int cycles, double? startAt)
     {
         var map = SceneSingleton<DynamicMap>.i;
         if (map == null || PlayerAircraft() == null)
@@ -207,14 +311,30 @@ internal sealed class PerfTest
             return;
         }
 
+        if (mode != PerfTestSharing.LocalOnly && SharingRefusal(new PerfSharing(mode)) is { } refusal)
+        {
+            Tell("Perf test: " + refusal);
+            _log.LogInfo("Perf test not started: " + refusal);
+            return;
+        }
+
+        _started = true;
         _map = map;
+        _mode = mode;
+        _cycleCount = System.Math.Max(2, cycles + cycles % 2);
         _mapWasOpen = DynamicMap.mapMaximized;
         _settings.PerfTestShowsDrawings = true;
         _mapTools.TrackMission(map); // with the mod off the store may still hold a mission that has ended
         _savedShapes = _context.Shapes.Save();
+        _savedProgress = _mapTools.RouteProgress.Save();
         _savedMissionVersion = _mapTools.MissionVersion;
+        var perf = mode == PerfTestSharing.LocalOnly ? null : new PerfSharing(mode);
+        _mapTools.PerfSharing = perf;
+        // With Sharing off, the player's drawings stay off the network: only the test's own go out.
+        _mapTools.HoldOutgoing(_settings.MapSharingEnabled.Value ? _savedShapes.Shapes : System.Array.Empty<MapShape>(), sendStore: perf?.Sends ?? false);
         _anchors = null;
         _showing = null;
+        _cycles.Clear();
         foreach (var stats in _stats)
         {
             stats.Clear();
@@ -225,35 +345,73 @@ internal sealed class PerfTest
             System.Array.Clear(sections, 0, sections.Length);
         }
 
+        foreach (var worst in _sectionWorstMs)
+        {
+            System.Array.Clear(worst, 0, worst.Length);
+        }
+
+        System.Array.Clear(_sharing, 0, _sharing.Length);
         _render.Start();
-        ModTimings.On = true;
-        _log.LogInfo("Perf test started.");
-        Tell("Perf test running for about 85 seconds. Close F1, and hold the view still.");
-        StartSlice(0);
+        ModTimings.Testing = true;
+        _clockUtc = (System.DateTime.UtcNow - System.DateTime.UnixEpoch).TotalSeconds;
+        _clockTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        var first = PerfSchedule.FirstSliceAt(_clockUtc, FirstSettleSeconds, perf != null, startAt);
+        _log.LogInfo(string.Format(CultureInfo.InvariantCulture, "Perf test started: {0}, {1} cycles, first slice at {2:0} s UTC.", mode,
+            _cycleCount, first));
+        Tell(string.Format(CultureInfo.InvariantCulture, "Perf test running for about {0:0} seconds. Close F1, and hold the view still.",
+            first - _clockUtc + PerfSchedule.SliceCountFor(_cycleCount) * (SliceSeconds + SettleFor(perf != null))));
+        StartSlice(0, first);
     }
 
-    /// <summary>Long enough for F1 to close or the full map to open, and none when the condition is the one just measured.</summary>
-    private static float SettleSeconds(int slice)
+    /// <summary>Why a sharing mode can't run here, or null.</summary>
+    private string? SharingRefusal(PerfSharing perf)
     {
-        if (slice == 0)
+        if (GameManager.gameState != GameState.Multiplayer)
         {
-            return FirstSettleSeconds;
+            return "sharing modes need a Steam multiplayer mission, on the same team as the other PC.";
         }
 
-        if (PerfSchedule.View(slice) != PerfSchedule.View(slice - 1))
+        if (!_settings.MapSharingEnabled.Value)
         {
-            return ViewSettleSeconds;
+            return null; // the test shares on its own channel alone, whatever the player's lists hold
         }
 
-        return PerfSchedule.Condition(slice) == PerfSchedule.Condition(slice - 1) ? 0f : SliceSettleSeconds;
+        if (!_mapTools.ChannelsValid)
+        {
+            return "the channel settings are invalid. " + _mapTools.ChannelError;
+        }
+
+        var list = perf.Sends ? _mapTools.Channels.Names : _mapTools.ReceiveChannels.Names;
+        return list.Count >= DrawingChannels.MaxChannels && !Contains(list, PerfSharing.Channel)
+            ? "a channel list is full, so the test's own channel can't join it."
+            : null;
     }
 
-    private void StartSlice(int index)
+    private static bool Contains(IReadOnlyList<string> names, string name)
+    {
+        for (var i = 0; i < names.Count; i++)
+        {
+            if (names[i] == name) return true;
+        }
+
+        return false;
+    }
+
+    private static double SettleFor(bool shared) => shared ? SharedSliceSettleSeconds : SliceSettleSeconds;
+
+    /// <summary>Seconds of UTC, ticking steadily from the test's start.</summary>
+    private double Clock() =>
+        _clockUtc + (System.Diagnostics.Stopwatch.GetTimestamp() - _clockTicks) / (double)System.Diagnostics.Stopwatch.Frequency;
+
+    /// <summary>Starts slice <paramref name="index"/> settling now, to measure from <paramref name="settled"/> or after its settle.</summary>
+    private void StartSlice(int index, double from)
     {
         _slice = index;
-        _sliceStart = Time.realtimeSinceStartup;
         _measuring = false;
-        var condition = Conditions[PerfSchedule.Condition(index)];
+        _measureAt = index == 0 ? from
+            : from + PerfSchedule.SettleSeconds(index, _cycleCount, FirstSettleSeconds, ViewSettleSeconds, SettleFor(_mode != PerfTestSharing.LocalOnly));
+        _measureEnd = _measureAt + SliceSeconds;
+        var condition = Conditions[PerfSchedule.Condition(index, _cycleCount)];
         if (condition.FullMap != DynamicMap.mapMaximized)
         {
             if (condition.FullMap)
@@ -273,14 +431,17 @@ internal sealed class PerfTest
             return;
         }
 
+        var receives = _mapTools.PerfSharing?.Receives ?? false;
+        _mapTools.PerfShowsReceived = receives && condition.Drawings != DrawingSet.None;
         if (condition.Drawings != _showing)
         {
             _showing = condition.Drawings;
             _context.Shapes.Reset();
-            if (condition.Drawings != DrawingSet.None)
+            // A test that only receives draws nothing of its own: its drawing slices show what the teammate sends.
+            if (condition.Drawings != DrawingSet.None && _mode != PerfTestSharing.Receive)
             {
                 var channel = _context.Shapes.DrawingChannel;
-                _context.Shapes.DrawingChannel = string.Empty;
+                _context.Shapes.DrawingChannel = _mapTools.PerfSharing?.Sends == true ? PerfSharing.Channel : string.Empty;
                 try
                 {
                     foreach (var shape in BuildDrawings(_map!, condition.Drawings))
@@ -295,6 +456,56 @@ internal sealed class PerfTest
         }
     }
 
+    /// <summary>A test that sends changes one note's text every <see cref="ChurnSeconds"/> while it shows drawings.</summary>
+    private void Churn(int condition, double now)
+    {
+        if (_mapTools.PerfSharing?.Sends != true || Conditions[condition].Drawings == DrawingSet.None || now < _nextChurn)
+        {
+            return;
+        }
+
+        _nextChurn = now + ChurnSeconds;
+        var shapes = _context.Shapes.Shapes;
+        var notes = 0;
+        for (var i = 0; i < shapes.Count; i++)
+        {
+            notes += shapes[i] is TextNote ? 1 : 0;
+        }
+
+        if (notes == 0)
+        {
+            return;
+        }
+
+        var pick = _churned++ % notes;
+        for (var i = 0; i < shapes.Count; i++)
+        {
+            if (shapes[i] is TextNote note && pick-- == 0)
+            {
+                var text = "Perf test note " + _churned.ToString(CultureInfo.InvariantCulture);
+                _context.Shapes.Replace(note, new TextNote(note.At, note.Elevation, text, note.Color));
+                return;
+            }
+        }
+    }
+
+    /// <summary>Adds the slice just measured to its cycle's line.</summary>
+    private void RecordCycle(int condition)
+    {
+        var cycle = PerfSchedule.Cycle(_slice, _cycleCount);
+        while (_cycles.Count <= cycle)
+        {
+            _cycles.Add(new (int, double)[Conditions.Length]);
+        }
+
+        var summary = _stats[condition].Summarize();
+        var before = _cycleTotals[condition];
+        _cycleTotals[condition] = (summary.Frames, summary.TotalMs);
+        _cycles[cycle][condition] = (summary.Frames - before.Frames, summary.TotalMs - before.Ms);
+    }
+
+    private readonly (int Frames, double Ms)[] _cycleTotals = new (int, double)[Conditions.Length];
+
     /// <summary>Reports the first <paramref name="measured"/> conditions, each over all its slices.</summary>
     private void Finish(int measured, string? note)
     {
@@ -308,20 +519,44 @@ internal sealed class PerfTest
                 sections[s] = summary.Frames > 0 ? (float)(_sectionMs[i][s] / summary.Frames) : 0f;
             }
 
-            results.Add(new PerfPhase(Conditions[i].Name, summary, PerfSchedule.Baseline(i), _render.Summarize(i), sections));
+            var worst = new float[ModTimings.Count];
+            for (var s = 0; s < worst.Length; s++)
+            {
+                worst[s] = (float)_sectionWorstMs[i][s];
+            }
+
+            results.Add(new PerfPhase(Conditions[i].Name, summary, PerfSchedule.Baseline(i), _render.Summarize(i), sections,
+                _sharing[i].Summarize(summary.Frames), worst));
         }
 
+        var settle = SettleFor(_mode != PerfTestSharing.LocalOnly);
         var method = string.Format(CultureInfo.InvariantCulture,
             "each condition measured in {0} slices of {1:0.0} s, taking turns with the others in its view, {2:0.0} s to settle after each switch",
-            PerfSchedule.Cycles, SliceSeconds, SliceSettleSeconds);
+            _cycleCount, SliceSeconds, settle);
         var units = _anchors?.Count ?? 0;
-        var drawings = string.Format(CultureInfo.InvariantCulture,
-            "typical {0} shapes on {1} live units, heavy {2} shapes on {3} live units (at most {4})",
-            _shown[(int)DrawingSet.Typical], System.Math.Min(units, StressDrawings.TypicalAnchors), _shown[(int)DrawingSet.Heavy], units, MaxAnchors);
-        var table = PerfReport.Table(results, method, drawings);
+        var drawings = _mode == PerfTestSharing.Receive
+            ? "none of its own; the drawing slices show what teammates send on the perf-test channel"
+            : string.Format(CultureInfo.InvariantCulture,
+                "typical {0} shapes on {1} live units, heavy {2} shapes on {3} live units (at most {4})",
+                _shown[(int)DrawingSet.Typical], System.Math.Min(units, StressDrawings.TypicalAnchors), _shown[(int)DrawingSet.Heavy], units, MaxAnchors);
+        var sharing = string.Format(CultureInfo.InvariantCulture, "{0}{1}. Sharing: {2}", _mode,
+            _mapTools.PerfSharing?.Sends == true ? ", one note changed every " + ChurnSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s" : string.Empty,
+            _mapTools.SharingStatus);
+        var table = PerfReport.Table(results, method, drawings, sharing) + PerfReport.Cycles(Names(measured), _cycles);
         _log.LogInfo(note == null ? table : table + "\n" + note);
         Restore(moveMap: true);
         Tell(PerfReport.Summary(results));
+    }
+
+    private static string[] Names(int count)
+    {
+        var names = new string[count];
+        for (var i = 0; i < count; i++)
+        {
+            names[i] = Conditions[i].Name;
+        }
+
+        return names;
     }
 
     private void Stop(string reason)
@@ -333,22 +568,36 @@ internal sealed class PerfTest
 
     private void Restore(bool moveMap)
     {
-        if (_slice < 0)
+        if (!_started)
         {
             return;
         }
 
+        _started = false;
         _slice = -1;
         _measuring = false;
         _performance.Phase = null;
-        ModTimings.On = false;
+        ModTimings.Testing = false;
         _render.Stop();
         _settings.PerfTestShowsDrawings = false;
+        _mapTools.PerfSharing = null;
+        _mapTools.PerfShowsReceived = false;
+        _mapTools.ReleaseOutgoing();
+        System.Array.Clear(_cycleTotals, 0, _cycleTotals.Length);
         var map = SceneSingleton<DynamicMap>.i;
         _mapTools.TrackMission(map);
-        if (map != null && ReferenceEquals(map, _map) && _mapTools.MissionVersion == _savedMissionVersion)
+        if (_savedShapes == null)
         {
-            _context.Shapes.Restore(_savedShapes!);
+            // Stopped before the test touched the drawings: they're as the player left them.
+        }
+        else if (map != null && ReferenceEquals(map, _map) && _mapTools.MissionVersion == _savedMissionVersion)
+        {
+            _context.Shapes.Restore(_savedShapes);
+            if (_savedProgress != null)
+            {
+                _mapTools.RouteProgress.Restore(_savedProgress);
+            }
+
             if (moveMap && _mapWasOpen != DynamicMap.mapMaximized)
             {
                 if (_mapWasOpen)
@@ -368,6 +617,7 @@ internal sealed class PerfTest
 
         _map = null;
         _savedShapes = null;
+        _savedProgress = null;
         _anchors = null;
     }
 

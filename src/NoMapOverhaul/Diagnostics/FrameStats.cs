@@ -24,12 +24,14 @@ public sealed class FrameStats
     private float _frameWorst;
     private float _modWorst;
     private float _refreshWorst;
+    private double _allocBytes;
 
     public int Frames => _frames;
 
-    /// <summary>One frame: the game's frame time, the mod's own per-frame work, and whether the mod was on.</summary>
-    public void AddFrame(float frameMs, float modMs, bool modOn)
+    /// <summary>One frame: the game's frame time, the mod's own per-frame work, whether the mod was on, and what the mod allocated.</summary>
+    public void AddFrame(float frameMs, float modMs, bool modOn, long allocBytes = 0)
     {
+        _allocBytes += allocBytes;
         _frameMs[_frames % Capacity] = frameMs;
         _frames++;
         _modOnFrames += modOn ? 1 : 0;
@@ -50,7 +52,7 @@ public sealed class FrameStats
     public void Clear()
     {
         _frames = _modOnFrames = _refreshes = 0;
-        _frameTotal = _modTotal = _refreshTotal = 0;
+        _frameTotal = _modTotal = _refreshTotal = _allocBytes = 0;
         _frameWorst = _modWorst = _refreshWorst = 0f;
     }
 
@@ -72,7 +74,8 @@ public sealed class FrameStats
             _modWorst,
             _refreshes,
             _refreshes == 0 ? 0f : (float)(_refreshTotal / _refreshes),
-            _refreshWorst);
+            _refreshWorst,
+            _frames == 0 ? 0f : (float)(_allocBytes / 1024.0 / _frames));
     }
 }
 
@@ -80,8 +83,9 @@ public sealed class FrameStats
 public readonly struct FrameSummary
 {
     public FrameSummary(int frames, int modOnFrames, float totalMs, float frameAvgMs, float frameWorstMs, float lowFps,
-        float modAvgMs, float modWorstMs, int refreshes, float refreshAvgMs, float refreshWorstMs)
+        float modAvgMs, float modWorstMs, int refreshes, float refreshAvgMs, float refreshWorstMs, float allocKbPerFrame = 0f)
     {
+        AllocKbPerFrame = allocKbPerFrame;
         Frames = frames;
         ModOnFrames = modOnFrames;
         TotalMs = totalMs;
@@ -122,6 +126,9 @@ public readonly struct FrameSummary
     public float RefreshAvgMs { get; }
 
     public float RefreshWorstMs { get; }
+
+    /// <summary>What the mod allocated per frame, from the managed heap's growth across its work, in KB.</summary>
+    public float AllocKbPerFrame { get; }
 
     public string ModState => ModOnFrames == Frames ? "on" : ModOnFrames == 0 ? "off" : "on and off";
 

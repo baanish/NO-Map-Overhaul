@@ -87,6 +87,8 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / General | Circles in 3D view | ShowCirclesIn3D | `true` | Draw each circle in the 3D view as well, as a thin ring level with its centre. |
 | Map Tools / General | Distance units | DistanceUnits | `Game` | **Game setting** follows the game's unit setting. Nautical miles, kilometres, or statute miles always use that unit. Altitudes show in metres with kilometres and in feet with miles. In the file: `Game`, `NauticalMiles`, `Kilometres`, or `StatuteMiles`. |
 | Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The rail's swatches set it; any colour works here. |
+| Map Tools / Drawing | Other channels opacity | OtherChannelsOpacity | `0.5` | How opaque drawings on a channel other than the one you're drawing to show, as a share of their own. `1` shows them like the rest. |
+| Map Tools / Drawing | Other channels brightness | OtherChannelsBrightness | `0.6` | How bright those drawings show, as a share of their own colour. `1` keeps their colour. |
 | Map Tools / Drawing | Line width, *advanced* | LineWidth | `1.5` | Width of drawn lines. Arrowheads grow with it. |
 | Map Tools / Drawing | Text size, *advanced* | TextSize | `10` | Size of text the tools draw on the map. |
 | Map Tools / Waypoints | Reached within (km), *advanced* | WaypointReachKm | `2.5` | How close to a waypoint counts as reaching it. |
@@ -103,16 +105,23 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `100` | Most drawings kept at once. At most `100`, what one teammate can share. |
 | Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `2500` | Most freehand points kept across all pen strokes, so the map stays fast. At most `2500`. |
 | Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |
-| Diagnostics | Log performance, *advanced* | LogPerformance | `false` | Log the frame rate and the mod's own time every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
-| Diagnostics | Log network | LogNetwork | `false` | Log drawing-sharing events and rejection reasons when troubleshooting. |
+| Diagnostics | Perf test sharing, *advanced* | PerfTestSharing | `LocalOnly` | Where the perf test's drawings go: `LocalOnly`, `Send`, `Receive`, or `Bidirectional`. See [Testing with sharing](#testing-with-sharing). |
+| Diagnostics | Perf test cycles, *advanced* | PerfTestCycles | `4` | How many times the perf test measures each condition: `4`, `8`, `16`, `32`, `64`, or `128`. More cycles measure sustained performance. |
+| Diagnostics | Log performance, *advanced* | LogPerformance | `true` | Log the frame rate, the mod's own time, Unity's UI and render costs, and each teammate's sharing every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
+| Diagnostics | Log network | LogNetwork | `true` | Log drawing-sharing events and rejection reasons when troubleshooting. |
+
+Both logs are on in this beta, to find what slows some multiplayer sessions down. Beta 4 switches them on once even if an earlier build saved them off; turn either off and it stays off.
+| Diagnostics | Draw 3D rings on the CPU, *advanced* | RingsOnCpu | `false` | Build the circles' rings in the 3D view on the CPU instead of drawing them with the mod's shader, as it does when `nomapoverhaul-shaders.bundle` is missing. For comparing the two, or if the rings look wrong on your graphics card. |
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
+
+The **+** under the rail's swatches adds colours of your own, up to six; right click one to remove it (see [the rail](MAP_TOOLS.md#the-rail)). They're saved under the key `CustomColors` in `[Map Tools / Drawing]` as comma-separated `#RRGGBB`, such as `#FF8000,#8040FF`, and hidden from F1. Entries that aren't `#RRGGBB` are ignored.
 
 Open **Tools → Channels** on the full map to edit **Broadcast** and **Receive only**, turn sharing on or off, and **Apply**. The **Draw to** indicator shows the destination for new drawings; the numbered Broadcast buttons or Shift+1 through Shift+9 and Shift+0 select it. Broadcast channels receive automatically and allow collaboration; Receive only adds read-only subscriptions and has no shortcuts. Both fields display lowercase as you type. Invalid input leaves both active lists unchanged; Cancel, Escape, or closing the map discards unapplied edits. Sharing defaults off and both lists start empty. The persistent keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` remain in `[Map Tools / Sharing]` in the config file, but are hidden from F1.
 
 An accepted shared erase becomes an undo step for its original owner and clears the owner's redo branch, like any new local edit. It does not change the requester's undo history.
 
-Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel appears in your Broadcast list and either of their channel lists. Channel names are visible to same-faction peers, not passwords, and Steam may use direct connections between teammates. Members who broadcast the same channel can use Eraser or right-click to request an erase from its owner, then redraw a replacement. Receive-only channels stay read-only. Drawings attached to units follow the recipient's own tracks and read `lost` at the last known position once their side loses the unit, like local ones; a drawing on a unit their side never knew stays hidden. Both clients need the updated protocol-6 build. Changing teams keeps prior drawings local-only, including undo history. See [sharing behavior and limits](SHARING.md). Disabling sharing removes received drawings immediately on your client; teammates expire your drawings after 15 seconds without a message. Performance tests pause sharing, and a team or mission change during a test cancels it and discards the test drawings.
+Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel appears in your Broadcast list and either of their channel lists. Channel names are visible to same-faction peers, not passwords, and Steam may use direct connections between teammates. Members who broadcast the same channel can use Eraser or right-click to request an erase from its owner, then redraw a replacement. Receive-only channels stay read-only. Drawings attached to units follow the recipient's own tracks and read `lost` at the last known position once their side loses the unit, like local ones; a drawing on a unit their side never knew stays hidden. Both clients need the updated protocol-6 build. Changing teams keeps prior drawings local-only, including undo history. See [sharing behavior and limits](SHARING.md). Disabling sharing removes received drawings immediately on your client; teammates expire your drawings after 15 seconds without a message. A perf test keeps sharing your drawings and showing your teammates' as before. Its own drawings stay local unless **Perf test sharing** sends them, and a team or mission change during a test cancels it and discards the test drawings.
 
 ## Logging multiplayer sharing
 
@@ -126,15 +135,43 @@ Reproduce the issue, then save **both players'** `BepInEx/LogOutput.log` files b
 
 ## Measuring the mod's cost
 
-Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 seconds the mod writes one line to `BepInEx/LogOutput.log`:
+Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 seconds the mod writes two lines to `BepInEx/LogOutput.log`, and a third while sharing with teammates. The first:
 
 ```text
-[Info   :NO Map Overhaul] Perf 5.0 s, mod on: 612 frames, 122.4 fps avg (8.17 ms), 1% low 88.1 fps, worst frame 21.3 ms. Mod per frame 0.084 ms avg, 0.412 ms worst. Map refresh 50x, 0.310 ms avg, 1.204 ms worst.
+[Info   :NO Map Overhaul] Perf 5.0 s, mod on: 1679 frames, 335.7 fps avg (2.98 ms), 1% low 216.7 fps, worst frame 17.7 ms. Mod per frame 0.022 ms avg, 0.141 ms worst. Map refresh 49x, 0.054 ms avg, 0.089 ms worst. Mod allocated 0.1 KB per frame. GC 1x, heap 93 of 104 MB. Drawings 0 own, 0 received, 0 shown. Mod graphics 26 drawn, 8 TMP, 34 held. Sharing sent 0 (0.0 KB), received 0 (0.0 KB), 0 snapshots applied, Steam calls 0.0 ms, worst 0.0 ms. Mod ms per frame by part: Draw 0.004, Labels 0.001, Upright 0.001, 3D text 0.003, 3D rings 0.003, Input 0.002, Runways 0.002, Sharing 0.003, Meshes 0.000.
 ```
 
 - **mod on** or **mod off** is whether Enabled was on for those 5 seconds, or **on and off** if you flipped it partway.
 - **fps avg**, **1% low**, and **worst frame** are the whole game's frame rate. The 1% low is the rate that 99% of frames beat, so it shows stutter the average hides.
 - **Mod per frame** is the time the mod's own code takes each frame, and **Map refresh** the time it takes on each of the game's map updates, about 10 a second. Neither counts what the graphics card spends drawing the mod's lines and text. That cost shows only in the frame rate, which is why the comparison below flips the mod off.
+- The rest counts what the mod holds and does: memory allocated and garbage collections, your drawings and teammates', the mod's graphics, sharing traffic and the time spent in Steam's calls, and the mod's time per frame split into the parts the perf test's third table names, each as average/worst frame (see [The perf test](#the-perf-test)). A number that keeps climbing while the frame rate falls points at the part to blame.
+
+The **Perf detail** line after it covers the same 5 seconds:
+
+- **Unity canvas update** is what Unity spends each frame laying out, rebuilding and batching every UI canvas, the game's HUD and map as well as the mod's, as an average and the worst frame. While the perf test runs it takes this timer, and the line says so.
+- **batches**, **SetPass calls**, **draw calls** and **vertices** are Unity's render counters per frame, averaged: what the frame asked the graphics card to draw. **n/a** marks a counter this build of the game doesn't record.
+- **Rebuilt** counts how often, in those 5 seconds, the map labels were laid out again, the mod's own meshes were rebuilt, and the map took a changed set of teammates' drawings.
+- **3D rings** is the most circles drawn in the cockpit view in one frame, and whether the mod's shader (**GPU**) or the CPU drew them. **not drawn** means no frame got that far, such as with the map tools off.
+- Then the game's state, the players on your side counting you, the icons on the map (units and airbases), whether the minimap or the full map was showing, and the mission time, all read as the line is written.
+
+While you share with teammates, a **Perf teammates** line follows, one entry per teammate. Each is labelled **peer 1**, **peer 2** and so on, the labels the network log uses: they're local to your game, and the log never names a player or a Steam ID.
+
+- **ready** means the two games have paired, so drawings flow; **not ready** means they're still looking for each other. Teammates not ready and silent for the whole 5 seconds, usually players without the mod, are only counted at the end: **3 not ready with no traffic**.
+- **drawings held, shown** is how many drawings the teammate's last update left with you, and how many of those your map draws. It shows fewer when there are more than 400 teammates' drawings to share out, or a drawing is on a unit your side has never seen.
+- **snapshots applied** is how many of their updates your game took, and **in** and **out** the messages and kilobytes received from them and sent to them.
+- The rest is Steam's own view of the connection: its state (**Connected** when all is well), **ping**, **quality** (the share of packets that arrived, **n/a** while Steam can't tell), the reliable bytes **pending** (queued, not yet sent) and **unacked** (sent, not yet confirmed), and the **queue** time a new message would wait. Pending bytes or queue time that climb mean Steam can't send as fast as sharing queues. **Steam n/a** means Steam has no session with that teammate, and the loopback test build always reads it.
+
+When the frame rate drops, compare the lines from before the drop with those during it. Only the first line's frame rate falling, with the mod's times and the canvas update flat, points at the game or the graphics card; check the render counters and the context. A canvas update that grows with **Rebuilt** counts points at UI rebuilds. A mod time that grows names its part in the first line. A teammate whose queue or pending bytes climb, or whose messages arrive in bursts, points at the connection with that teammate.
+
+An example from the host of a four-player test on one PC, just after every player ran the perf test. Its teammates connect over the loopback test build, so Steam has nothing to report:
+
+```text
+[Info   :NO Map Overhaul] Perf 5.0 s, mod on: 297 frames, 59.4 fps avg (16.84 ms), 1% low 59.3 fps, worst frame 65.4 ms. Mod per frame 0.049 ms avg, 0.409 ms worst. Map refresh 46x, 0.079 ms avg, 0.120 ms worst. Mod allocated 0.3 KB per frame. GC 0x, heap 136 of 168 MB. Drawings 0 own, 0 received, 0 shown. Mod graphics 26 drawn, 8 TMP, 34 held. Sharing sent 6 (0.4 KB), received 6 (0.4 KB), 0 snapshots applied, Steam calls 0.5 ms, worst 0.1 ms. Mod ms per frame by part, average/worst frame: Draw 0.011/0.06, Labels 0.001/0.01, Upright 0.001/0.00, 3D text 0.005/0.02, 3D rings 0.005/0.03, Input 0.003/0.00, Runways 0.003/0.01, Sharing 0.013/0.36, Meshes 0.000/0.00.
+[Info   :NO Map Overhaul] Perf detail: Unity canvas update 0.67 ms avg, 1.15 ms worst frame; per frame 300 batches, 205 SetPass calls, 300 draw calls, 387720 vertices. Rebuilt label layouts 0x, meshes 0x, received drawings 0x. 3D rings 0 at most, on the GPU. Multiplayer, 4 on the team, 47 map icons, minimap, mission time 3:42.
+[Info   :NO Map Overhaul] Perf teammates: peer 7 ready: drawings 0 held, 0 shown; 0 snapshots applied; in 2 (0.1 KB), out 2 (0.1 KB); Steam n/a. peer 8 ready: drawings 0 held, 0 shown; 0 snapshots applied; in 2 (0.1 KB), out 2 (0.1 KB); Steam n/a. peer 9 ready: drawings 0 held, 0 shown; 0 snapshots applied; in 2 (0.1 KB), out 2 (0.1 KB); Steam n/a.
+```
+
+Over Steam, each teammate's entry ends with the connection instead, such as `Steam Connected, ping 48 ms, quality 100%, reliable 0 B pending, 0 B unacked, queue 0.0 ms.`
 
 To compare with and without the mod in one session:
 
@@ -173,16 +210,32 @@ Phase                                 Canvas ms  BuildBatch ms  WillRender ms  B
 Minimap, mod off                          0.310            n/a            n/a      212       64        240     410233               0/0
 ...
 Mod ms per frame by part. Meshes is the mod's graphics rebuilding their meshes, which counts in Canvas ms, not Mod ms. Other is the rest of Mod ms.
-Phase                                     Draw    Labels   Upright   3D text  3D rings     Input   Runways    Meshes     Other
-Minimap, mod on                          0.004     0.002     0.001     0.003     0.000     0.004     0.010     0.004     0.014
+Phase                                     Draw    Labels   Upright   3D text  3D rings     Input   Runways   Sharing    Meshes     Other
+Minimap, mod on                          0.004     0.002     0.001     0.003     0.000     0.004     0.010     0.003     0.004     0.014
+...
+Worst frame ms by part: each part's costliest single frame without a garbage collection, the spikes behind a 1% low.
+Phase                                     Draw    Labels   Upright   3D text  3D rings     Input   Runways   Sharing    Meshes
+Minimap, mod on                          0.120     0.210     0.004     0.140     0.020     0.020     0.020     0.300     0.050
 ...
 ```
 
 The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the condition's last slice, and how many of them are TextMeshPro text.
 
-The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, and **Runways** the HUD callout and runway numbers. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
+The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, **Runways** the HUD callout and runway numbers, and **Sharing** sending and receiving teammates' drawings. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
 
-Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. Once the first drawings phase has started, a route you were flying starts again from waypoint 1; use **Skip** to move it on. Cancel before that, and it keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
+The fourth table gives each part's single costliest frame. The 1% low comes from slow frames, which an average hides, so a part that is cheap on average but spikes shows up here. A frame with a garbage collection is left out, since the collection pauses whichever part happens to be running.
+
+Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. A route you were flying keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
+
+#### Testing with sharing
+
+**Perf test sharing**, an advanced setting, measures what sharing costs between two PCs. `Send` sends the test's drawings, `Receive` draws none and shows what the other PC sends, and `Bidirectional` does both. Join a Steam multiplayer mission on the same team on both PCs, then start the test on each within the same half minute: slices start on the next half-minute mark of the clock, so the two PCs measure the same condition at the same time. A test that sends replaces one note every half second while its drawings show, about as often as a busy teammate's change.
+
+The test uses a `perf-test` channel of its own and needs no channel set up. With Sharing on, your own drawings and your teammates' keep travelling as before. With Sharing off, only the test's drawings go out. The log's **Sharing and memory** table, in every test, gives each condition's sharing traffic per second, the time the game spends inside Steam's calls, managed memory allocated per frame (the game's too), garbage collections, and how many teammates' drawings showed.
+
+**Perf test cycles** repeats each condition more times: `4` takes about 85 seconds, and each step up doubles it. A test of more than 4 cycles also logs each cycle's average fps per condition, so a frame rate that falls as the test runs shows up as a trend down the rows.
+
+For unattended runs, start the game with `-nomo-perftest <mode>`, such as `-nomo-perftest bidirectional`. The test starts by itself 15 seconds after you're first in an aircraft. `-nomo-perftest bidirectional@<unix seconds>` names when its first slice measures, to line two PCs up exactly.
 
 ## Airbase abbreviations
 

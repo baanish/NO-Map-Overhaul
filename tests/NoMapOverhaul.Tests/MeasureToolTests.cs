@@ -188,6 +188,13 @@ internal static class MeasureToolTests
         var angels18 = new Vector3(0, 18000 * NavFormat.MetersPerFoot, 0);
         ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, true, DistanceUnit.NauticalMiles, lost: false), "045° 12nm 18k ft");
         ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, false, DistanceUnit.NauticalMiles, lost: false), "045° 12nm");
+        var angels98 = new Vector3(0, 9800 * NavFormat.MetersPerFoot, 0);
+        ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels98, true, DistanceUnit.NauticalMiles, lost: false), "045° 12nm 9.8k ft");
+        ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, true, DistanceUnit.StatuteMiles, lost: false), "045° 14mi 18k ft");
+        ExpectText(label.BearingRange(angels18, northeast * 12 * Nm + angels18, true, DistanceUnit.Kilometres, lost: true), "045° 22km 5500 m\nlost");
+        ExpectText(label.BearingRange(angels18, new Vector3(12 * Nm, 0, 0) + angels18, true, DistanceUnit.Kilometres, lost: false), "090° 22km 5500 m");
+        ExpectText(label.BearingRange(Vector3.Zero, new Vector3(0, 0, 4.24f * Nm), false, DistanceUnit.NauticalMiles, lost: false), "000° 4.2nm");
+        ExpectText(label.BearingRange(Vector3.Zero, new Vector3(0, 0, 4.26f * Nm), false, DistanceUnit.NauticalMiles, lost: false), "000° 4.3nm");
 
         var radius = new MeasureLabel();
         var ring = radius.Radius(5 * Nm, DistanceUnit.NauticalMiles, lost: false);
@@ -550,6 +557,6 @@ internal static class MeasureToolTests
         public List<(Vector3 Center, float Radius)> Rings { get; } = new();
 
         public void Add(Vector3 position, string text, ShapeColor color) => Added.Add((position, text));
-        public void Ring(Vector3 center, float radius, ShapeColor color) => Rings.Add((center, radius));
+        public void Ring(Vector3 center, float radius, ShapeColor color, object owner) => Rings.Add((center, radius));
     }
 }

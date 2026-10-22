@@ -76,6 +76,9 @@ public sealed class WaypointTool : MapTool
 
     public override void OnMissionStart() => _progress.Forget();
 
+    /// <summary>The route flown so far, which the perf test sets aside with the drawings and puts back after.</summary>
+    public RouteProgress Progress => _progress;
+
     public override void OnOption(int index)
     {
         if (index == 0)

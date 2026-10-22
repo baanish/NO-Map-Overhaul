@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NoMapOverhaul.Diagnostics;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +13,8 @@ namespace NoMapOverhaul.Drawing;
 internal sealed class FeatheredRectBatch : ModGraphic
 {
     /// <summary>
-    /// VertexHelper throws at 65000 vertices, inside the canvas update where nothing catches it. A rimmed label plate
+    /// The shared mesh's 16-bit indices reach 65535 vertices; past that the canvas update would fail, where nothing
+    /// catches it. A rimmed label plate
     /// is 16 vertices, so rectangles past about 4,000 plates are dropped instead.
     /// </summary>
     private const int MaxVertices = 64000;
@@ -67,28 +69,56 @@ internal sealed class FeatheredRectBatch : ModGraphic
         _wasEmpty = empty;
         if (!empty)
         {
-            rectTransform.localPosition = (_min + _max) * 0.5f;
-            rectTransform.sizeDelta = _max - _min;
+            FitRect((_min + _max) * 0.5f, _max - _min);
         }
 
         SetVerticesDirty();
     }
 
-    protected override void OnPopulateMesh(VertexHelper vh)
+    /// <summary>
+    /// The mesh handed to the canvas, filled straight from these lists: <see cref="VertexHelper"/> would write and upload
+    /// eight channels per vertex where a rectangle needs two, positions and colours. The canvas copies the mesh, so one
+    /// serves every batch.
+    /// </summary>
+    private static Mesh? _sharedMesh;
+    private static readonly List<Vector3> Vertices = new();
+    private static readonly List<Color32> VertexColors = new();
+    private static readonly List<int> Indices = new();
+
+    protected override void UpdateGeometry()
     {
-        vh.Clear();
+        var start = ModTimings.Start();
+        Vertices.Clear();
+        VertexColors.Clear();
+        Indices.Clear();
         var origin = (Vector2)rectTransform.localPosition;
         foreach (var item in _items)
         {
             var rings = EdgeProfile.Write(_profile, item.Fill, item.RimWidth, item.Rim, item.Feather);
-            if (vh.currentVertCount + rings * 4 > MaxVertices)
+            if (Vertices.Count + rings * 4 > MaxVertices)
             {
                 break;
             }
 
-            FeatheredRect.AddTo(vh, item.Center - origin, item.Across, item.Half, _profile, rings);
+            FeatheredRect.AddTo(Vertices, VertexColors, Indices, item.Center - origin, item.Across, item.Half, _profile, rings);
         }
+
+        if (_sharedMesh == null)
+        {
+            _sharedMesh = new Mesh { hideFlags = HideFlags.HideAndDontSave };
+            _sharedMesh.MarkDynamic();
+        }
+
+        _sharedMesh.Clear();
+        _sharedMesh.SetVertices(Vertices);
+        _sharedMesh.SetColors(VertexColors);
+        _sharedMesh.SetTriangles(Indices, 0, false);
+        canvasRenderer.SetMesh(_sharedMesh);
+        ModTimings.Stop(ModSection.MeshRebuilds, start);
     }
+
+    /// <summary>Unused: <see cref="UpdateGeometry"/> builds the mesh without a <see cref="VertexHelper"/>.</summary>
+    protected override void OnPopulateMesh(VertexHelper vh) => vh.Clear();
 
     private readonly struct Item
     {

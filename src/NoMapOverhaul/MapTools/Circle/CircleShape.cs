@@ -59,6 +59,6 @@ public sealed class CircleShape : MapShape
             world.Y = CenterElevation;
         }
 
-        labels.Ring(world, Radius, Color);
+        labels.Ring(world, Radius, Color, this);
     }
 }

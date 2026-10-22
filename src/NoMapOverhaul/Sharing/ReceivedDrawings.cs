@@ -21,7 +21,18 @@ public sealed class ReceivedDrawings
     public const int MaxGeometryPoints = 10000;
 
     private readonly Dictionary<ulong, Dictionary<int, MapShape>> _owners = new();
+
+    /// <summary>Teammates in the order they first sent drawings, so whose drawings draw on top stays put when one leaves or re-pairs.</summary>
+    private readonly List<ulong> _order = new();
     private MapShape[] _shapes = Array.Empty<MapShape>();
+
+    /// <summary>
+    /// Kept between snapshots rather than allocated for each, twice a second per teammate: the next snapshot fills the
+    /// dictionary the last one replaced, or the one it left unused.
+    /// </summary>
+    private Dictionary<int, MapShape> _spare = new();
+    private readonly HashSet<int> _usedIds = new();
+    private readonly List<MapShape> _shown = new();
 
     public IReadOnlyList<MapShape> Shapes => _shapes;
     public int Version { get; private set; }
@@ -42,6 +53,19 @@ public sealed class ReceivedDrawings
         owner = 0;
         sourceId = 0;
         return false;
+    }
+
+    /// <summary>
+    /// The drawings a teammate's last snapshot left here, and how many of them are among <paramref name="shown"/>: the
+    /// map shows fewer when the pool's equal share cuts them, or a unit they're on was never known to this side.
+    /// </summary>
+    public (int Held, int Shown) CountOwned(ulong sender, ICollection<MapShape> shown)
+    {
+        if (!_owners.TryGetValue(sender, out var owned)) return (0, 0);
+        var count = 0;
+        foreach (var shape in owned.Values)
+            if (shown.Contains(shape)) count++;
+        return (owned.Count, count);
     }
 
     public bool TryReplace(ulong sender, MapShape[] wireShapes) => TryReplace(sender, wireShapes, out _);
@@ -71,14 +95,13 @@ public sealed class ReceivedDrawings
             capacityExceeded = true;
             return false;
         }
-        var replacement = new Dictionary<int, MapShape>();
-        var channels = new DrawingChannels();
+        var replacement = _spare;
+        replacement.Clear();
         var points = 0;
         foreach (var shape in wireShapes)
         {
-            if (shape == null || shape.Id <= 0 || replacement.ContainsKey(shape.Id) || string.IsNullOrEmpty(shape.Channel) ||
-                !channels.TryConfigure(shape.Channel, out _) || channels.Names.Count != 1 ||
-                channels.Names[0] != shape.Channel) return false;
+            if (shape == null || shape.Id <= 0 || replacement.ContainsKey(shape.Id) ||
+                !DrawingChannels.IsCanonicalName(shape.Channel)) return false;
             int count;
             try { count = DrawingProtocol.GeometryPointCount(shape); }
             catch (ArgumentException) { return false; }
@@ -92,9 +115,7 @@ public sealed class ReceivedDrawings
         if (previous != null && SameOrder(previous, replacement)) return true;
 
         // Every retained drawing keeps its ID, shown or not, so one revealed by a departure never collides.
-        var usedIds = new HashSet<int>();
-        foreach (var owner in _owners.Values)
-            foreach (var shape in owner.Values) usedIds.Add(shape.Id);
+        var usedIdsFilled = false;
         var nextId = -1;
         foreach (var entry in replacement)
         {
@@ -104,13 +125,22 @@ public sealed class ReceivedDrawings
             }
             else
             {
-                while (usedIds.Contains(nextId)) nextId--;
+                if (!usedIdsFilled)
+                {
+                    _usedIds.Clear();
+                    foreach (var owner in _owners.Values)
+                        foreach (var shape in owner.Values) _usedIds.Add(shape.Id);
+                    usedIdsFilled = true;
+                }
+                while (_usedIds.Contains(nextId)) nextId--;
                 entry.Value.Id = nextId;
-                usedIds.Add(nextId);
+                _usedIds.Add(nextId);
             }
         }
 
+        if (previous == null) _order.Add(sender);
         _owners[sender] = replacement;
+        _spare = previous ?? new Dictionary<int, MapShape>();
         Rebuild();
         return true;
     }
@@ -158,33 +188,37 @@ public sealed class ReceivedDrawings
 
     public void Remove(ulong sender)
     {
-        if (_owners.Remove(sender)) Rebuild();
+        if (!_owners.Remove(sender)) return;
+        _order.Remove(sender);
+        Rebuild();
     }
 
     public void Clear()
     {
         if (_owners.Count == 0) return;
         _owners.Clear();
+        _order.Clear();
         Rebuild();
     }
 
     private void Rebuild()
     {
-        var shapes = new List<MapShape>();
+        _shown.Clear();
         var shareShapes = _owners.Count == 0 ? 0 : MaxShapes / _owners.Count;
         var sharePoints = _owners.Count == 0 ? 0 : MaxGeometryPoints / _owners.Count;
-        foreach (var owner in _owners.Values)
+        foreach (var sender in _order)
         {
+            var owner = _owners[sender];
             var count = 0;
             var points = 0;
             foreach (var shape in owner.Values)
             {
                 points += DrawingProtocol.GeometryPointCount(shape);
                 if (++count > shareShapes || points > sharePoints) break;
-                shapes.Add(shape);
+                _shown.Add(shape);
             }
         }
-        _shapes = shapes.ToArray();
+        _shapes = _shown.ToArray();
         Version++;
     }
 }

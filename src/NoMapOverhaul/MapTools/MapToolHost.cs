@@ -49,23 +49,128 @@ internal sealed class MapToolHost
     private List<MapShape> _receivedCandidates = new();
     private readonly System.Func<uint, bool> _knowsSharedUnit;
     private int _visibleReceivedVersion;
+    private (int Version, float MapTick, bool Testing, bool ShowsReceived) _receivedKey = (-1, -1f, false, false);
     private int _active = -1;
     private int _unfinished = -1;
     private string? _broadcastConfiguration;
     private string? _receiveConfiguration;
+    private PerfSharing? _configuredPerf;
     private (string Channel, string Error, bool Enabled, string Transport) _sharingStatusKey;
     private string _sharingStatus = string.Empty;
     private bool _editingChannels;
+    private bool _pickingColor;
+    private string? _customConfiguration;
+    private IReadOnlyList<ShapeColor> _customColors = CustomColors.None;
+
+    /// <summary>The Channels panel or the colour picker is open: the map and the tools' keys take no input.</summary>
+    private bool MenuPanelOpen => _editingChannels || _pickingColor;
 
     public DrawingChannels Channels { get; } = new();
     public DrawingChannels ReceiveChannels { get; } = new();
     public bool ChannelsValid { get; private set; }
     public string ChannelError { get; private set; } = string.Empty;
-    public bool SharingEligible => ChannelsValid && (Channels.Names.Count > 0 || ReceiveChannels.Names.Count > 0) &&
-        _settings.MapSharingEnabled.Value &&
-        _settings.Enabled.Value && _settings.ShowMapTools.Value && !_settings.PerfTestShowsDrawings;
+    public bool SharingEligible => (PerfOnlyLists || ChannelsValid) && (SharingBroadcast.Count > 0 || SharingReceive.Count > 0) &&
+        (_settings.MapSharingEnabled.Value || PerfSharing != null) &&
+        _settings.Enabled.Value && (_settings.ShowMapTools.Value || _settings.PerfTestShowsDrawings);
+
+    /// <summary>
+    /// The perf test's own sharing while it runs one of its sharing modes, in memory only, so no setting is written. With
+    /// Sharing on, its channel joins the Broadcast list when it sends, or the Receive only list when it only receives. With
+    /// Sharing off, sharing runs for the test alone: on the test's channel and nothing else, so the player's channels and
+    /// drawings stay off the network as Sharing says. Null otherwise.
+    /// </summary>
+    public PerfSharing? PerfSharing { get; set; }
+
+    private static readonly IReadOnlyList<string> PerfChannelOnly = System.Array.AsReadOnly(new[] { Diagnostics.PerfSharing.Channel });
+    private static readonly IReadOnlyList<string> NoChannels = System.Array.AsReadOnly(System.Array.Empty<string>());
+
+    /// <summary>A perf test runs with Sharing off: sharing gets the test's channel alone.</summary>
+    private bool PerfOnlyLists => PerfSharing != null && !_settings.MapSharingEnabled.Value;
+
+    /// <summary>The Broadcast channels sharing advertises and sends on: the player's, or during a test with Sharing off, the test's.</summary>
+    public IReadOnlyList<string> SharingBroadcast => PerfOnlyLists ? (PerfSharing!.Sends ? PerfChannelOnly : NoChannels) : Channels.Names;
+
+    /// <summary>The Receive only channels sharing advertises, chosen as <see cref="SharingBroadcast"/> is.</summary>
+    public IReadOnlyList<string> SharingReceive => PerfOnlyLists ? (PerfSharing!.Sends ? NoChannels : PerfChannelOnly) : ReceiveChannels.Names;
+
+    /// <summary>
+    /// While the perf test has swapped its drawings into the store: the player's own, which sharing keeps sending as
+    /// they were, and whether the store's test drawings go out after them. Null otherwise.
+    /// </summary>
+    private IReadOnlyList<MapShape>? _heldShapes;
+    private bool _sendsStore;
+    private List<MapShape>? _outgoing;
+    private (object? Held, int Store) _outgoingKey = (null, -1);
+    private int _outgoingVersion;
+
+    /// <summary>Has sharing send <paramref name="held"/>, after the store's drawings if <paramref name="sendStore"/>, until <see cref="ReleaseOutgoing"/>.</summary>
+    public void HoldOutgoing(IReadOnlyList<MapShape> held, bool sendStore)
+    {
+        _heldShapes = held;
+        _sendsStore = sendStore;
+    }
+
+    public void ReleaseOutgoing() => _heldShapes = null;
+
+    /// <summary>True while the perf test holds the player's drawings aside: a teammate's erase request then has nothing it may remove.</summary>
+    public bool OutgoingHeld => _heldShapes != null;
+
+    /// <summary>What sharing sends: the store's drawings, or while the perf test holds them aside, see <see cref="HoldOutgoing"/>.</summary>
+    public IReadOnlyList<MapShape> OutgoingShapes
+    {
+        get
+        {
+            RefreshOutgoing();
+            return _outgoing ?? _store.Shapes;
+        }
+    }
+
+    /// <summary>Changes whenever <see cref="OutgoingShapes"/> may have, and never repeats, so a peer sent an older set is sent again.</summary>
+    public int OutgoingVersion
+    {
+        get
+        {
+            RefreshOutgoing();
+            return _outgoingVersion;
+        }
+    }
+
+    private void RefreshOutgoing()
+    {
+        var key = (_heldShapes as object, _heldShapes == null || _sendsStore ? _store.Version : -1);
+        if (ReferenceEquals(key.Item1, _outgoingKey.Held) && key.Item2 == _outgoingKey.Store)
+        {
+            return;
+        }
+
+        _outgoingKey = key;
+        _outgoingVersion++;
+        if (_heldShapes == null)
+        {
+            _outgoing = null;
+            return;
+        }
+
+        // The test's drawings first: a snapshot past the wire limits keeps its first drawings, and a teammate testing too
+        // must get the whole test set. One who isn't testing gets only the player's own, the test's channel filtered out.
+        _outgoing = new List<MapShape>(_heldShapes.Count + (_sendsStore ? _store.Shapes.Count : 0));
+        if (_sendsStore)
+        {
+            _outgoing.AddRange(_store.Shapes);
+        }
+
+        _outgoing.AddRange(_heldShapes);
+    }
+
+    /// <summary>
+    /// Which received drawings show while the perf test runs: none, so the player's teammates' drawings stay out of the
+    /// numbers, or with <see cref="PerfShowsReceived"/> only those on the test's channel. Every received drawing is kept
+    /// and shows again once the test ends.
+    /// </summary>
+    public bool PerfShowsReceived { get; set; }
     public string SharingStatus { get; set; } = "waiting for session";
     public ReceivedDrawings Received { get; } = new();
+    public IReadOnlyList<MapShape> VisibleReceived => _visibleReceived;
     public int MissionVersion { get; private set; }
     public System.Func<MapShape, bool>? RequestSharedErase { private get; set; }
     public System.Func<MapShape, bool>? CanRequestSharedErase { private get; set; }
@@ -99,6 +204,10 @@ internal sealed class MapToolHost
     /// <summary>The drawings and the game lookups the tools use, for the perf test's generated drawings.</summary>
     public MapToolContext Context => _context;
 
+    /// <summary>How far the player has flown their route, which the perf test's own route would otherwise reset.</summary>
+    public RouteProgress RouteProgress => System.Array.Find(_tools, tool => tool is WaypointTool) is WaypointTool waypoints
+        ? waypoints.Progress : throw new System.InvalidOperationException("No waypoint tool.");
+
     /// <summary>
     /// The menu is open and no selected unit would take a move order, so a right-click on the map is the tools' and
     /// NOAutopilot must not act on it too. Read by <see cref="AutopilotRightClickPatch"/> inside the game's map update,
@@ -125,10 +234,12 @@ internal sealed class MapToolHost
         var open = DynamicMap.mapMaximized;
         if (open)
         {
+            RefreshCustomColors();
             Apply(_menu.TakeCommand());
             ApplySharingMenu();
+            ApplyColorPanel();
             // Keys before the render, which switches the pointer catcher on or off, so the next click goes where the rail now says.
-            if (!_editingChannels && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu | CursorFlags.Dialogue | CursorFlags.SelectionMenu) &&
+            if (!MenuPanelOpen && !_input.Typing && !CursorManager.GetFlag(CursorFlags.Chat | CursorFlags.GameMenu | CursorFlags.Dialogue | CursorFlags.SelectionMenu) &&
                 !NuclearOption.MissionEditorScripts.InputFieldChecker.InsideInputField)
             {
                 if (TakeChannelShortcut())
@@ -165,17 +276,19 @@ internal sealed class MapToolHost
                 }
             }
 
-            _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, hudStyle, ChannelStatus(), Channels, ReceiveChannels);
+            _menu.Render(map, _tools, _icons, _keys, _active, _store, _context.Color, _customColors, hudStyle, ChannelStatus(), Channels,
+                ReceiveChannels);
         }
         else
         {
             Select(-1);
             _menu.Hide();
             _editingChannels = false;
+            _pickingColor = false;
         }
 
         var receivedVersion = _visibleReceivedVersion;
-        RefreshReceived();
+        RefreshReceived(map);
         if (receivedVersion != _visibleReceivedVersion)
         {
             // Snapshot replacements must have their displayed label boxes before a click can select them.
@@ -183,8 +296,8 @@ internal sealed class MapToolHost
                 _visibleReceived, _visibleReceivedVersion);
         }
 
-        _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null, _editingChannels);
-        if (!_editingChannels && _active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
+        _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null, MenuPanelOpen, _editingChannels);
+        if (!MenuPanelOpen && _active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
         {
             RightClick(map, _tools[_active], rightClick);
         }
@@ -221,6 +334,7 @@ internal sealed class MapToolHost
     public void Reset()
     {
         _editingChannels = false;
+        _pickingColor = false;
         _input.Reset();
         _menu.Reset();
         _layer.Reset();
@@ -246,13 +360,23 @@ internal sealed class MapToolHost
     {
         var broadcast = _settings.MapBroadcastChannels.Value;
         var receive = _settings.MapReceiveChannels.Value;
-        if (broadcast == _broadcastConfiguration && receive == _receiveConfiguration)
+        // With Sharing off, a test's channel stays out of the player's lists: sharing uses the test's alone (SharingBroadcast).
+        var perfJoins = _settings.MapSharingEnabled.Value ? PerfSharing : null;
+        if (broadcast == _broadcastConfiguration && receive == _receiveConfiguration && ReferenceEquals(perfJoins, _configuredPerf))
         {
             return;
         }
 
         _broadcastConfiguration = broadcast;
         _receiveConfiguration = receive;
+        _configuredPerf = perfJoins;
+        if (perfJoins is { } perf)
+        {
+            // Last in its list, so the player's channels keep their Shift+number keys.
+            if (perf.Sends) broadcast += "," + PerfSharing.Channel;
+            else receive += "," + PerfSharing.Channel;
+        }
+
         ChannelsValid = DrawingChannels.TryConfigurePair(Channels, ReceiveChannels, broadcast, receive, out var error);
         ChannelError = error;
         SetDrawingChannel(ChannelsValid ? Channels.Selected : string.Empty);
@@ -299,6 +423,86 @@ internal sealed class MapToolHost
         }
 
         _editingChannels = panel.Open;
+    }
+
+    /// <summary>
+    /// The colour picker: Add saves the colour in the next custom slot and draws with it, or for a colour a swatch already
+    /// has, just draws with it, which picks that swatch (<see cref="CustomColors.With"/>). Escape cancels. Opening the
+    /// Channels panel closes it. It has no text field, so while it's open only Escape is held from the game's menu
+    /// (<see cref="MapToolInput.Update"/>) and the map key still closes the map, which cancels it. A press on it holds the
+    /// mouse until release, so dragging on the wheel doesn't pan the map.
+    /// </summary>
+    private void ApplyColorPanel()
+    {
+        var panel = _menu.ColorPanel;
+        if (panel == null)
+        {
+            _pickingColor = false;
+            return;
+        }
+
+        if (panel.Open && _menu.Sharing is { Open: true })
+        {
+            panel.Close();
+        }
+
+        if (panel.TakeAdd())
+        {
+            var color = panel.Picked;
+            SaveCustomColors(CustomColors.With(_customColors, color));
+            SetDrawingColor(color);
+            panel.Close();
+        }
+
+        if (panel.Open && !_pickingColor && _active >= 0)
+        {
+            Drop(_tools[_active]);
+        }
+
+        if (panel.Open && panel.Pressed)
+        {
+            _input.HoldMouseUntilRelease();
+        }
+
+        if (panel.Open && Input.GetKeyDown(KeyCode.Escape))
+        {
+            panel.Close();
+        }
+
+        _pickingColor = panel.Open;
+    }
+
+    /// <summary>Reads the custom colours again when the setting's text changes, as when Add or a right-click saves it.</summary>
+    private void RefreshCustomColors()
+    {
+        var text = _settings.MapToolCustomColors.Value;
+        if (text == _customConfiguration)
+        {
+            return;
+        }
+
+        _customConfiguration = text;
+        _customColors = CustomColors.Parse(text);
+    }
+
+    private void SaveCustomColors(IReadOnlyList<ShapeColor> colors)
+    {
+        if (ReferenceEquals(colors, _customColors))
+        {
+            return;
+        }
+
+        _settings.MapToolCustomColors.Value = CustomColors.Format(colors);
+        RefreshCustomColors();
+    }
+
+    private void SetDrawingColor(ShapeColor color)
+    {
+        _settings.MapToolColor.Value = color.ToColor32();
+        if (_active >= 0)
+        {
+            _tools[_active].InvalidateOverlay(); // a preview draws in the picked colour
+        }
     }
 
     private void SetDrawingChannel(string channel)
@@ -390,13 +594,30 @@ internal sealed class MapToolHost
         }
     }
 
-    private void RefreshReceived()
+    /// <summary>
+    /// Which received drawings show, worked out again when they change, on each of the game's 10 Hz map refreshes, and
+    /// when the perf test changes what it shows. A drawing hides only while a unit it's on was never known to the
+    /// player's side, which the map refresh is quick enough for; a track going stale leaves it showing, as lost.
+    /// </summary>
+    private void RefreshReceived(DynamicMap map)
     {
-        // Tracks can disappear between map ticks; filter before rendering, HUD labels, and eraser input every frame.
+        var key = (Received.Version, map.mapLastUpdated, _settings.PerfTestShowsDrawings, PerfShowsReceived);
+        if (key.Equals(_receivedKey))
+        {
+            return;
+        }
+
+        _receivedKey = key;
         _receivedCandidates.Clear();
         var received = Received.Shapes;
+        var testing = _settings.PerfTestShowsDrawings;
         for (var i = 0; i < received.Count; i++) // foreach over the interface would allocate an enumerator every frame
         {
+            if (testing && !(PerfShowsReceived && received[i].Channel == PerfSharing.Channel))
+            {
+                continue;
+            }
+
             if (SharedShapeVisibility.HasKnownAnchors(received[i], _knowsSharedUnit))
             {
                 _receivedCandidates.Add(received[i]);
@@ -434,12 +655,18 @@ internal sealed class MapToolHost
                 _tools[_active].InvalidateOverlay();
                 break;
             case MenuCommand.Swatch:
-                _settings.MapToolColor.Value = ShapeColor.Palette[command.Index].ToColor32();
-                if (_active >= 0)
-                {
-                    _tools[_active].InvalidateOverlay(); // a preview draws in the picked colour
-                }
-
+                SetDrawingColor(ShapeColor.Palette[command.Index]);
+                break;
+            case MenuCommand.CustomSwatch when command.Index < _customColors.Count:
+                SetDrawingColor(_customColors[command.Index]);
+                break;
+            case MenuCommand.CustomSwatch when command.Index == _customColors.Count && _menu.ColorPanel != null:
+                _menu.Sharing?.Close();
+                _menu.ColorPanel.Show(_context.Color);
+                break;
+            case MenuCommand.RemoveCustomSwatch when _map != null && !GameOrdersRightClick(_map):
+                // The drawing colour stays as it is, even if it was this one.
+                SaveCustomColors(CustomColors.Without(_customColors, command.Index));
                 break;
             case MenuCommand.Undo:
                 _store.Undo();

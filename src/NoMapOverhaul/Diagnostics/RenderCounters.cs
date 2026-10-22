@@ -3,6 +3,7 @@ using System.Diagnostics;
 using TMPro;
 using Unity.Profiling;
 using Unity.Profiling.LowLevel.Unsafe;
+using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using UnityEngine.UI;
@@ -15,7 +16,8 @@ namespace NoMapOverhaul.Diagnostics;
 /// up by name at runtime, since a release build of the game records only some of them. Canvas time the mod measures
 /// itself, with timestamps around the two player loop steps where Unity rebuilds and batches every canvas
 /// (<c>PostLateUpdate.PlayerUpdateCanvases</c> and <c>PlayerEmitCanvasGeometry</c>), which works in any build. That
-/// time covers the game's canvases too, so like the frame rate it is compared with the mod off.
+/// time covers the game's canvases too, so like the frame rate it is compared with the mod off. The performance log
+/// keeps one too, with a single condition, while it's on.
 /// </summary>
 internal sealed class RenderCounters
 {
@@ -35,18 +37,26 @@ internal sealed class RenderCounters
     private static long _stepStart;
     private static long _canvasTicks;
 
+    /// <summary>Started counters sharing the canvas timer, which stays in the player loop until the last one stops.</summary>
+    private static int _canvasUsers;
+
+    private static bool _canvasesTimed;
+
     private readonly ProfilerRecorder[] _recorders = new ProfilerRecorder[StatNames.Length];
     private readonly double[,] _sums;
     private readonly bool[] _recorded = new bool[StatNames.Length];
     private readonly double[] _canvasMs;
+    private readonly double[] _canvasWorstMs;
     private readonly int[] _frames;
     private readonly (int Graphics, int Texts)[] _counts;
     private bool _timed;
+    private bool _started;
 
     public RenderCounters(int conditions)
     {
         _sums = new double[conditions, StatNames.Length];
         _canvasMs = new double[conditions];
+        _canvasWorstMs = new double[conditions];
         _frames = new int[conditions];
         _counts = new (int, int)[conditions];
     }
@@ -66,7 +76,16 @@ internal sealed class RenderCounters
             }
         }
 
-        _timed = TimeCanvases(true);
+        if (!_started)
+        {
+            _started = true;
+            if (_canvasUsers++ == 0)
+            {
+                _canvasesTimed = TimeCanvases(true);
+            }
+        }
+
+        _timed = _canvasesTimed;
         Clear();
     }
 
@@ -78,7 +97,15 @@ internal sealed class RenderCounters
             _recorders[i] = default;
         }
 
-        TimeCanvases(false);
+        if (_started)
+        {
+            _started = false;
+            if (--_canvasUsers == 0)
+            {
+                TimeCanvases(false);
+            }
+        }
+
         _timed = false;
     }
 
@@ -87,6 +114,7 @@ internal sealed class RenderCounters
         System.Array.Clear(_sums, 0, _sums.Length);
         System.Array.Clear(_recorded, 0, _recorded.Length);
         System.Array.Clear(_canvasMs, 0, _canvasMs.Length);
+        System.Array.Clear(_canvasWorstMs, 0, _canvasWorstMs.Length);
         System.Array.Clear(_frames, 0, _frames.Length);
         System.Array.Clear(_counts, 0, _counts.Length);
         _canvasTicks = 0;
@@ -99,7 +127,9 @@ internal sealed class RenderCounters
     public void Sample(int condition)
     {
         _frames[condition]++;
-        _canvasMs[condition] += _canvasTicks * MsPerTick;
+        var canvasMs = _canvasTicks * MsPerTick;
+        _canvasMs[condition] += canvasMs;
+        _canvasWorstMs[condition] = System.Math.Max(_canvasWorstMs[condition], canvasMs);
         _canvasTicks = 0;
         for (var i = 0; i < _recorders.Length; i++)
         {
@@ -111,6 +141,9 @@ internal sealed class RenderCounters
             }
         }
     }
+
+    /// <summary>The condition's costliest frame of canvas time, or NaN when the canvas steps weren't found.</summary>
+    public float CanvasWorstMs(int condition) => _timed ? (float)_canvasWorstMs[condition] : float.NaN;
 
     /// <summary>Counts the mod's graphics now on screen or culled by a mask, for the condition showing. Searches the scene, so call it once per slice.</summary>
     public void CountGraphics(int condition) => _counts[condition] = CountModGraphics();
@@ -133,27 +166,43 @@ internal sealed class RenderCounters
     /// <summary>Enabled graphics under an object named Baanish…, which every root the mod creates is.</summary>
     private static (int Graphics, int Texts) CountModGraphics()
     {
+        var (graphics, texts, _) = CountModObjects();
+        return (graphics, texts);
+    }
+
+    /// <summary>
+    /// The mod's enabled graphics and TextMeshPro objects among them, and every graphic it holds, switched off or on an
+    /// inactive object too, for the performance log to show anything that piles up. Searches the scene.
+    /// </summary>
+    public static (int Graphics, int Texts, int Held) CountModObjects()
+    {
         var graphics = 0;
         var texts = 0;
-        foreach (var graphic in Object.FindObjectsOfType<Graphic>())
+        var held = 0;
+        foreach (var graphic in Resources.FindObjectsOfTypeAll<Graphic>())
         {
-            if (!graphic.enabled)
+            if (!graphic.gameObject.scene.IsValid())
             {
-                continue;
+                continue; // a prefab or other asset
             }
 
             for (var parent = graphic.transform; parent != null; parent = parent.parent)
             {
                 if (parent.name.StartsWith(ModPrefix, System.StringComparison.Ordinal))
                 {
-                    graphics++;
-                    texts += graphic is TMP_Text ? 1 : 0;
+                    held++;
+                    if (graphic.enabled && graphic.gameObject.activeInHierarchy)
+                    {
+                        graphics++;
+                        texts += graphic is TMP_Text ? 1 : 0;
+                    }
+
                     break;
                 }
             }
         }
 
-        return (graphics, texts);
+        return (graphics, texts, held);
     }
 
     /// <summary>

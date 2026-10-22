@@ -62,7 +62,8 @@ internal readonly struct RailSlot
 /// The rail's cells in design pixels from its top-left corner, in one or more columns. One column is design C's rail. More
 /// keep the same cells and gaps and read left to right in rows: the Tools head alone in the first row, at its right end so
 /// the closed button sits nearest the map, then the tools, then Undo, Redo, and Clear, then the swatches spread evenly
-/// across the width, each group starting a new row.
+/// across the width, each group starting a new row. The custom colours' slots follow the built-in swatches, spread the
+/// same way from the next row, with no gap between the two.
 /// </summary>
 internal sealed class RailGrid
 {
@@ -70,13 +71,19 @@ internal sealed class RailGrid
     public const float HeadHeight = 48f;
     public const float ToolHeight = 44f;
     public const float ActionHeight = 40f;
-    public const float GroupGap = 8f;
-    public const float SwatchCell = 24f;
+    /// <summary>
+    /// The gap between groups. Kept tight, like <see cref="SwatchCell"/>, so three columns, custom row included, stand
+    /// beside the map at 16:9 with their top only 14 pixels above its edge (see <see cref="MenuLayout"/>).
+    /// </summary>
+    public const float GroupGap = 6f;
+
+    /// <summary>The swatch rows' pitch, kept tight for the same reason as <see cref="GroupGap"/>.</summary>
+    public const float SwatchCell = 22f;
 
     /// <summary>Undo, Redo, and Clear.</summary>
     public const int ActionCount = 3;
 
-    public RailGrid(int columns, int tools, int swatches)
+    public RailGrid(int columns, int tools, int swatches, int customSwatches)
     {
         Columns = columns;
         Width = columns * RailWidth;
@@ -99,15 +106,10 @@ internal sealed class RailGrid
 
         Actions = actionSlots;
         SwatchTop = ActionTop + Rows(ActionCount, columns) * ActionHeight + GroupGap;
-        var swatchRows = Rows(swatches, 2 * columns);
-        var perRow = Rows(swatches, swatchRows);
-        var slot = Width / perRow;
-        var centers = new Vector2[swatches];
-        for (var i = 0; i < swatches; i++)
-        {
-            centers[i] = new Vector2(slot * (0.5f + i % perRow), SwatchTop + SwatchCell * (0.5f + i / perRow));
-        }
-
+        var centers = new Vector2[swatches + customSwatches];
+        var swatchRows = SpreadSwatches(centers, 0, swatches, SwatchTop);
+        CustomTop = SwatchTop + swatchRows * SwatchCell;
+        swatchRows += SpreadSwatches(centers, swatches, customSwatches, CustomTop);
         SwatchCenters = centers;
         Height = SwatchTop + swatchRows * SwatchCell + 6f;
     }
@@ -125,18 +127,44 @@ internal sealed class RailGrid
     /// <summary>Undo, Redo, and Clear, in that order.</summary>
     public IReadOnlyList<RailSlot> Actions { get; }
 
+    /// <summary>The built-in swatches, then the custom colours' slots.</summary>
     public IReadOnlyList<Vector2> SwatchCenters { get; }
 
     public float ActionTop { get; }
 
     public float SwatchTop { get; }
 
+    /// <summary>The top of the custom colours' first row.</summary>
+    public float CustomTop { get; }
+
     /// <summary>How many rows <paramref name="count"/> items take, <paramref name="perRow"/> to a row.</summary>
     private static int Rows(int count, int perRow) => (count + perRow - 1) / perRow;
+
+    /// <summary>
+    /// Puts <paramref name="count"/> swatch centres into <paramref name="centers"/> from <paramref name="first"/>, two to a
+    /// column in rows from <paramref name="top"/>, each row as full as the others and spread across the width. Returns the rows.
+    /// </summary>
+    private int SpreadSwatches(Vector2[] centers, int first, int count, float top)
+    {
+        if (count == 0)
+        {
+            return 0;
+        }
+
+        var rows = Rows(count, 2 * Columns);
+        var perRow = Rows(count, rows);
+        var slot = Width / perRow;
+        for (var i = 0; i < count; i++)
+        {
+            centers[first + i] = new Vector2(slot * (0.5f + i % perRow), top + SwatchCell * (0.5f + i / perRow));
+        }
+
+        return rows;
+    }
 }
 
 /// <summary>
-/// Where the rail goes: outside the map, left of it with its top level with the map's top edge, or inside the map's
+/// Where the rail goes: outside the map, left of it with its top level with the map's top edge or above it, or inside the map's
 /// top-left corner as design C draws it. <see cref="X"/> and <see cref="Y"/> are its top-left corner in design pixels from
 /// the map's top-left corner, so negative outside.
 /// </summary>
@@ -288,7 +316,7 @@ internal static class MenuLayout
     /// else is on screen beside the map.
     /// </summary>
     public static (RailPlacement Rail, StripPlacement Strip) Place(float screenWidth, float screenHeight, PixelBox map, float pixelsPerDesign,
-        IReadOnlyList<PixelBox> hud, int tools, int swatches)
+        IReadOnlyList<PixelBox> hud, int tools, int swatches, int customSwatches)
     {
         var gap = OutsideGap * pixelsPerDesign;
         var blockers = new List<PixelBox>(hud.Count + 1);
@@ -297,10 +325,10 @@ internal static class MenuLayout
             blockers.Add(box.Grown(gap));
         }
 
-        var rail = PlaceRail(screenWidth, screenHeight, map, pixelsPerDesign, blockers, tools, swatches);
+        var rail = PlaceRail(screenWidth, screenHeight, map, pixelsPerDesign, blockers, tools, swatches, customSwatches);
         if (rail.Outside)
         {
-            var grid = new RailGrid(rail.Columns, tools, swatches);
+            var grid = new RailGrid(rail.Columns, tools, swatches, customSwatches);
             blockers.Add(new PixelBox(map.X + rail.X * pixelsPerDesign, map.Y + rail.Y * pixelsPerDesign, grid.Width * pixelsPerDesign,
                 grid.Height * pixelsPerDesign).Grown(gap));
         }
@@ -339,22 +367,37 @@ internal static class MenuLayout
         return (left ? cell.X - TagGap - width : cell.X + cell.Width + TagGap, cell.Y + (cell.Height - height) * 0.5f);
     }
 
-    /// <summary>The fewest columns that fit left of the map, from its top edge down, clear of the HUD and on screen.</summary>
+    /// <summary>
+    /// The fewest columns that fit left of the map, clear of the HUD and on screen. Each hangs from the map's top edge, or
+    /// where what's below it (the MFD buttons) leaves too little room, grows up past that edge by whole design pixels.
+    /// </summary>
     private static RailPlacement PlaceRail(float screenWidth, float screenHeight, PixelBox map, float pixelsPerDesign, List<PixelBox> blockers,
-        int tools, int swatches)
+        int tools, int swatches, int customSwatches)
     {
         var gap = OutsideGap * pixelsPerDesign;
         for (var columns = 1; columns <= Math.Max(tools, 1); columns++)
         {
-            var grid = new RailGrid(columns, tools, swatches);
+            var grid = new RailGrid(columns, tools, swatches, customSwatches);
             var width = grid.Width * pixelsPerDesign;
-            var box = new PixelBox(map.X - gap - width, map.Y, width, grid.Height * pixelsPerDesign);
+            var height = grid.Height * pixelsPerDesign;
+            var x = map.X - gap - width;
+            var floor = screenHeight - gap;
+            foreach (var blocker in blockers)
+            {
+                if (blocker.X < x + width && x < blocker.Right && blocker.Y > map.Y)
+                {
+                    floor = Math.Min(floor, blocker.Y);
+                }
+            }
+
+            var lift = Math.Max(0f, MathF.Ceiling((map.Y + height - floor) / pixelsPerDesign));
+            var box = new PixelBox(x, map.Y - lift * pixelsPerDesign, width, height);
             if (box.X < gap || box.Right > screenWidth || box.Y < 0f || box.Bottom > screenHeight - gap || OverlapsAny(box, blockers))
             {
                 continue;
             }
 
-            return new RailPlacement(true, -OutsideGap - grid.Width, 0f, columns, (box.X - gap) / pixelsPerDesign);
+            return new RailPlacement(true, -OutsideGap - grid.Width, -lift, columns, (box.X - gap) / pixelsPerDesign);
         }
 
         return new RailPlacement(false, RailX, RailY, 1, 0f);

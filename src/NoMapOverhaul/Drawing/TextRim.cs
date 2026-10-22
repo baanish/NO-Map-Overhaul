@@ -12,7 +12,7 @@ namespace NoMapOverhaul.Drawing;
 /// </summary>
 internal sealed class TextRim : ModGraphic
 {
-    private static readonly Vector2[] Offsets =
+    internal static readonly Vector2[] Offsets =
     {
         new(-1f, -1f), new(0f, -1f), new(1f, -1f), new(-1f, 0f), new(1f, 0f), new(-1f, 1f), new(0f, 1f), new(1f, 1f),
     };
@@ -23,9 +23,17 @@ internal sealed class TextRim : ModGraphic
     public override Texture mainTexture =>
         m_Material != null && m_Material.mainTexture != null ? m_Material.mainTexture : s_WhiteTexture;
 
-    /// <summary>Copies the glyphs the face last generated, so call it after <see cref="TMP_Text.ForceMeshUpdate"/>.</summary>
+    /// <summary>
+    /// Copies the glyphs the face last generated, so call it after <see cref="TMP_Text.ForceMeshUpdate"/>. A face that
+    /// hasn't woken has generated nothing, and the rim keeps what it had.
+    /// </summary>
     public void Bake(TMP_Text face, Color32 color)
     {
+        if (face.textInfo is not { } info)
+        {
+            return;
+        }
+
         _face = face;
         _color = color;
         if (!ReferenceEquals(m_Material, face.fontSharedMaterial))
@@ -33,7 +41,6 @@ internal sealed class TextRim : ModGraphic
             material = face.fontSharedMaterial;
         }
 
-        var info = face.textInfo;
         var min = new Vector2(float.MaxValue, float.MaxValue);
         var max = new Vector2(float.MinValue, float.MinValue);
         for (var i = 0; i < info.characterCount; i++)

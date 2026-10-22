@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using NoMapOverhaul.Airbases;
 using NoMapOverhaul.Diagnostics;
+using NoMapOverhaul.Drawing;
 using NoMapOverhaul.MapTools;
 using NoMapOverhaul.Runways;
 using NoMapOverhaul.Sharing;
@@ -51,6 +52,7 @@ public sealed class Plugin : BaseUnityPlugin
     private SteamDrawingSharing _sharing = null!;
     private readonly List<Airbase> _namedAirbases = new();
     private readonly HashSet<string> _airbaseNames = new();
+    private readonly DrawingRecovery _recovery = new();
     private Airbase.Runway.RunwayUsage? _approach;
     private Aircraft? _checkedAircraft;
     private bool _checkedIsHelicopter;
@@ -68,9 +70,17 @@ public sealed class Plugin : BaseUnityPlugin
         _performance = new PerformanceLog(_settings, Logger);
         _perfTest = new PerfTest(_settings, _performance, _mapTools, Logger);
         SteamConnectionOwnershipPatch.Apply(Logger);
-        _sharing = new SteamDrawingSharing(_mapTools, _mapTools.Received, Logger);
+#if SHARING_LOOPBACK
+        _sharing = new SteamDrawingSharing(_mapTools, _mapTools.Received, Logger, new LoopbackDrawingTransport(Logger));
+#else
+        _sharing = new SteamDrawingSharing(_mapTools, _mapTools.Received, Logger, new SteamDrawingTransport());
+#endif
         _mapTools.RequestSharedErase = _sharing.RequestErase;
         _mapTools.CanRequestSharedErase = _sharing.CanRequestErase;
+        _performance.Counts = PerformanceCounts;
+        _performance.Context = PerformanceContext;
+        _performance.Teammates = _sharing.TakeTeammates;
+        _performance.DropTeammates = _sharing.DropTeammateTraffic;
         DynamicMap.onMapChanged += OnMapChanged;
         if (!RunwayHudCallout.LabelFieldFound)
         {
@@ -78,6 +88,7 @@ public sealed class Plugin : BaseUnityPlugin
         }
 
         AutopilotRightClickPatch.Apply(_mapTools, Logger);
+        RingShader.Load(Logger);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
     }
@@ -165,7 +176,10 @@ public sealed class Plugin : BaseUnityPlugin
             _mapTools.RefreshChannels();
             _mapTools.TrackMission(SceneSingleton<DynamicMap>.i);
             _perfTest.Update();
-            _sharing.Update(ModOn && _settings.ShowMapTools.Value && !_settings.PerfTestShowsDrawings, _settings.LogNetwork.Value);
+            // The real switch, not the perf test's: its mod-off slices leave sharing running, so teammates stay paired.
+            var sharing = ModTimings.Start();
+            _sharing.Update(_settings.Enabled.Value && (_settings.ShowMapTools.Value || _settings.PerfTestShowsDrawings), _settings.LogNetwork.Value);
+            ModTimings.Stop(ModSection.Sharing, sharing);
             if (!ModOn)
             {
                 // A no-op once everything is gone, so the switch takes effect the frame it flips in F1.
@@ -178,13 +192,88 @@ public sealed class Plugin : BaseUnityPlugin
                 _approach = null; // the runways it points at went with the scene
             }
 
-            var runways = ModTimings.Start();
-            _hudCallout.Render(_approach);
-            _mapOverlay.KeepLabelsUpright();
-            ModTimings.Stop(ModSection.RunwayOverlays, runways);
-            _mapTools.Update(_hudCallout.HudStyle);
+            Draw(() =>
+            {
+                var runways = ModTimings.Start();
+                _hudCallout.Render(_approach);
+                _mapOverlay.KeepLabelsUpright();
+                ModTimings.Stop(ModSection.RunwayOverlays, runways);
+                _mapTools.Update(_hudCallout.HudStyle);
+            });
         });
         _performance.AddFrame(start, ModOn);
+    }
+
+    /// <summary>
+    /// Builds and updates graphics, where a throw takes them all down and builds them again after a pause
+    /// (<see cref="DrawingRecovery"/>), rather than disabling the mod: the drawings, received drawings and sharing stay
+    /// as they were. Only a failure to take the graphics down reaches <see cref="Guard"/>.
+    /// </summary>
+    private void Draw(System.Action action)
+    {
+        var now = UnityEngine.Time.unscaledTimeAsDouble;
+        if (!_recovery.CanDraw(now))
+        {
+            return;
+        }
+
+        try
+        {
+            action();
+        }
+        catch (System.Exception exception)
+        {
+            var pause = _recovery.Fail(now);
+            var detail = _recovery.Failures == 1 ? exception.ToString() : exception.GetType().Name + ": " + exception.Message;
+            Logger.LogError(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "Drawing failed ({0} so far); the mod's graphics are rebuilt in {1:0} s, and drawings and sharing carry on. {2}",
+                _recovery.Failures, pause, detail));
+            RemoveOverlays();
+        }
+    }
+
+    private string PerformanceCounts()
+    {
+        var (graphics, texts, held) = RenderCounters.CountModObjects();
+        var traffic = SteamDrawingSharing.TakeTraffic(TrafficReader.PerformanceLog);
+        return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "Drawings {0} own, {1} received, {2} shown. Mod graphics {3} drawn, {4} TMP, {5} held. Sharing sent {6} ({7:0.0} KB), " +
+            "received {8} ({9:0.0} KB), {10} snapshots applied, Steam calls {11:0.0} ms, worst {12:0.0} ms.",
+            _mapTools.Context.Shapes.Shapes.Count, _mapTools.Received.Shapes.Count, _mapTools.VisibleReceived.Count, graphics, texts, held,
+            traffic.SentMessages, traffic.SentBytes / 1024.0, traffic.ReceivedMessages, traffic.ReceivedBytes / 1024.0,
+            traffic.SnapshotsApplied, traffic.SteamMs, traffic.SteamWorstMs);
+    }
+
+    /// <summary>The session around a logged window: the game's state, the local side's players, the map, and the mission clock.</summary>
+    private static PerfContext PerformanceContext()
+    {
+        var team = -1;
+        if (GameManager.GetLocalPlayer<NuclearOption.Networking.Player>(out var local) && local != null && local.HQ != null)
+        {
+            team = 0;
+            foreach (var player in UnitRegistry.playerLookup.Values)
+            {
+                team += player != null && player.HQ == local.HQ ? 1 : 0;
+            }
+        }
+
+        var map = SceneSingleton<DynamicMap>.i;
+        return new PerfContext(GameManager.gameState.ToString(), team, map != null ? map.mapIcons.Count : -1, DynamicMap.mapMaximized,
+            MissionSeconds());
+    }
+
+    /// <summary>The mission clock, or NaN outside a mission. In multiplayer it reads Mirage's network time, which throws while the mission manager isn't spawned, such as across a disconnect.</summary>
+    private static float MissionSeconds()
+    {
+        var mission = NetworkSceneSingleton<MissionManager>.i;
+        try
+        {
+            return mission != null && MissionManager.IsRunning ? mission.MissionTime : float.NaN;
+        }
+        catch (System.Exception)
+        {
+            return float.NaN;
+        }
     }
 
     /// <summary>General.Enabled, unless the perf test is switching the mod on and off.</summary>
@@ -194,7 +283,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnMapChanged()
     {
         var start = _performance.Start();
-        Guard(RefreshMap);
+        Guard(() => Draw(RefreshMap));
         _performance.AddRefresh(start);
     }
 

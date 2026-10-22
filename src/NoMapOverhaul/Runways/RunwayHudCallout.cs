@@ -1,5 +1,6 @@
 using System.Reflection;
 using HarmonyLib;
+using NoMapOverhaul.Drawing;
 using TMPro;
 using UnityEngine;
 
@@ -71,7 +72,7 @@ internal sealed class RunwayHudCallout
             _textWithName = withName;
         }
 
-        _label!.transform.position = new Vector3(screen.x, screen.y - BelowThreshold, 0f);
+        TransformWrites.SetPosition(_label!.transform, new Vector3(screen.x, screen.y - BelowThreshold, 0f));
         _label.fontSize = (int)PlayerSettings.overlayTextSize;
         _label.color = _settings.HudColor.Value;
         _label.enabled = true;

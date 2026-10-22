@@ -113,8 +113,7 @@ internal sealed class ImageBatch : ModGraphic
                 max = Vector2.Max(max, center + reach);
             }
 
-            rectTransform.localPosition = (min + max) * 0.5f;
-            rectTransform.sizeDelta = max - min;
+            FitRect((min + max) * 0.5f, max - min);
         }
 
         SetVerticesDirty();

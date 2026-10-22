@@ -33,6 +33,7 @@ The NOMM archive is flat:
 
 ```text
 NoMapOverhaul.dll
+nomapoverhaul-shaders.bundle
 LICENSE.txt
 README.txt
 THIRD_PARTY_NOTICES.txt
@@ -42,6 +43,7 @@ The plugin-only archive extracts beside `NuclearOption.exe`:
 
 ```text
 BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
+BepInEx/plugins/NoMapOverhaul/nomapoverhaul-shaders.bundle
 BepInEx/plugins/NoMapOverhaul/LICENSE.txt
 BepInEx/plugins/NoMapOverhaul/meta.json
 BepInEx/plugins/NoMapOverhaul/README.txt

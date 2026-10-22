@@ -21,6 +21,7 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | Left click or drag | Use the picked tool. |
 | Right click while drawing | Cancel what you're halfway through. |
 | Right click a drawing | Delete your drawing, or request a shared erase on a collaborative channel. Undo restores only your work. |
+| Right click one of your colours | Remove it from the rail. |
 | `H` | Open or close the rail, like clicking **Tools**. |
 | `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
 | `1` twice, quickly | Pick Bearing/range and measure from your aircraft: your next click sets the other end. |
@@ -38,6 +39,8 @@ A selected friendly unit keeps its right click: with one selected, right click g
 ![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](images/tool-rail.jpg)
 
 The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on the tool you last picked, Bearing/range the first time after starting the game, and closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+
+Under the swatches is a row for up to six colours of your own. Click **+** to open the colour picker in the map's top-left corner. Drag around the wheel to pick the hue, out from its centre for a stronger colour, and along **Brightness** for a lighter or darker one; the swatch beside **Add** shows the result. **Add** puts the colour in the next free slot and draws with it; if a swatch already has that exact colour, it picks that swatch instead. **Cancel**, Escape, or closing the map leaves the row as it was. Your colours work like the six above and are kept for your next game. Right click one to remove it; the colour you're drawing with stays until you pick another. Once all six slots are used, the **+** goes until you remove one.
 
 The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 

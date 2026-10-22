@@ -163,11 +163,7 @@ public sealed class LabelLayout
     private static readonly float[] RingDegrees = { 0f, 60f, -60f, 180f, 120f, -120f };
 
     private readonly List<PlacedLabel> _order = new();
-    private readonly List<LabelBox> _placed = new();
-
-    /// <summary>This pass's obstacles, copied out of the caller's list once rather than read through it for every slot.</summary>
-    private LabelBox[] _obstacles = Array.Empty<LabelBox>();
-    private int _obstacleCount;
+    private readonly LabelGrid _grid = new();
 
     /// <summary>The obstacles and placed labels that reach the label being placed, which only they can block.</summary>
     private readonly List<LabelBox> _near = new();
@@ -247,15 +243,23 @@ public sealed class LabelLayout
             }
         }
 
-        _order.Sort(PriorityOrder.Instance);
-        _placed.Clear();
-        CopyObstacles(obstacles);
+        _order.Sort(PriorityOrder.Comparison);
+        _grid.Clear();
+        var obstacleCount = obstacles?.Count ?? 0;
+        for (var i = 0; i < obstacleCount; i++)
+        {
+            _grid.Add(obstacles![i]);
+        }
+
         foreach (var label in _order)
         {
             var count = SlotCount(label.Anchor.Kind);
             var kept = label.Slot >= 0 && label.Slot < count ? label.Slot : 0;
             label.Take(obstacles == null ? kept : Choose(label, kept, count));
-            _placed.Add(label.Box);
+            if (obstacles != null)
+            {
+                _grid.Add(label.Box);
+            }
         }
 
         foreach (var label in labels)
@@ -378,7 +382,7 @@ public sealed class LabelLayout
     /// </summary>
     private bool IsClear(PlacedLabel label, int slot, bool near) =>
         Fits(label, slot, out var box) &&
-        (near ? !OverlapsAny(box, _near) : !OverlapsAny(box, _obstacles, _obstacleCount) && !OverlapsAny(box, _placed));
+        (near ? !OverlapsAny(box, _near) : !_grid.OverlapsAny(box));
 
     /// <summary>The label's box in the slot, and false where a bearing's box would cross its own shaft or a leader would reach too far.</summary>
     private static bool Fits(PlacedLabel label, int slot, out LabelBox box)
@@ -415,48 +419,7 @@ public sealed class LabelLayout
         }
 
         _near.Clear();
-        for (var i = 0; i < _obstacleCount; i++)
-        {
-            if (reach.Overlaps(_obstacles[i]))
-            {
-                _near.Add(_obstacles[i]);
-            }
-        }
-
-        foreach (var placed in _placed)
-        {
-            if (reach.Overlaps(placed))
-            {
-                _near.Add(placed);
-            }
-        }
-    }
-
-    private void CopyObstacles(IReadOnlyList<LabelBox>? obstacles)
-    {
-        _obstacleCount = obstacles?.Count ?? 0;
-        if (_obstacles.Length < _obstacleCount)
-        {
-            _obstacles = new LabelBox[Math.Max(_obstacleCount, 2 * _obstacles.Length)];
-        }
-
-        for (var i = 0; i < _obstacleCount; i++)
-        {
-            _obstacles[i] = obstacles![i];
-        }
-    }
-
-    private static bool OverlapsAny(LabelBox box, LabelBox[] boxes, int count)
-    {
-        for (var i = 0; i < count; i++)
-        {
-            if (box.Overlaps(boxes[i]))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        _grid.Gather(reach, _near);
     }
 
     private static bool OverlapsAny(LabelBox box, List<LabelBox> boxes)
@@ -472,10 +435,177 @@ public sealed class LabelLayout
         return false;
     }
 
+    /// <summary>Only filters candidates: LabelBox.Overlaps still decides every collision, including touching edges.</summary>
+    private sealed class LabelGrid
+    {
+        private const int CellSize = 64;
+        private const int MaxCells = 64;
+        private readonly Dictionary<(int X, int Y), List<int>> _cells = new();
+        private readonly List<List<int>> _cellLists = new();
+        private readonly List<int> _large = new();
+        private LabelBox[] _boxes = Array.Empty<LabelBox>();
+        private int[] _seen = Array.Empty<int>();
+        private int _count;
+        private int _cellCount;
+        private int _query;
+
+        public void Clear()
+        {
+            for (var i = 0; i < _cellCount; i++)
+            {
+                _cellLists[i].Clear();
+            }
+
+            _cells.Clear();
+            _large.Clear();
+            _count = 0;
+            _cellCount = 0;
+        }
+
+        public void Add(LabelBox box)
+        {
+            if (_count == _boxes.Length)
+            {
+                var capacity = Math.Max(16, 2 * _count);
+                Array.Resize(ref _boxes, capacity);
+                Array.Resize(ref _seen, capacity);
+            }
+
+            var id = _count++;
+            _boxes[id] = box;
+            if (!CellRange(box, out var minX, out var minY, out var maxX, out var maxY))
+            {
+                _large.Add(id);
+                return;
+            }
+
+            for (var x = minX; x <= maxX; x++)
+            {
+                for (var y = minY; y <= maxY; y++)
+                {
+                    if (!_cells.TryGetValue((x, y), out var cell))
+                    {
+                        if (_cellCount == _cellLists.Count)
+                        {
+                            _cellLists.Add(new List<int>());
+                        }
+
+                        cell = _cellLists[_cellCount++];
+                        _cells.Add((x, y), cell);
+                    }
+
+                    cell.Add(id);
+                }
+            }
+        }
+
+        public bool OverlapsAny(LabelBox box) => Query(box, null);
+
+        public void Gather(LabelBox box, List<LabelBox> matches) => Query(box, matches);
+
+        private bool Query(LabelBox box, List<LabelBox>? matches)
+        {
+            _query = unchecked(_query + 1);
+            if (_query == 0)
+            {
+                Array.Clear(_seen, 0, _seen.Length);
+                _query = 1;
+            }
+
+            // Huge or unindexable queries scan once rather than enumerating an unbounded number of cells.
+            if (!CellRange(box, out var minX, out var minY, out var maxX, out var maxY))
+            {
+                for (var i = 0; i < _count; i++)
+                {
+                    if (Match(box, i, matches))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            foreach (var id in _large)
+            {
+                if (Match(box, id, matches))
+                {
+                    return true;
+                }
+            }
+
+            for (var x = minX; x <= maxX; x++)
+            {
+                for (var y = minY; y <= maxY; y++)
+                {
+                    if (!_cells.TryGetValue((x, y), out var cell))
+                    {
+                        continue;
+                    }
+
+                    foreach (var id in cell)
+                    {
+                        if (Match(box, id, matches))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool Match(LabelBox box, int id, List<LabelBox>? matches)
+        {
+            if (_seen[id] == _query)
+            {
+                return false;
+            }
+
+            _seen[id] = _query;
+            if (!box.Overlaps(_boxes[id]))
+            {
+                return false;
+            }
+
+            if (matches == null)
+            {
+                return true;
+            }
+
+            matches.Add(_boxes[id]);
+            return false;
+        }
+
+        private static bool CellRange(LabelBox box, out int minX, out int minY, out int maxX, out int maxY)
+        {
+            minX = minY = maxX = maxY = 0;
+            var x0 = Math.Floor((double)box.Min.X / CellSize);
+            var y0 = Math.Floor((double)box.Min.Y / CellSize);
+            var x1 = Math.Floor((double)box.Max.X / CellSize);
+            var y1 = Math.Floor((double)box.Max.Y / CellSize);
+            // Floor handles negatives; inclusive maxima retain edge candidates. Unordered, non-finite and
+            // extreme coordinates take the exact linear path, without overflowing a cell coordinate or loop.
+            if (!(x0 >= int.MinValue && y0 >= int.MinValue && x1 < int.MaxValue && y1 < int.MaxValue &&
+                  x0 <= x1 && y0 <= y1 && (x1 - x0 + 1) * (y1 - y0 + 1) <= MaxCells))
+            {
+                return false;
+            }
+
+            minX = (int)x0;
+            minY = (int)y0;
+            maxX = (int)x1;
+            maxY = (int)y1;
+            return true;
+        }
+    }
+
     /// <summary>Notes, fixed or on units, and waypoint numbers in drawing order, then labels being drawn now, then bearings and radii newest first.</summary>
     private sealed class PriorityOrder : IComparer<PlacedLabel>
     {
         public static readonly PriorityOrder Instance = new();
+        public static readonly Comparison<PlacedLabel> Comparison = Instance.Compare;
 
         public int Compare(PlacedLabel? x, PlacedLabel? y)
         {

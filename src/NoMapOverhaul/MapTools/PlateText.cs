@@ -12,12 +12,20 @@ namespace NoMapOverhaul.MapTools;
 /// material, rebuilt whenever the labels are placed. So a hundred labels are one graphic rather than a hundred: Unity
 /// culls every graphic under the map's mask on every frame and updates every TextMeshPro, whether anything changed or
 /// not. The typesetter sits at the labels' own scale, since TextMeshPro bakes the text's world scale into each glyph
-/// for its SDF edge. Notes keep a TextMeshPro each, since their rim would copy each glyph nine times into the batch.
+/// for its SDF edge. Notes are typeset here too, and drawn with their rims by <see cref="NoteText"/>, over this text.
 /// </summary>
 internal sealed class PlateText
 {
     private const AdditionalCanvasShaderChannels TextChannels =
         AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.Normal | AdditionalCanvasShaderChannels.Tangent;
+
+    /// <summary>
+    /// Every fallback font material a typeset has handed out, each holding one reference in TextMeshPro's count. The
+    /// typesetter's sub-meshes count only the materials of its last text, and TextMeshPro destroys a fallback material
+    /// nothing counts, while labels typeset earlier still draw with it. Never released, and shared by every layer the
+    /// scenes make: there's one per fallback font.
+    /// </summary>
+    private static readonly HashSet<Material> Pinned = new();
 
     private readonly RectTransform _root;
     private readonly RectTransform _scale;
@@ -39,11 +47,18 @@ internal sealed class PlateText
         _typesetter = NewRect("Text", _scale).gameObject.AddComponent<TextMeshProUGUI>();
         _typesetter.enabled = false; // typesets with ignoreActiveState, never drawn, never culled
         _typesetter.raycastTarget = false;
+        _typesetter.richText = false; // a note's typed tags stay as typed, as its own text did
         _typesetter.rectTransform.pivot = new Vector2(0.5f, 0.5f);
         _typesetter.enableWordWrapping = false;
         _typesetter.overflowMode = TextOverflowModes.Overflow;
         _typesetter.alignment = TextAlignmentOptions.Center;
     }
+
+    /// <summary>
+    /// TextMeshPro has woken and can typeset. It wakes with its object, so under a map made inactive, such as a hidden
+    /// minimap, every typeset makes nothing until the map shows.
+    /// </summary>
+    public bool Awake => _typesetter.textInfo != null;
 
     /// <summary>A label's text at the labels' scale of <paramref name="inverseScale"/>, in world units, for telling when it needs typesetting again.</summary>
     public float WorldScale(float inverseScale)
@@ -71,7 +86,17 @@ internal sealed class PlateText
         _typesetter.ForceMeshUpdate(ignoreActiveState: true);
         glyphs.Vertices.Clear();
         glyphs.Materials.Clear();
+        glyphs.MaterialIndices.Clear();
+        glyphs.Sprites.Clear();
+        glyphs.Version++;
         var info = _typesetter.textInfo;
+        glyphs.Ready = info != null;
+        if (info == null)
+        {
+            // Not awake yet: the layer was made under an inactive map. No glyphs, so the label tries again next draw.
+            return Vector2.zero;
+        }
+
         for (var i = 0; i < info.characterCount; i++)
         {
             var character = info.characterInfo[i];
@@ -94,7 +119,14 @@ internal sealed class PlateText
                 });
             }
 
+            if (character.materialReferenceIndex > 0 && Pinned.Add(mesh.material))
+            {
+                TMP_MaterialManager.AddFallbackMaterialReference(mesh.material); // does nothing for a material that isn't a fallback
+            }
+
             glyphs.Materials.Add(mesh.material);
+            glyphs.MaterialIndices.Add(character.materialReferenceIndex);
+            glyphs.Sprites.Add(character.elementType == TMP_TextElementType.Sprite);
         }
 
         return new Vector2(_typesetter.preferredWidth, _typesetter.preferredHeight);
@@ -181,5 +213,20 @@ internal sealed class PlateText
         public List<UIVertex> Vertices { get; } = new();
 
         public List<Material> Materials { get; } = new();
+
+        /// <summary>Each glyph's place among the text's materials: 0 for the HUD font, then one per fallback font it used.</summary>
+        public List<int> MaterialIndices { get; } = new();
+
+        /// <summary>Each glyph is a sprite, such as an emoji from TextMeshPro's default sprite asset, which isn't tinted the text's colour.</summary>
+        public List<bool> Sprites { get; } = new();
+
+        /// <summary>Counts typesets, so a copy of these glyphs can tell it's stale.</summary>
+        public int Version { get; set; }
+
+        /// <summary>
+        /// The typesetter had woken by the last typeset. Before that it makes nothing, so a label made under an
+        /// inactive map, such as a hidden minimap, is typeset again on its next draw.
+        /// </summary>
+        public bool Ready { get; set; }
     }
 }

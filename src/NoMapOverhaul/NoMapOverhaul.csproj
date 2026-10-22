@@ -27,6 +27,7 @@
     <Reference Include="Rewired_Core" HintPath="$(Managed)\Rewired_Core.dll" Private="false" />
     <Reference Include="Unity.TextMeshPro" HintPath="$(Managed)\Unity.TextMeshPro.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(Managed)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.AssetBundleModule" HintPath="$(Managed)\UnityEngine.AssetBundleModule.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(Managed)\UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(Managed)\UnityEngine.IMGUIModule.dll" Private="false" />
     <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(Managed)\UnityEngine.InputLegacyModule.dll" Private="false" />
@@ -36,8 +37,17 @@
     <Reference Include="UnityEngine.UIModule" HintPath="$(Managed)\UnityEngine.UIModule.dll" Private="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The 3D rings' shader (Drawing/RingShader.cs), built from unity/ by build/Build-Shaders.ps1. -->
+    <None Include="..\..\unity\Bundles\nomapoverhaul-shaders.bundle" Link="nomapoverhaul-shaders.bundle" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <Target Name="ValidateGameDir" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(Managed)\Assembly-CSharp.dll')" Text="Nuclear Option not found at GameDir '$(GameDir)'. Run build/Build.ps1, or pass /p:GameDir=... or set NUCLEAR_OPTION_DIR." />
     <Error Condition="!Exists('$(GameDir)\BepInEx\core\BepInEx.dll')" Text="BepInEx 5 is not installed in '$(GameDir)'." />
   </Target>
+  <!-- The loopback sharing transport, for tests on one PC: build/Build-Loopback.ps1. Never in a release. -->
+  <PropertyGroup Condition="'$(SharingLoopback)' == 'true'">
+    <DefineConstants>$(DefineConstants);SHARING_LOOPBACK</DefineConstants>
+  </PropertyGroup>
 </Project>

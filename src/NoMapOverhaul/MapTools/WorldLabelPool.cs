@@ -26,7 +26,20 @@ internal sealed class WorldLabelPool : IWorldLabels
     /// <summary>Line height as a share of the font size, for stacking labels on one point.</summary>
     private const float LineSpacing = 1.15f;
 
+    /// <summary>
+    /// The extra vertex data TextMeshPro's shader reads (the SDF scale is in TexCoord1); a canvas passes on only what it
+    /// asks for, and the labels' own canvas must ask for it as the HUD's does.
+    /// </summary>
+    private const AdditionalCanvasShaderChannels TextChannels =
+        AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.Normal | AdditionalCanvasShaderChannels.Tangent;
+
     private readonly List<TextMeshProUGUI> _labels = new();
+
+    /// <summary>
+    /// The labels' container, the last child of the HUD label's parent so the labels draw over the game's HUD, with a
+    /// canvas of its own: a label moved or retyped re-batches the labels alone, not the game's whole HUD.
+    /// </summary>
+    private RectTransform? _layer;
 
     /// <summary>
     /// Each placed label's point this frame and the stack it joined, by the index of the stack's first label, and each
@@ -45,11 +58,11 @@ internal sealed class WorldLabelPool : IWorldLabels
 
     /// <summary>
     /// Starts a frame's requests. A new HUD means a new source label, and leaving the mission destroys the old HUD with
-    /// our copies in it: they share one parent, so if the first is gone, they all are.
+    /// our layer in it.
     /// </summary>
     public void Begin(TextMeshProUGUI? source)
     {
-        if (!ReferenceEquals(source, _source) || (_labels.Count > 0 && _labels[0] == null))
+        if (!ReferenceEquals(source, _source) || (_layer is not null && _layer == null))
         {
             Reset();
             _source = source;
@@ -106,10 +119,10 @@ internal sealed class WorldLabelPool : IWorldLabels
         label.enabled = true;
     }
 
-    public void Ring(NumericsVector3 center, float radius, ShapeColor color)
+    public void Ring(NumericsVector3 center, float radius, ShapeColor color, object owner)
     {
         var rings = ModTimings.Start();
-        _rings.Add(center, radius, color);
+        _rings.Add(center, radius, color, owner);
         ModTimings.Stop(ModSection.WorldRings, rings);
     }
 
@@ -128,19 +141,33 @@ internal sealed class WorldLabelPool : IWorldLabels
 
     public void Reset()
     {
-        foreach (var label in _labels)
+        if (_layer != null)
         {
-            if (label != null)
-            {
-                Object.Destroy(label.gameObject);
-            }
+            Object.Destroy(_layer.gameObject);
         }
 
+        _layer = null;
         _labels.Clear();
         _rings.Reset();
         _source = null;
         _camera = null;
         _used = 0;
+    }
+
+    private RectTransform Layer()
+    {
+        if (_layer == null)
+        {
+            var parent = _source!.transform.parent;
+            _layer = new GameObject("BaanishWorldLabels", typeof(RectTransform)).GetComponent<RectTransform>();
+            _layer.SetParent(parent, false);
+            _layer.SetAsLastSibling();
+            var canvas = _layer.gameObject.AddComponent<Canvas>();
+            var hud = parent.GetComponentInParent<Canvas>();
+            canvas.additionalShaderChannels = (hud != null ? hud.additionalShaderChannels : 0) | TextChannels;
+        }
+
+        return _layer;
     }
 
     private static int LineCount(string text)
@@ -164,7 +191,7 @@ internal sealed class WorldLabelPool : IWorldLabels
             return _labels[index];
         }
 
-        var label = Object.Instantiate(_source!, _source!.transform.parent);
+        var label = Object.Instantiate(_source!, Layer());
         label.name = "BaanishWorldLabel";
         label.richText = false;
         label.raycastTarget = false;

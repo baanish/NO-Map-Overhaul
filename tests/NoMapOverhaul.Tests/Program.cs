@@ -46,10 +46,15 @@ internal static class Program
         tests.AddRange(CollaborativeEraseTests.All);
         tests.AddRange(MeasureToolTests.All);
         tests.AddRange(LabelLayoutTests.All);
+        tests.AddRange(NoteRunsTests.All);
         tests.AddRange(MenuLayoutTests.All);
+        tests.AddRange(ColorWheelTests.All);
+        tests.AddRange(CustomColorsTests.All);
         tests.AddRange(FrameStatsTests.All);
+        tests.AddRange(PerfLogLinesTests.All);
         tests.AddRange(PerfTestTests.All);
         tests.AddRange(RingProjectionTests.All);
+        tests.AddRange(RingMeshTests.All);
         tests.AddRange(KnownPositionsTests.All);
         tests.AddRange(SettingsMigrationTests.All);
 

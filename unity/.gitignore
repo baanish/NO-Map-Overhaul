@@ -1,0 +1,10 @@
+# Unity regenerates these. Build-Shaders.ps1 sets the graphics APIs the bundle needs.
+/[Ll]ibrary/
+/[Tt]emp/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/ProjectSettings/*
+!/ProjectSettings/ProjectVersion.txt
+/Packages/packages-lock.json
+/*.csproj
+/*.sln

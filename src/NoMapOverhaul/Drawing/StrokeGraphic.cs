@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NoMapOverhaul.Diagnostics;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -106,16 +107,48 @@ internal sealed class StrokeGraphic : ModGraphic
         _wasEmpty = empty;
         if (!empty)
         {
-            rectTransform.localPosition = (_min + _max) * 0.5f;
-            rectTransform.sizeDelta = _max - _min + Vector2.one * (2f * _reach);
+            FitRect((_min + _max) * 0.5f, _max - _min + Vector2.one * (2f * _reach));
         }
 
         SetVerticesDirty();
     }
 
-    protected override void OnPopulateMesh(VertexHelper vh)
+    /// <summary>
+    /// The mesh handed to the canvas, filled straight from these lists: <see cref="VertexHelper"/> would write and upload
+    /// eight channels per vertex where a line needs two, positions and colours. The canvas copies the mesh, so one serves
+    /// every stroke graphic.
+    /// </summary>
+    private static Mesh? _sharedMesh;
+    private static readonly List<Vector3> Vertices = new();
+    private static readonly List<Color32> VertexColors = new();
+    private static readonly List<int> Indices = new();
+
+    protected override void UpdateGeometry()
     {
-        vh.Clear();
+        var start = ModTimings.Start();
+        Vertices.Clear();
+        VertexColors.Clear();
+        Indices.Clear();
+        Fill();
+        if (_sharedMesh == null)
+        {
+            _sharedMesh = new Mesh { hideFlags = HideFlags.HideAndDontSave };
+            _sharedMesh.MarkDynamic();
+        }
+
+        _sharedMesh.Clear();
+        _sharedMesh.SetVertices(Vertices);
+        _sharedMesh.SetColors(VertexColors);
+        _sharedMesh.SetTriangles(Indices, 0, false);
+        canvasRenderer.SetMesh(_sharedMesh);
+        ModTimings.Stop(ModSection.MeshRebuilds, start);
+    }
+
+    /// <summary>Unused: <see cref="UpdateGeometry"/> builds the mesh without a <see cref="VertexHelper"/>.</summary>
+    protected override void OnPopulateMesh(VertexHelper vh) => vh.Clear();
+
+    private void Fill()
+    {
         var origin = (Vector2)rectTransform.localPosition;
         foreach (var stroke in _strokes)
         {
@@ -131,41 +164,41 @@ internal sealed class StrokeGraphic : ModGraphic
             }
 
             var sections = stroke.Count + (stroke.Closed ? 0 : 2);
-            if (vh.currentVertCount + sections * lanes > MaxVertices)
+            if (Vertices.Count + sections * lanes > MaxVertices)
             {
                 break;
             }
 
-            var first = vh.currentVertCount;
+            var first = Vertices.Count;
             var cap = stroke.RimWidth + stroke.Feather;
             if (!stroke.Closed)
             {
                 var start = _points[stroke.Start];
                 var along = (_points[stroke.Start + 1] - start).normalized;
-                AddSection(vh, start - along * cap - origin, Normal(along), 1f, lanes, transparent: true);
+                AddSection(start - along * cap - origin, Normal(along), 1f, lanes, transparent: true);
             }
 
             for (var i = 0; i < stroke.Count; i++)
             {
                 var (normal, scale) = Join(stroke, i);
-                AddSection(vh, _points[stroke.Start + i] - origin, normal, scale, lanes, transparent: false);
+                AddSection(_points[stroke.Start + i] - origin, normal, scale, lanes, transparent: false);
             }
 
             if (!stroke.Closed)
             {
                 var end = _points[stroke.Start + stroke.Count - 1];
                 var along = (end - _points[stroke.Start + stroke.Count - 2]).normalized;
-                AddSection(vh, end + along * cap - origin, Normal(along), 1f, lanes, transparent: true);
+                AddSection(end + along * cap - origin, Normal(along), 1f, lanes, transparent: true);
             }
 
             for (var section = 1; section < sections; section++)
             {
-                Connect(vh, first + (section - 1) * lanes, first + section * lanes, lanes);
+                Connect(first + (section - 1) * lanes, first + section * lanes, lanes);
             }
 
             if (stroke.Closed)
             {
-                Connect(vh, first + (sections - 1) * lanes, first, lanes);
+                Connect(first + (sections - 1) * lanes, first, lanes);
             }
         }
     }
@@ -194,7 +227,7 @@ internal sealed class StrokeGraphic : ModGraphic
         return (miter, Mathf.Min(1f / Mathf.Max(Vector2.Dot(miter, inbound), 1e-3f), MiterLimit));
     }
 
-    private void AddSection(VertexHelper vh, Vector2 center, Vector2 normal, float scale, int lanes, bool transparent)
+    private void AddSection(Vector2 center, Vector2 normal, float scale, int lanes, bool transparent)
     {
         for (var lane = 0; lane < lanes; lane++)
         {
@@ -204,16 +237,17 @@ internal sealed class StrokeGraphic : ModGraphic
                 color.a = 0;
             }
 
-            vh.AddVert(center + normal * (_lateral[lane] * scale), color, Vector4.zero);
+            Vertices.Add(center + normal * (_lateral[lane] * scale));
+            VertexColors.Add(color);
         }
     }
 
-    private static void Connect(VertexHelper vh, int from, int to, int lanes)
+    private static void Connect(int from, int to, int lanes)
     {
         for (var lane = 0; lane < lanes - 1; lane++)
         {
-            vh.AddTriangle(from + lane, to + lane, to + lane + 1);
-            vh.AddTriangle(to + lane + 1, from + lane + 1, from + lane);
+            Indices.Add(from + lane); Indices.Add(to + lane); Indices.Add(to + lane + 1);
+            Indices.Add(to + lane + 1); Indices.Add(from + lane + 1); Indices.Add(from + lane);
         }
     }
 

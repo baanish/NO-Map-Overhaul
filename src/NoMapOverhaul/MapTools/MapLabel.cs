@@ -7,12 +7,12 @@ namespace NoMapOverhaul.MapTools;
 
 /// <summary>
 /// One map label: the text, its plate for anything but a note, and a leader when the layout moved it off its
-/// arrowhead. A shape's draw sets what it says (<see cref="Set"/>); the layer's placement pass then says where
-/// (<see cref="Apply"/>). The layout works in the frame the labels stand upright in, the screen's, which the heading-up
-/// minimap turns against the map's, so a bearing's label sits past its arrowhead as it shows on screen. Nothing on a
-/// plate is an object of its own: every label adds its plate and leader to the layer's one mesh of plates
-/// (<see cref="AddPlate"/>) and its text to the layer's <see cref="PlateText"/> (<see cref="AddText"/>), turned upright.
-/// A note is an <see cref="OutlinedText"/>, whose container hangs from the label's origin and is turned upright.
+/// arrowhead. A shape's draw sets what it says (<see cref="Set"/>); the layer's placement pass then says where, and
+/// adds it to the layer's meshes. The layout works in the frame the labels stand upright in, the screen's, which the
+/// heading-up minimap turns against the map's, so a bearing's label sits past its arrowhead as it shows on screen. No
+/// label is an object of its own: every label adds its plate and leader to the layer's one mesh of plates
+/// (<see cref="AddPlate"/>) and its text, turned upright, to the layer's <see cref="PlateText"/>, or for a note with its
+/// rim to the layer's <see cref="NoteText"/> (<see cref="AddText"/>).
 /// </summary>
 internal sealed class MapLabel
 {
@@ -26,17 +26,17 @@ internal sealed class MapLabel
     private const float LeaderWidth = 1.125f;
 
     /// <summary>How far the text's world scale may drift before it's typeset again for the glyphs' new SDF scale.</summary>
-    private const float RetypesetScaleChange = 0.01f;
+    internal const float RetypesetScaleChange = 0.01f;
 
     /// <summary>The design's plate: #050E07 at 78%, the rail's ground.</summary>
     private static readonly Color PlateColor = new(5f / 255f, 14f / 255f, 7f / 255f, 0.78f);
 
-    private readonly Transform _parent;
     private readonly PlateText _plateText;
+    private readonly NoteText _noteText;
     private readonly PlateText.Glyphs _glyphs = new();
 
-    /// <summary>Made the first time this label is a note, and hidden while it's on a plate.</summary>
-    private OutlinedText? _note;
+    /// <summary>Made the first time this label is a note, so it covers the notes made before it.</summary>
+    private NoteText.Note? _note;
 
     /// <summary>In the map's frame, in icon units, as the shape drew it. <see cref="Placement"/> gets it in the upright frame.</summary>
     private LabelAnchor _anchor;
@@ -47,104 +47,59 @@ internal sealed class MapLabel
     private float _typesetScale;
     private Vector2 _textSize;
     private Color32 _color;
+    private Color32 _rim;
     private bool _plated;
-    private bool _visible = true;
 
-    public MapLabel(Transform parent, PlateText plateText)
+    public MapLabel(PlateText plateText, NoteText noteText)
     {
-        _parent = parent;
         _plateText = plateText;
+        _noteText = noteText;
     }
 
     /// <summary>What the layout reads and writes, in icon units, in the upright frame (see <see cref="TurnUpright"/>).</summary>
     public PlacedLabel Placement { get; } = new();
 
-    /// <summary>Off for a label this draw didn't use. A label on a plate shows only through the placement pass.</summary>
-    public bool Visible
-    {
-        set
-        {
-            _visible = value;
-            if (_note != null)
-            {
-                _note.Visible = value && !_plated;
-            }
-        }
-    }
-
     /// <summary>
     /// The label's text and look, and its anchor in icon units. Measures and typesets the text only when it changes.
-    /// True when anything its placement, plate, or text mesh is built from changed, so the labels need placing again.
+    /// Says whether its text or size changed, so the labels need laying out again, or only where it hangs or its colour,
+    /// so it keeps its slot and only its plate and text move.
     /// </summary>
-    public bool Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
+    public LabelChange Set(LabelAnchor anchor, string text, float size, Color32 color, Color rim, TextMeshProUGUI? hudStyle, float inverseScale)
     {
         _plated = !LabelLayout.IsNote(anchor.Kind);
         var font = hudStyle != null ? hudStyle.font : null;
         var changed = !ReferenceEquals(text, _measuredText) || size != _measuredSize || !ReferenceEquals(font, _measuredFont) ||
                       _plated != _measuredPlated;
-        var redo = changed || !anchor.Equals(_anchor) || color.r != _color.r || color.g != _color.g || color.b != _color.b || color.a != _color.a;
-        if (_plated)
+        Color32 rimColor = rim;
+        var moved = !anchor.Equals(_anchor) || !Same(color, _color) || !Same(rimColor, _rim);
+        if (!_plated)
         {
-            Visible = _visible;
-            var scale = _plateText.WorldScale(inverseScale);
-            if (changed || Mathf.Abs(scale - _typesetScale) > RetypesetScaleChange * Mathf.Abs(_typesetScale))
-            {
-                _textSize = _plateText.Typeset(text, size, hudStyle, inverseScale, _glyphs);
-                _typesetScale = scale;
-                // TextMeshPro generates nothing before its Awake, which waits for an inactive parent; the next call tries again.
-                _measuredText = text.Length == 0 || _glyphs.Vertices.Count > 0 ? text : null;
-                redo = true;
-            }
+            _note ??= _noteText.NewNote();
         }
-        else
-        {
-            var note = _note ??= NewNote();
-            note.Visible = _visible;
-            // Unity counts any transform write as a change that re-batches the canvas, and live labels redraw ten times a second.
-            var scale = Vector3.one * inverseScale;
-            if (note.Rect.localScale != scale)
-            {
-                note.Rect.localScale = scale;
-            }
 
-            note.Set(text, size, color, rim, hudStyle);
-            if (changed)
-            {
-                _textSize = note.PreferredSize;
-                _measuredText = text;
-            }
+        var scale = _plateText.WorldScale(inverseScale);
+        if (changed || Mathf.Abs(scale - _typesetScale) > RetypesetScaleChange * Mathf.Abs(_typesetScale))
+        {
+            _textSize = _plateText.Typeset(text, size, hudStyle, inverseScale, _glyphs);
+            _typesetScale = scale;
+            // TextMeshPro generates nothing before its Awake, which waits for an inactive parent; the next call tries again.
+            _measuredText = text.Length == 0 || _glyphs.Ready ? text : null;
+            changed = true;
         }
 
         _measuredSize = size;
         _measuredFont = font;
         _measuredPlated = _plated;
         _color = color;
+        _rim = rimColor;
         _anchor = anchor;
         Placement.Text = text;
         Placement.HalfSize = LabelLayout.HalfSize(anchor.Kind, new FlatVector(_textSize.x, _textSize.y), size);
-        return redo;
+        return changed ? LabelChange.Changed : moved ? LabelChange.Moved : LabelChange.None;
     }
 
     /// <summary>Hands the layout the anchor turned by the angle with this cosine and sine, from the map's frame into the upright one.</summary>
     public void TurnUpright(float cos, float sin) => Placement.Anchor = _anchor.Turned(cos, sin);
-
-    /// <summary>Moves a note where the layout put it. <paramref name="toMap"/> turns the upright frame back into the map's. Cheap when nothing moved.</summary>
-    public void Apply(float inverseScale, Quaternion toMap)
-    {
-        if (_plated || _note == null)
-        {
-            return;
-        }
-
-        var origin = ToUnity(Placement.Origin);
-        var position = toMap * (origin * inverseScale);
-        if (_note.Rect.localPosition != position)
-        {
-            _note.Rect.localPosition = position;
-        }
-
-        _note.Align(new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center, ToUnity(Placement.Center) - origin);
-    }
 
     /// <summary>
     /// Adds this label's leader and plate, the leader first since it ends under the plate, in the label canvas's space,
@@ -174,34 +129,33 @@ internal sealed class MapLabel
         }
     }
 
-    /// <summary>Adds a plated label's text, centred on its plate, to the layer's text mesh. <paramref name="toMap"/> turns the upright frame into the map's.</summary>
+    /// <summary>
+    /// Adds the label's text, centred where the layout put it: a plated label's to the layer's text mesh, a note's
+    /// to the layer's notes. <paramref name="toMap"/> turns the upright frame into the map's.
+    /// </summary>
     public void AddText(Quaternion toMap, float inverseScale)
     {
         if (_plated)
         {
             _plateText.Add(_glyphs, _color, toMap, ToUnity(Placement.Center), inverseScale);
         }
-    }
-
-    /// <summary>Turns a note upright on the turning minimap. A label on a plate is turned upright as its text is added.</summary>
-    public void StandUpright()
-    {
-        if (_note != null)
+        else
         {
-            _note.Rect.rotation = Quaternion.identity;
+            _noteText.Add(_note!, _glyphs, _color, _rim, ToUnity(Placement.Center));
         }
     }
 
-    public void Destroy() => _note?.Destroy();
-
-    private OutlinedText NewNote()
-    {
-        var note = new OutlinedText("Label", _parent, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
-        note.Rect.rotation = Quaternion.identity; // upright from the start, see MapShapeLayer.KeepUpright
-        return note;
-    }
+    private static bool Same(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 
     private static Color32 Faded(Color32 color, float opacity) => new(color.r, color.g, color.b, (byte)(color.a * opacity));
 
     private static Vector2 ToUnity(FlatVector vector) => new(vector.X, vector.Y);
+}
+
+/// <summary>What a label's latest draw changed: nothing, only where it hangs or its colour, or its text or size.</summary>
+internal enum LabelChange
+{
+    None,
+    Moved,
+    Changed,
 }

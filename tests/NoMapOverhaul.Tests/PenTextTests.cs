@@ -612,7 +612,7 @@ internal static class PenTextTests
             Position = position;
         }
 
-        public void Ring(Vector3 center, float radius, ShapeColor color)
+        public void Ring(Vector3 center, float radius, ShapeColor color, object owner)
         {
         }
     }

@@ -22,8 +22,10 @@ internal static class ReceivedDrawingsTests
         ("removed and cleared drawings never reuse stale references", RemovedReferences),
         ("received drawings resolve the original owner and wire ID for edit requests", OwnerLookup),
         ("received drawings remove only the specified owner", RemoveOwner),
+        ("teammates' drawings stack in the order the teammates first sent them", PairingOrder),
         ("received drawings enforce thirty-two peers and reuse cleared capacity", PeerBudget),
         ("received drawings split a four-hundred-shape pool evenly between teammates", ShapeBudget),
+        ("the performance log counts each teammate's held and shown drawings", CountOwned),
         ("a full teammate roster is reported separately from invalid peer data", CapacityReason),
         ("received drawings split a ten-thousand-point pool evenly between teammates", GeometryBudget),
         ("received drawings enforce one hundred shapes and three thousand points per snapshot", SnapshotBudget),
@@ -32,13 +34,34 @@ internal static class ReceivedDrawingsTests
         ("shared shapes require every anchor to pass recipient visibility", Visibility),
         ("shared fixed shapes need no unit lookup", FixedVisibility),
         ("shared snapshots include every drawing kind, unit-linked or fixed", ShareableSnapshot),
+        ("a decoded drawing the store keeps is never decoded into a later snapshot", KeptDecodedShapes),
         ("received BRA map and HUD numbers use recipient tracks instead of sender fallbacks", ReceiverBearing),
         ("received unit circles and notes sit on recipient tracks instead of sender fallbacks", ReceiverAnchoredShapes),
-        ("received BRA hide across map HUD and erase when either track is lost and resume", LostBearing),
+        ("received BRA reads lost at its last known position and hides only for a unit never known", LostBearing),
         ("received BRA collaborative erase respects broadcast permission and preserves owner confirmation", BearingErase),
     };
 
     private static readonly ShapeColor Color = new(1, 2, 3);
+
+    /// <summary>A teammate who leaves goes to the back on return; one who only changes drawings keeps its place.</summary>
+    private static void PairingOrder()
+    {
+        var store = new ReceivedDrawings();
+        MapShape Owned(ulong sender) => store.Shapes.First(shape => store.TryFindOwner(shape, out var owner, out _) && owner == sender);
+        string Order() => string.Join(",", store.Shapes.Select(shape => store.TryFindOwner(shape, out var owner, out _) ? owner : 0));
+        foreach (var sender in new ulong[] { 30, 10, 20 })
+        {
+            Expect(store.TryReplace(sender, new[] { Note() }), "accept a teammate");
+        }
+
+        ExpectText(Order(), "30,10,20");
+        Expect(store.TryReplace(30, new MapShape[] { Stamp(new TextNote(Point(), 0, "changed", Color)) }), "a teammate changes its note");
+        ExpectText(Order(), "30,10,20");
+        store.Remove(10);
+        Expect(store.TryReplace(10, new[] { Note() }), "the teammate re-pairs");
+        ExpectText(Order(), "30,20,10");
+        Expect(Owned(10) != null, "the returning teammate's drawing shows");
+    }
     private static MapPoint Point(uint unit = 0) => new(new Vector2(2, 3), unit);
     private static T Stamp<T>(T shape, int id = 1) where T : MapShape
     {
@@ -49,6 +72,17 @@ internal static class ReceivedDrawingsTests
     private static TextNote Note(int id = 1) => Stamp(new TextNote(Point(), 0, "note", Color), id);
     private static MapShape[] Notes(int count) => Enumerable.Range(1, count).Select(i => (MapShape)Note(i)).ToArray();
     private static MapShape[] Pen(int points) => new MapShape[] { Stamp(new PenStroke(new Vector2[points], Color)) };
+
+    /// <summary>Shown is whatever the map drew of a teammate's drawings, here half of one teammate's and none of a stranger's.</summary>
+    private static void CountOwned()
+    {
+        var store = new ReceivedDrawings();
+        Expect(store.TryReplace(10, Notes(4)) && store.TryReplace(20, Notes(2)), "accept two teammates");
+        var shown = new HashSet<MapShape>(store.Shapes.Where(shape => store.TryFindOwner(shape, out var owner, out _) && owner == 10).Take(2));
+        Expect(store.CountOwned(10, shown) == (4, 2), $"expected 4 held and 2 shown, got {store.CountOwned(10, shown)}");
+        Expect(store.CountOwned(20, shown) == (2, 0), $"expected 2 held and none shown, got {store.CountOwned(20, shown)}");
+        Expect(store.CountOwned(30, shown) == (0, 0), "a teammate who sent nothing holds nothing");
+    }
 
     private static void Identity()
     {
@@ -364,6 +398,35 @@ internal static class ReceivedDrawingsTests
             "unit BRA retains its original erase identity");
     }
 
+    /// <summary>
+    /// The decoder hands back a session's unchanged drawings as the objects its last snapshot made. The store renumbers
+    /// the shapes it keeps, so a kept one must not come back in the next snapshot.
+    /// </summary>
+    private static void KeptDecodedShapes()
+    {
+        Expect(DrawingProtocol.TryEncode(new DrawingPacket(DrawingPacketKind.Snapshot, new SharedMissionEpoch(37, 1234.5, 7),
+            Guid.NewGuid(), Guid.NewGuid(), 1, Array.Empty<string>(), new MapShape[] { Note(1), Stamp(new CircleShape(Point(), 100, 0, Color), 2) }),
+            out var bytes), "snapshot encodes");
+        MapShape[] Decoded()
+        {
+            Expect(DrawingProtocol.TryDecode(bytes, out var packet) && packet != null, "snapshot decodes");
+            return packet!.Shapes;
+        }
+
+        var store = new ReceivedDrawings();
+        var first = Decoded();
+        Expect(store.TryReplace(10, first), "first snapshot applies");
+        var second = Decoded();
+        Expect(second.All(shape => shape.Id > 0) && !second.Intersect(first).Any(), "kept drawings are not decoded again");
+        var version = store.Version;
+        Expect(store.TryReplace(10, second) && store.Shapes.SequenceEqual(first) && store.Version == version,
+            "an unchanged snapshot keeps the drawings already shown");
+        var third = Decoded();
+        Expect(third.SequenceEqual(second), "drawings the store didn't keep are reused");
+        Expect(store.TryReplace(10, third) && store.Shapes.SequenceEqual(first) && store.Version == version,
+            "a reused snapshot keeps the drawings already shown");
+    }
+
     private static BearingRangeShape ReceiveBearing(MapPoint? from = null, MapPoint? to = null)
     {
         var bearing = Stamp(new BearingRangeShape(from ?? new MapPoint(new Vector2(-900000, 800000), 1),
@@ -418,34 +481,32 @@ internal static class ReceivedDrawingsTests
             var context = new BearingContext();
             var bearing = ReceiveBearing(from, to);
             var hit = new ShapeHitTest(context);
+            bool Known(uint id) => context.HaveHeadquarters && context.Positions.ContainsKey(id);
             context.TryResolveWorld(from, out var start);
             context.TryResolveWorld(to, out var end);
             var click = new Vector2((start.X + end.X) / 2, (start.Z + end.Z) / 2);
             Expect(ReferenceEquals(hit.Find(new[] { bearing }, click, 8), bearing), "live shared BRA is selectable");
-            foreach (var unknown in new[] { false, true })
-            {
-                context.Live.Remove(lostUnit);
-                if (unknown) context.Positions.Remove(lostUnit);
-                context.ClearDraws();
-                bearing.Draw(context);
-                bearing.AddWorldLabel(context, context);
-                Expect(context.Arrows.Count == 0 && context.MapLabels.Count == 0 && context.WorldLabels.Count == 0 &&
-                    hit.Find(new[] { bearing }, click, 8) == null,
-                    "stale or unknown endpoint hides the entire map arrow, HUD label and erase hit");
-                Expect(!SharedShapeVisibility.HasKnownAnchors(bearing, context.Live.Contains), "recipient list also hides lost BRA");
-                context.Positions[lostUnit] = lostUnit == 1 ? new Vector3(1000, 400, 2000) : new Vector3(1000, 3400, 6000);
-                context.Live.Add(lostUnit);
-                bearing.Draw(context);
-                bearing.AddWorldLabel(context, context);
-                Expect(context.Arrows.Count == 1 && context.MapLabels.Count == 1 && context.WorldLabels.Count == 1 &&
-                    ReferenceEquals(hit.Find(new[] { bearing }, click, 8), bearing), "reacquired track restores all surfaces");
-            }
-            context.HaveHeadquarters = false;
+            context.Live.Remove(lostUnit);
             context.ClearDraws();
             bearing.Draw(context);
             bearing.AddWorldLabel(context, context);
-            Expect(context.Arrows.Count == 0 && context.WorldLabels.Count == 0 && hit.Find(new[] { bearing }, click, 8) == null,
-                "failed recipient resolution never draws sender fallback geometry");
+            Expect(context.Arrows.Count == 1 && context.MapLabels.Count == 1 && context.MapLabels[0].EndsWith(MeasureLabel.LostLine) &&
+                context.WorldLabels.Count == 1 && context.WorldLabels[0].Text.EndsWith(MeasureLabel.LostLine) &&
+                ReferenceEquals(hit.Find(new[] { bearing }, click, 8), bearing),
+                "a stale endpoint leaves the arrow where its side last knew it, reading lost on the map and the HUD");
+            Expect(SharedShapeVisibility.HasKnownAnchors(bearing, Known), "the recipient list keeps a BRA on a unit its side has known");
+            context.Positions.Remove(lostUnit);
+            Expect(!SharedShapeVisibility.HasKnownAnchors(bearing, Known), "a unit the recipient's side never knew hides the BRA");
+            context.Positions[lostUnit] = lostUnit == 1 ? new Vector3(1000, 400, 2000) : new Vector3(1000, 3400, 6000);
+            context.Live.Add(lostUnit);
+            context.ClearDraws();
+            bearing.Draw(context);
+            bearing.AddWorldLabel(context, context);
+            Expect(context.Arrows.Count == 1 && context.MapLabels.Count == 1 && !context.MapLabels[0].EndsWith(MeasureLabel.LostLine) &&
+                context.WorldLabels.Count == 1 && ReferenceEquals(hit.Find(new[] { bearing }, click, 8), bearing),
+                "a reacquired track drops the lost line");
+            context.HaveHeadquarters = false;
+            Expect(!SharedShapeVisibility.HasKnownAnchors(bearing, Known), "without a faction nothing is known, so nothing shows");
         }
     }
 
@@ -514,7 +575,7 @@ internal static class ReceivedDrawingsTests
         public void Polyline(IReadOnlyList<Vector2> points, ShapeColor color) { }
         public void Circle(Vector2 center, float radius, ShapeColor color) => Circles.Add(center);
         public void Marker(Vector2 position, ShapeColor color) { }
-        public void Ring(Vector3 center, float radius, ShapeColor color) => Rings.Add(center);
+        public void Ring(Vector3 center, float radius, ShapeColor color, object owner) => Rings.Add(center);
     }
 
     private sealed class UnknownShape : MapShape

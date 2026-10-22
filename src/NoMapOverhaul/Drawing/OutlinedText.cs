@@ -68,8 +68,14 @@ internal sealed class OutlinedText
         }
     }
 
-    /// <summary>The text's natural size in the container's units. TextMeshPro caches it until the text or style changes.</summary>
-    public Vector2 PreferredSize => new(_face.preferredWidth, _face.preferredHeight);
+    /// <summary>
+    /// TextMeshPro has woken and can typeset. It wakes with its object, so a label made under an inactive parent, such
+    /// as a hidden minimap, has nothing to measure or copy until the parent shows.
+    /// </summary>
+    public bool Ready => _face.textInfo != null;
+
+    /// <summary>The text's natural size in the container's units, zero until <see cref="Ready"/>. TextMeshPro caches it until the text or style changes.</summary>
+    public Vector2 PreferredSize => Ready ? new Vector2(_face.preferredWidth, _face.preferredHeight) : Vector2.zero;
 
     /// <summary>
     /// Every TMP setter here returns early on an unchanged value, so calling this each refresh is cheap. Set the
@@ -100,8 +106,14 @@ internal sealed class OutlinedText
         }
 
         _face.ForceMeshUpdate(ignoreActiveState: true);
+        if (!Ready)
+        {
+            // TextMeshPro generates nothing before its Awake, which waits for an inactive parent; the next call tries again.
+            _bakedText = null;
+            return;
+        }
+
         _rim.Bake(_face, rim);
-        // TextMeshPro generates nothing before its Awake, which waits for an inactive parent; the next call tries again.
         _bakedText = text.Length == 0 || _face.textInfo.characterCount > 0 ? text : null;
         _bakedSize = size;
         _bakedRim = rim;

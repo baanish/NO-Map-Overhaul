@@ -33,7 +33,113 @@ internal static class DrawingProtocolTests
         ("drawing protocol rejects format-only notes and preserves visible Unicode", NoteVisibility),
         ("drawing protocol caps total geometry including fixed anchors", GeometryBudget),
         ("drawing protocol caps shapes and rejects duplicate ids", ShapeBudget),
+        ("reused encode and receive buffers keep each packet's bytes apart", ReusedBuffers),
+        ("a readdressed snapshot is byte for byte the one encoded for its new teammate", Readdressed),
+        ("an unchanged record decodes to the object its session's last snapshot made", ReusedRecords),
+        ("records reused from a session's last snapshot never change whether a frame decodes", ReusedRecordValidation),
     };
+
+    private static DrawingPacket Snapshot(Guid recipient, params MapShape[] shapes) => new(DrawingPacketKind.Snapshot,
+        new SharedMissionEpoch(37, 1234.5, 7), Sender, recipient, 91, Array.Empty<string>(), shapes);
+
+    private static void ReusedRecords()
+    {
+        var session = Guid.NewGuid();
+        var circle = Stamp(new CircleShape(new MapPoint(new Vector2(1, 2), 0), 900f, 3f, Color), 2);
+        var pen = Stamp(new PenStroke(new[] { Vector2.Zero, Vector2.One }, Color), 3);
+        var first = Decode(Encode(Snapshot(session, Note("before"), circle, pen))).Shapes;
+        var again = Decode(Encode(Snapshot(session, Note("after"), circle, pen))).Shapes;
+        Expect(again[0] is TextNote { Text: "after" } && !ReferenceEquals(first[0], again[0]), "a changed drawing is built afresh");
+        Expect(ReferenceEquals(first[1], again[1]) && ReferenceEquals(first[2], again[2]), "unchanged drawings are the same objects");
+        var other = Decode(Encode(Snapshot(Guid.NewGuid(), Note("after"), circle, pen))).Shapes;
+        Expect(other.Zip(again).All(pair => !ReferenceEquals(pair.First, pair.Second)), "another session's snapshot shares none of them");
+    }
+
+    /// <summary>
+    /// A record identical to one in the session's last snapshot isn't decoded again, so each damaged frame must decode,
+    /// or be rejected, exactly as it is for a session with nothing to reuse.
+    /// </summary>
+    private static void ReusedRecordValidation()
+    {
+        const int records = 60; // the header and the shape count
+        var session = Guid.NewGuid();
+        var route = new WaypointRoute(Color, new RouteWaypoint(new MapPoint(new Vector2(21, 22), 0), 23))
+            .With(new RouteWaypoint(new MapPoint(Vector2.Zero, 9), 0));
+        var source = Encode(Snapshot(session, Note(), Stamp(new CircleShape(new MapPoint(new Vector2(1, 2), 0), 900f, 3f, Color), 2),
+            Stamp(new PenStroke(new[] { Vector2.Zero, Vector2.One, new Vector2(5, 6) }, Color), 3), Stamp(route, 4),
+            Stamp(new BearingRangeShape(new MapPoint(Vector2.Zero, 5), new MapPoint(new Vector2(7, 8), 0), 0, 9, Color), 5)));
+        var primed = Decode(source).Shapes;
+        for (var i = 0; i < source.Length; i++) Reject(source.Take(i).ToArray());
+        Expect(Decode(source).Shapes.SequenceEqual(primed), "rejected frames leave the session's records as they were");
+
+        var random = new Random(611);
+        var accepted = 0;
+        for (var frame = 0; frame < 2048; frame++)
+        {
+            Decode(source);
+            var bytes = (byte[])source.Clone();
+            var changes = random.Next(1, 5);
+            for (var i = 0; i < changes; i++) bytes[random.Next(records, bytes.Length)] = (byte)random.Next(256);
+            var elsewhere = (byte[])bytes.Clone();
+            DrawingProtocol.Readdress(elsewhere, Sender, Guid.NewGuid(), 91);
+            var reused = DrawingProtocol.TryDecode(bytes, out var packet);
+            Expect(reused == DrawingProtocol.TryDecode(elsewhere, out var fresh), "reuse never changes whether a frame decodes");
+            if (!reused) continue;
+            accepted++;
+            Expect(Encode(Snapshot(session, packet!.Shapes)).SequenceEqual(Encode(Snapshot(session, fresh!.Shapes))),
+                "reuse never changes what a frame decodes to");
+        }
+        Expect(accepted > 100, "enough damaged frames decode to compare them");
+
+        // Records from separate snapshots spliced into one frame, which the encoder would refuse to write.
+        byte[] Spliced(params byte[][] snapshots)
+        {
+            var frame = snapshots[0].Take(records).Concat(snapshots.SelectMany(snapshot => snapshot.Skip(records))).ToArray();
+            BitConverter.GetBytes((ushort)snapshots.Length).CopyTo(frame, records - 2);
+            return frame;
+        }
+        byte[] Stroke(int id, int points) => Encode(Snapshot(session, Stamp(new PenStroke(Enumerable.Repeat(Vector2.One, points).ToArray(), Color), id)));
+        var big = Stroke(1, 2000);
+        var kept = Decode(big).Shapes[0];
+        Reject(Spliced(Stroke(2, 1001), big));
+        Reject(Spliced(big, big));
+        var full = Decode(Spliced(Stroke(2, 1000), big)).Shapes;
+        Expect(ReferenceEquals(full[1], kept), "the spliced frame reused the stroke, so the rejections above came from the reused record");
+    }
+
+    /// <summary>One encoding serves every teammate on the same channels, so readdressing must equal encoding afresh.</summary>
+    private static void Readdressed()
+    {
+        var shapes = new MapShape[] { Note(), Stamp(new CircleShape(new MapPoint(new Vector2(1, 2), 0), 900f, 3f, Color), 2) };
+        var bytes = Encode(Packet(shapes));
+        var other = new Guid("11111111-2222-3333-4444-555555555555");
+        var otherRecipient = new Guid("66666666-7777-8888-9999-000000000000");
+        DrawingProtocol.Readdress(bytes, other, otherRecipient, 4_000_000_000);
+        var fresh = Encode(new DrawingPacket(DrawingPacketKind.Snapshot, new SharedMissionEpoch(37, 1234.5, 7), other, otherRecipient,
+            4_000_000_000, Array.Empty<string>(), shapes));
+        Expect(bytes.SequenceEqual(fresh), "readdressing changes exactly the sessions and the sequence");
+        var packet = Decode(bytes);
+        Expect(packet.SenderSession == other && packet.RecipientSession == otherRecipient && packet.Sequence == 4_000_000_000,
+            "the receiver reads the new address");
+    }
+
+    /// <summary>The encoder writes into one buffer and the receiver decodes from one: neither may leak bytes between packets.</summary>
+    private static void ReusedBuffers()
+    {
+        var long_ = Encode(Packet(Note("a longer note than the next one")));
+        var copy = (byte[])long_.Clone();
+        var short_ = Encode(Packet(Note("short")));
+        Expect(long_.SequenceEqual(copy) && short_.Length < long_.Length, "a later encode leaves earlier bytes as they were");
+
+        var scratch = new byte[DrawingProtocol.MaxPacketBytes];
+        Array.Copy(long_, scratch, long_.Length);
+        Array.Copy(short_, scratch, short_.Length); // the longer packet's tail stays behind the shorter one
+        Expect(DrawingProtocol.TryDecode(scratch, short_.Length, out var packet) && packet!.Shapes[0] is TextNote { Text: "short" },
+            "a buffer decodes only the length it was given");
+        Expect(!DrawingProtocol.TryDecode(scratch, short_.Length + 1, out _), "one stale byte past the packet is rejected");
+        Expect(!DrawingProtocol.TryDecode(scratch, scratch.Length + 1, out _) && !DrawingProtocol.TryDecode(scratch, -1, out _),
+            "a length outside the buffer is rejected");
+    }
 
     private static readonly ShapeColor Color = new(1, 2, 3, 4);
     private static void NativeHeader()

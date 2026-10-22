@@ -89,9 +89,10 @@ Keep this folder enabled and remove any older standalone NoMapOverhaul.dll
 to avoid loading two copies. Sharing starts off on a fresh install.
 
 For a manual install from the flat NOMM archive, copy
-NoMapOverhaul.dll to:
+NoMapOverhaul.dll and nomapoverhaul-shaders.bundle to:
 
   BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
+  BepInEx/plugins/NoMapOverhaul/nomapoverhaul-shaders.bundle
 
 Start the game once. BepInEx creates the settings file:
 

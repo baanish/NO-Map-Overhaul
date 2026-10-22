@@ -10,6 +10,9 @@ namespace NoMapOverhaul.MapTools.Circle;
 /// </summary>
 public readonly struct ScreenCamera : IEquatable<ScreenCamera>
 {
+    private readonly float _across;
+    private readonly float _up;
+
     /// <param name="focalPixels">Half the screen height over the tangent of half the vertical field of view.</param>
     /// <param name="near">The near clip distance: nothing closer is drawn.</param>
     public ScreenCamera(Vector3 position, Quaternion rotation, Vector2 halfScreen, float focalPixels, float near)
@@ -19,6 +22,8 @@ public readonly struct ScreenCamera : IEquatable<ScreenCamera>
         HalfScreen = halfScreen;
         FocalPixels = focalPixels;
         Near = near;
+        _across = (halfScreen.X + RingProjection.GuardPixels) / focalPixels;
+        _up = (halfScreen.Y + RingProjection.GuardPixels) / focalPixels;
     }
 
     public Vector3 Position { get; }
@@ -26,6 +31,9 @@ public readonly struct ScreenCamera : IEquatable<ScreenCamera>
     public Vector2 HalfScreen { get; }
     public float FocalPixels { get; }
     public float Near { get; }
+    // A default camera has no cached ratios; preserve its division by zero too.
+    internal float Across => FocalPixels == 0f ? (HalfScreen.X + RingProjection.GuardPixels) / FocalPixels : _across;
+    internal float Up => FocalPixels == 0f ? (HalfScreen.Y + RingProjection.GuardPixels) / FocalPixels : _up;
 
     public bool Equals(ScreenCamera other) =>
         Position == other.Position && Rotation == other.Rotation && HalfScreen == other.HalfScreen &&
@@ -64,8 +72,10 @@ public sealed class RingProjection
     private static readonly float[] Sines = new float[Segments];
 
     private readonly Vector3[] _samples = new Vector3[Segments];
+    private readonly float[] _distances = new float[Segments * 5];
+    private readonly int[] _outside = new int[Segments];
     private readonly List<Vector2> _points = new(Segments * 2);
-    private readonly List<(int Start, int Count)> _runs = new();
+    private readonly List<(int Start, int Count)> _runs = new(Segments);
 
     static RingProjection()
     {
@@ -132,11 +142,35 @@ public sealed class RingProjection
         }
 
         var stride = Segments / chords;
+        var across = camera.Across;
+        var up = camera.Up;
         var outside = -1;
         for (var i = 0; i < chords; i++)
         {
-            _samples[i] = middle + east * Cosines[i * stride] + north * Sines[i * stride];
-            if (outside < 0 && !Inside(_samples[i], camera))
+            var cosine = Cosines[i * stride];
+            var sine = Sines[i * stride];
+            var sample = new Vector3(
+                middle.X + east.X * cosine + north.X * sine,
+                middle.Y + east.Y * cosine + north.Y * sine,
+                middle.Z + east.Z * cosine + north.Z * sine);
+            _samples[i] = sample;
+            var offset = i * 5;
+            _distances[offset] = sample.Z - camera.Near;
+            _distances[offset + 1] = across * sample.Z + sample.X;
+            _distances[offset + 2] = across * sample.Z - sample.X;
+            _distances[offset + 3] = up * sample.Z + sample.Y;
+            _distances[offset + 4] = up * sample.Z - sample.Y;
+            var mask = 0;
+            for (var plane = 0; plane < 5; plane++)
+            {
+                if (_distances[offset + plane] < 0f)
+                {
+                    mask |= 1 << plane;
+                }
+            }
+
+            _outside[i] = mask;
+            if (outside < 0 && mask != 0)
             {
                 outside = i;
             }
@@ -159,9 +193,10 @@ public sealed class RingProjection
         for (var step = 0; step < chords; step++)
         {
             var i = (outside + step) % chords;
+            var next = (i + 1) % chords;
             var from = _samples[i];
-            var to = _samples[(i + 1) % chords];
-            if (!TryClip(from, to, camera, out var enter, out var exit))
+            var to = _samples[next];
+            if (!TryClip(i, next, out var enter, out var exit))
             {
                 open = false;
                 continue;
@@ -258,8 +293,41 @@ public sealed class RingProjection
         return enter <= exit;
     }
 
+    private bool TryClip(int from, int to, out float enter, out float exit)
+    {
+        enter = 0f;
+        exit = 1f;
+        if ((_outside[from] & _outside[to]) != 0)
+        {
+            return false;
+        }
+
+        if ((_outside[from] | _outside[to]) == 0)
+        {
+            return true;
+        }
+
+        from *= 5;
+        to *= 5;
+        for (var plane = 0; plane < 5; plane++)
+        {
+            var start = _distances[from + plane];
+            var end = _distances[to + plane];
+            if (start < 0f)
+            {
+                enter = Math.Max(enter, start / (start - end));
+            }
+            else if (end < 0f)
+            {
+                exit = Math.Min(exit, start / (start - end));
+            }
+        }
+
+        return enter <= exit;
+    }
+
     /// <summary>The ring's centre in camera space, and its east and north radii turned into camera space.</summary>
-    private static void ToCamera(Vector3 center, float radius, in ScreenCamera camera, out Vector3 middle, out Vector3 east, out Vector3 north)
+    internal static void ToCamera(Vector3 center, float radius, in ScreenCamera camera, out Vector3 middle, out Vector3 east, out Vector3 north)
     {
         var toCamera = Quaternion.Conjugate(camera.Rotation);
         middle = Vector3.Transform(center - camera.Position, toCamera);
@@ -273,8 +341,8 @@ public sealed class RingProjection
     /// </summary>
     private static bool MayShow(Vector3 middle, float radius, in ScreenCamera camera)
     {
-        var across = (camera.HalfScreen.X + GuardPixels) / camera.FocalPixels;
-        var up = (camera.HalfScreen.Y + GuardPixels) / camera.FocalPixels;
+        var across = camera.Across;
+        var up = camera.Up;
         var sideReach = radius * MathF.Sqrt(1f + across * across);
         var topReach = radius * MathF.Sqrt(1f + up * up);
         for (var plane = 0; plane < 5; plane++)
@@ -310,8 +378,8 @@ public sealed class RingProjection
     /// <summary>How far inside one clip plane a camera-space point is, scaled but signed: negative is outside.</summary>
     private static float Distance(int plane, Vector3 point, in ScreenCamera camera)
     {
-        var across = (camera.HalfScreen.X + GuardPixels) / camera.FocalPixels;
-        var up = (camera.HalfScreen.Y + GuardPixels) / camera.FocalPixels;
+        var across = camera.Across;
+        var up = camera.Up;
         return plane switch
         {
             0 => point.Z - camera.Near,
@@ -322,6 +390,9 @@ public sealed class RingProjection
         };
     }
 
-    private static Vector2 ToScreen(Vector3 point, in ScreenCamera camera) =>
-        camera.HalfScreen + new Vector2(point.X, point.Y) * (camera.FocalPixels / point.Z);
+    private static Vector2 ToScreen(Vector3 point, in ScreenCamera camera)
+    {
+        var scale = camera.FocalPixels / point.Z;
+        return new Vector2(camera.HalfScreen.X + point.X * scale, camera.HalfScreen.Y + point.Y * scale);
+    }
 }

@@ -99,6 +99,29 @@ public sealed class DrawingChannels
         return true;
     }
 
+    /// <summary>
+    /// A name exactly as <see cref="TryConfigure"/> keeps it: 1 to 32 allowed characters, lower case, no space at either
+    /// end. Allocates nothing, since every drawing in every teammate's snapshot is checked.
+    /// </summary>
+    public static bool IsCanonicalName(string? name)
+    {
+        if (string.IsNullOrEmpty(name) || name!.Length > MaxNameLength || name[0] == ' ' || name[name.Length - 1] == ' ')
+        {
+            return false;
+        }
+
+        foreach (var character in name)
+        {
+            if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') ||
+                  character is ' ' or '.' or '_' or '-'))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public bool TrySelect(int index)
     {
         if (index < 0 || index >= _names.Count)
