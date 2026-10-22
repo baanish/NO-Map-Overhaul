@@ -50,7 +50,7 @@ if ($Install) {
     }
 
     # Local-only NOMM listing (no download URL), so the mod can be toggled in NOMM like the other personal mods.
-    $version = ([xml](Get-Content $project)).Project.PropertyGroup.Version | Select-Object -First 1
+    $version = ([xml](Get-Content $project)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
     $hash = (Get-FileHash $installed -Algorithm SHA256).Hash.ToLowerInvariant()
     [ordered]@{
         id       = 'NoMapOverhaul' # matches the planned NOMNOM catalog id
