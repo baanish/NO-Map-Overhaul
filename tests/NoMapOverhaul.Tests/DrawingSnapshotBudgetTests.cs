@@ -69,7 +69,7 @@ internal static class DrawingSnapshotBudgetTests
         mixed[1] = Notes(1, 2, "edited")[0];
         Expect(received.ChangeCost(1, mixed) == 2, "one add and one change cost two while removals remain free");
         Expect(received.ChangeCost(2, Notes(100)) == 100, "another owner cannot borrow existing source IDs");
-        Expect(received.ChangeCost(1, Notes(100).Reverse().ToArray()) == 0, "draw order alone does not replace shapes");
+        Expect(received.ChangeCost(1, Enumerable.Reverse(Notes(100)).ToArray()) == 0, "draw order alone does not replace shapes");
         for (ulong owner = 2; owner <= 5; owner++) Expect(received.TryReplace(owner, Notes(100)), "fill display shares");
         Expect(received.ChangeCost(1, Notes(100)) == 0, "hidden shapes are compared against the whole received owner set");
     }
