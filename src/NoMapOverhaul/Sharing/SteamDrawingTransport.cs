@@ -33,9 +33,11 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
         }
         else if (manager.Client.Player.ConnectionHandle is SteamConnection connection)
         {
+            // The server's ID only marks which game the sharing session belongs to; drawings go between the players'
+            // own accounts, so a dedicated server's game-server account serves as well as a player host's.
             reason = "server Steam identity not eligible";
             server = connection.SteamID.m_SteamID;
-            if (!connection.SteamID.BIndividualAccount()) return false;
+            if (!connection.SteamID.BIndividualAccount() && !connection.SteamID.BGameServerAccount()) return false;
         }
         else
         {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 beta 5
+
+- Sharing works on Steam dedicated servers, not only on player-hosted games. Drawings still go directly between teammates, and the server needs no mod.
+
 ## 0.6.0 beta 4
 
 - **Log performance** and **Log network** are on by default for this beta, and its first start switches them on once even if an earlier build saved them off. Save `BepInEx/LogOutput.log` after a session that slows down, before restarting the game.

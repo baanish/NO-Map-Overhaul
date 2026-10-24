@@ -2,7 +2,7 @@
 
 Sharing sends map drawings, including ones attached to units, to compatible Steam teammates. It starts off. Private two-player tests confirmed drawing delivery, and the author reported a successful repeat test after the BRA update. Both clients must use this updated build: its version-6 protocol can't pair with earlier previews, which the status line shows as a teammate on another version.
 
-An opposing faction never receives drawings, even if it uses the same channel names. Spectators do not receive drawings in this preview. Dedicated-server and UDP sessions stay local-only. There is no cross-faction or host override in the client-only build.
+An opposing faction never receives drawings, even if it uses the same channel names. Spectators do not receive drawings in this preview. Sharing works on player-hosted and Steam dedicated servers; UDP sessions stay local-only. There is no cross-faction or host override in the client-only build.
 
 ## Channels and ownership
 
@@ -37,7 +37,7 @@ Every native session request, send, and receive checks the current authenticated
 
 Sharing asks Steam to start its relay network access (`SteamNetworkingUtils.InitRelayNetworkAccess`) as soon as it becomes eligible. Without that, the first drawing session made Steam fetch its network config in flight while holding its networking lock, which froze one logged receive call for 1.4 s.
 
-The game connects clients directly without joining the Steam matchmaking lobby as members, so discovery uses bounded capability handshakes to eligible teammates. Drawings are sent only after a compatible handshake. Ordinary unmodified teammates receive no game-protocol messages. UDP sessions and dedicated-server transports without the required player Steam identity are unsupported and remain local.
+The game connects clients directly without joining the Steam matchmaking lobby as members, so discovery uses bounded capability handshakes to eligible teammates. Drawings are sent only after a compatible handshake. Ordinary unmodified teammates receive no game-protocol messages. On a dedicated server, drawings still go directly between the players' own Steam accounts; the server's game-server account only marks which game the session belongs to, and the server needs no mod. UDP sessions carry no player Steam identity, so they are unsupported and remain local.
 
 The [Nuclear Option EULA](https://store.steampowered.com//eula/2168680_eula_0) recognizes mods under its user-content rules, restricts reverse engineering outside that allowance, and prohibits cheating. It does not specifically approve this network path. Keep sharing off in public matches unless Shockfront confirms it is allowed. Private two-player tests identified the callback ownership failure and confirmed drawing delivery after the fix. Enforcement compatibility remains unverified.
 
