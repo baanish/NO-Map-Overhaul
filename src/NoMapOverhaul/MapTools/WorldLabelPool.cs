@@ -113,7 +113,7 @@ internal sealed class WorldLabelPool : IWorldLabels
         _stackBottoms[stack] = centerY - 0.5f * height;
         var label = Label(_used++);
         label.transform.position = new Vector3(screen.x, centerY, 0f);
-        label.text = text;
+        label.text = NoteFont.Filter(text, label.font);
         label.fontSize = fontSize;
         label.color = color.ToColor32();
         label.enabled = true;

@@ -17,7 +17,7 @@ From the repository root:
 pwsh -NoProfile -File ./build/Release.ps1
 ```
 
-The script refuses a dirty working tree. It runs the tests, does a clean Release build against the installed game, and checks that the assembly version matches and that no game or BepInEx assemblies were copied. It then writes these ignored files:
+The script refuses a dirty working tree. It runs the tests, does a clean Release build against the installed game, and checks that the assembly version matches and that no game or BepInEx assemblies were copied. It then writes these files, which Git ignores:
 
 ```text
 artifacts/

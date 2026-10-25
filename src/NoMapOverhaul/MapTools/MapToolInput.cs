@@ -60,6 +60,12 @@ internal sealed class MapToolInput
     /// <summary>The keyboard belongs to a tool, so the undo and redo keys stay quiet.</summary>
     public bool Typing => _keyboard.IsSuspended;
 
+    /// <summary>Where the cursor is on the map this frame, in meters, while a tool is active and nothing covers the map; else null.</summary>
+    public FlatVector? Hover { get; private set; }
+
+    /// <summary>Where the cursor is on the map, in meters, whatever covers it: for the closed rail, which has no catcher.</summary>
+    public static FlatVector CursorMeters(DynamicMap map) => ToMeters(map, map.iconLayer.transform, Input.mousePosition);
+
     public bool CaptureMenuKeyboard() => TakeKeyboard(null);
 
     /// <summary>
@@ -79,6 +85,7 @@ internal sealed class MapToolInput
     /// </summary>
     public void Update(DynamicMap map, MapPointerCatcher? catcher, MapTool? tool, bool menuPanel = false, bool menuKeyboard = false)
     {
+        Hover = null;
         if (menuPanel)
         {
             EndPress();
@@ -137,6 +144,11 @@ internal sealed class MapToolInput
     private void UpdatePointer(DynamicMap map, MapPointerCatcher catcher, MapTool tool)
     {
         Vector2 mouse = Input.mousePosition;
+        if (catcher.Hovered)
+        {
+            Hover = ToMeters(map, map.iconLayer.transform, mouse);
+        }
+
         if (catcher.TakePress())
         {
             EndPress();

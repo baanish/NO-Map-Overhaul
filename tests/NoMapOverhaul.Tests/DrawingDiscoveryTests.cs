@@ -7,11 +7,11 @@ internal static class DrawingDiscoveryTests
 {
     public static readonly (string Name, Action Test)[] All =
     {
-        ("an unconfirmed teammate is probed at 0, 60 and 300 seconds, then never", ProbeSchedule),
-        ("channel changes don't renew an unconfirmed teammate's probes", SurvivesChannelChanges),
+        ("an unconfirmed teammate is probed once per mission", ProbeOnce),
+        ("channel changes don't renew an unconfirmed teammate's probe", SurvivesChannelChanges),
         ("a confirmed teammate leaves the sparse schedule", Confirmed),
         ("a new mission or faction starts discovery over", NewEpoch),
-        ("a teammate whose Hello arrives after our probes ran out still pairs when our acknowledgement is lost", LostConfirmation),
+        ("a teammate whose Hello arrives after our probe went unanswered still pairs when our acknowledgement is lost", LostConfirmation),
     };
 
     private static DrawingPacket Reply(DrawingPeer peer, DrawingPacket packet)
@@ -25,7 +25,7 @@ internal static class DrawingDiscoveryTests
         var channels = new[] { "command" };
         var discovery = new DrawingDiscovery();
         discovery.Begin(Epoch);
-        foreach (var time in DrawingDiscovery.ProbeOffsets) discovery.TryProbe(1, time); // A had sharing off for all three
+        discovery.TryProbe(1); // A had sharing off
         var b = new DrawingPeerState(Epoch, Array.Empty<string>(), channels);
         var a = new DrawingPeer(Epoch, Array.Empty<string>(), channels);
         var ack = Reply(b.Protocol, a.CreateHello()); // A enables sharing later and says Hello
@@ -39,41 +39,42 @@ internal static class DrawingDiscoveryTests
 
     private static readonly SharedMissionEpoch Epoch = new(42, 100.25, 7);
 
-    private static List<double> Probes(DrawingDiscovery discovery, ulong id, double from, double to)
+    private static int Probes(DrawingDiscovery discovery, ulong id, int ticks)
     {
-        var sent = new List<double>();
-        for (var now = from; now <= to; now += 0.2)
-            if (discovery.TryProbe(id, Math.Round(now, 1))) sent.Add(Math.Round(now, 1));
+        var sent = 0;
+        for (var tick = 0; tick < ticks; tick++)
+            if (discovery.TryProbe(id)) sent++;
         return sent;
     }
 
-    private static void ProbeSchedule()
+    private static void ProbeOnce()
     {
         var discovery = new DrawingDiscovery();
         discovery.Begin(Epoch);
-        ExpectText(string.Join(",", Probes(discovery, 1, 10, 2000)), "10,70,310");
+        ExpectText(Probes(discovery, 1, 10000).ToString(), "1");
+        ExpectText(Probes(discovery, 2, 10).ToString(), "1");
     }
 
     private static void SurvivesChannelChanges()
     {
         var discovery = new DrawingDiscovery();
         discovery.Begin(Epoch);
-        var sent = Probes(discovery, 1, 10, 20);
+        var sent = Probes(discovery, 1, 10);
         for (var change = 0; change < 50; change++)
         {
             discovery.Begin(Epoch); // every channel change restarts the session in the same mission
-            sent.AddRange(Probes(discovery, 1, 20 + change * 12, 32 + change * 12));
+            sent += Probes(discovery, 1, 60);
         }
-        ExpectText(string.Join(",", sent), "10,70,310");
+        ExpectText(sent.ToString(), "1");
     }
 
     private static void Confirmed()
     {
         var discovery = new DrawingDiscovery();
         discovery.Begin(Epoch);
-        Expect(discovery.TryProbe(1, 0), "first probe");
+        Expect(discovery.TryProbe(1), "first probe");
         discovery.Confirm(1);
-        Expect(discovery.IsConfirmed(1) && !discovery.TryProbe(1, 60), "a confirmed teammate is not probed");
+        Expect(discovery.IsConfirmed(1) && !discovery.TryProbe(1), "a confirmed teammate is not probed");
         discovery.Begin(Epoch);
         Expect(discovery.IsConfirmed(1), "confirmation outlives a channel change");
     }
@@ -82,10 +83,10 @@ internal static class DrawingDiscoveryTests
     {
         var discovery = new DrawingDiscovery();
         discovery.Begin(Epoch);
-        Probes(discovery, 1, 0, 400);
+        Probes(discovery, 1, 10);
         discovery.Confirm(2);
         discovery.Begin(new SharedMissionEpoch(43, 200, 7));
         Expect(!discovery.IsConfirmed(2), "a new mission forgets confirmations");
-        Expect(discovery.TryProbe(1, 500), "a new mission probes again");
+        Expect(discovery.TryProbe(1), "a new mission probes again");
     }
 }

@@ -21,6 +21,8 @@ internal static class DrawingPeerTests
         ("drawing peer copies subscriptions and rejects in-session subscription mutation", SubscriptionOwnership),
         ("drawing edit requests require broadcast membership and reject replay", DeleteRequests),
         ("receive-only readers receive drawings but cannot erase them", ReceiveOnlyReader),
+        ("snapshot session and replay headers are rejected before shape decoding or cache changes", SnapshotHeaderRejection),
+        ("decoded snapshots enter the record cache only after peer acceptance", SnapshotCacheAcceptance),
     };
 
     private static readonly SharedMissionEpoch Epoch = new(42, 100.25, 7);
@@ -28,6 +30,100 @@ internal static class DrawingPeerTests
     private static DrawingPacket Snapshot(DrawingPeer sender, DrawingPeer receiver, uint sequence) =>
         new(DrawingPacketKind.Snapshot, Epoch, sender.LocalSession, receiver.LocalSession, sequence,
             Array.Empty<string>(), Array.Empty<MapShape>());
+
+    private static System.Collections.IDictionary SnapshotCache() => (System.Collections.IDictionary)
+        typeof(DrawingProtocol).GetField("LastSnapshots", System.Reflection.BindingFlags.NonPublic |
+            System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+
+    private static byte[] SnapshotBytes(DrawingPeer sender, DrawingPeer receiver, uint sequence, string text = "accepted")
+    {
+        var note = new NoMapOverhaul.MapTools.Text.TextNote(new MapPoint(System.Numerics.Vector2.Zero), 0,
+            text, new ShapeColor(1, 2, 3)) { Id = 1, Channel = "command" };
+        Expect(DrawingProtocol.TryEncode(new DrawingPacket(DrawingPacketKind.Snapshot, Epoch, sender.LocalSession,
+            receiver.LocalSession, sequence, Array.Empty<string>(), new MapShape[] { note }), out var bytes),
+            "snapshot fixture encodes");
+        return bytes;
+    }
+
+    private static void SnapshotHeaderRejection()
+    {
+        DrawingProtocol.ForgetSnapshots();
+        var sender = Peer("command");
+        var receiver = Peer("command");
+        Connect(sender, receiver);
+        var bytes = SnapshotBytes(sender, receiver, 2);
+        Expect(receiver.TryDecode(bytes, bytes.Length, out var initial, out var malformed) && !malformed &&
+            receiver.Receive(initial!, out _, out _), "a valid snapshot decodes and is accepted");
+        var cached = SnapshotCache()[receiver.LocalSession];
+        var cases = new List<byte[]>();
+        foreach (var address in new[]
+        {
+            (Sender: sender.LocalSession, Recipient: Guid.NewGuid(), Sequence: 3U),
+            (Sender: Guid.NewGuid(), Recipient: receiver.LocalSession, Sequence: 3U),
+            (Sender: sender.LocalSession, Recipient: receiver.LocalSession, Sequence: 2U),
+            (Sender: sender.LocalSession, Recipient: receiver.LocalSession, Sequence: 1U),
+            (Sender: sender.LocalSession, Recipient: receiver.LocalSession, Sequence: 0U),
+        })
+        {
+            var rejected = (byte[])bytes.Clone();
+            DrawingProtocol.Readdress(rejected, address.Sender, address.Recipient, address.Sequence);
+            cases.Add(rejected);
+        }
+        foreach (var offset in new[] { 6, 10, 18 })
+        {
+            var wrongEpoch = SnapshotBytes(sender, receiver, 3);
+            wrongEpoch[offset] ^= 1;
+            cases.Add(wrongEpoch);
+        }
+        foreach (var rejected in cases)
+        {
+            foreach (var corruptShapes in new[] { false, true })
+            {
+                var frame = (byte[])rejected.Clone();
+                if (corruptShapes) frame[60] = 0;
+                Expect(!receiver.TryDecode(frame, frame.Length, out var packet, out malformed) && !malformed && packet == null,
+                    "an ineligible header is rejected without reading even an invalid shape type");
+                Expect(SnapshotCache().Count == 1 && ReferenceEquals(SnapshotCache()[receiver.LocalSession], cached),
+                    "wrong-session and stale snapshots neither add nor replace cache entries");
+            }
+        }
+        var corrupt = SnapshotBytes(sender, receiver, 3);
+        corrupt[60] = 0;
+        Expect(!receiver.TryDecode(corrupt, corrupt.Length, out _, out malformed) && malformed,
+            "the same invalid shape type is decoded and rejected when its header is eligible");
+        var next = SnapshotBytes(sender, receiver, 3);
+        Expect(receiver.TryDecode(next, next.Length, out var accepted, out malformed) && !malformed &&
+            ReferenceEquals(accepted!.Shapes[0], initial!.Shapes[0]) && receiver.Receive(accepted, out _, out _),
+            "a later valid sequence still decodes, reuses the accepted cache and is accepted");
+    }
+
+    private static void SnapshotCacheAcceptance()
+    {
+        DrawingProtocol.ForgetSnapshots();
+        var sender = Peer("command");
+        var receiver = Peer("command");
+        var unpaired = SnapshotBytes(sender, receiver, 1);
+        Expect(DrawingProtocol.TryDecode(unpaired, out var decoded) && SnapshotCache().Count == 0,
+            "decoding alone does not create a cache entry");
+        Expect(!receiver.Receive(decoded!, out _, out _) && SnapshotCache().Count == 0,
+            "an unpaired receiver rejects a decoded snapshot without caching it");
+        Connect(sender, receiver);
+        var first = SnapshotBytes(sender, receiver, 1);
+        Expect(receiver.TryDecode(first, first.Length, out decoded, out _) && SnapshotCache().Count == 0 &&
+            receiver.Receive(decoded!, out _, out _) && SnapshotCache().Count == 1,
+            "a paired receiver caches only after accepting the fully decoded snapshot");
+        var cached = SnapshotCache()[receiver.LocalSession];
+        var second = SnapshotBytes(sender, receiver, 2, "changed");
+        Expect(receiver.TryDecode(second, second.Length, out var changed, out _) &&
+            ReferenceEquals(SnapshotCache()[receiver.LocalSession], cached), "a decoded replacement leaves the accepted cache unchanged");
+        Expect(receiver.Receive(changed!, out _, out _) && !ReferenceEquals(SnapshotCache()[receiver.LocalSession], cached),
+            "accepting the replacement publishes its records");
+        var third = SnapshotBytes(sender, receiver, 3, "changed");
+        Expect(receiver.TryDecode(third, third.Length, out var repeated, out _) &&
+            ReferenceEquals(repeated!.Shapes[0], changed!.Shapes[0]), "valid unchanged drawings retain object reuse");
+        Expect(!receiver.Receive(changed!, out _, out _), "a duplicate sequence cannot publish its records again");
+        DrawingProtocol.ForgetSnapshots();
+    }
 
     private static DrawingPacket ReceiveReply(DrawingPeer peer, DrawingPacket packet)
     {

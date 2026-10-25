@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Assert-ReleasePlugin.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
@@ -49,11 +50,8 @@ function Invoke-DotNet([string[]]$Arguments) {
 }
 
 function Copy-PackageFiles([string]$Destination, [string]$PluginDll) {
+    Assert-ReleasePlugin $PluginDll
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    # The loopback sharing transport (build/Build-Loopback.ps1) takes unauthenticated drawings from anything on the PC.
-    if ([IO.File]::ReadAllText($PluginDll).Contains('LoopbackDrawingTransport')) {
-        throw "$PluginDll contains the loopback sharing transport, which is for tests only. Build with build/Build.ps1."
-    }
     Copy-Item -LiteralPath $PluginDll -Destination (Join-Path $Destination 'NoMapOverhaul.dll')
     Copy-Item -LiteralPath (Join-Path (Split-Path $PluginDll) 'nomapoverhaul-shaders.bundle') -Destination $Destination
     $readme = [IO.File]::ReadAllText((Join-Path $root 'packaging\README.txt'))
@@ -115,8 +113,8 @@ function Assert-Package([string]$Path, [string[]]$ExpectedEntries) {
 
 Invoke-DotNet @('run', '--project', $tests, '-c', 'Release')
 & (Join-Path $PSScriptRoot 'Build-Shaders.ps1') -Check
-Invoke-DotNet @('clean', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
-Invoke-DotNet @('build', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game")
+Invoke-DotNet @('clean', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game", '-p:SharingLoopback=false')
+Invoke-DotNet @('build', $project, '-c', 'Release', '--nologo', '--verbosity', 'minimal', "-p:GameDir=$game", '-p:SharingLoopback=false')
 
 $pluginDll = Join-Path $root 'src\NoMapOverhaul\bin\Release\netstandard2.1\NoMapOverhaul.dll'
 $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($pluginDll).Version.ToString(3)

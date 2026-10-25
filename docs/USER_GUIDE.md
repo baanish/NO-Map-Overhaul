@@ -6,13 +6,13 @@ The [install guide](INSTALL.md) covers installing BepInEx and the mod, checking 
 
 ## What you see
 
-The runways, approach line, callout, boundary, and names apply to friendly airbases only, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers are left out entirely, since the ship icon already marks the deck.
+The runways, approach line, callout, boundary, and names show only at friendly airbases, meaning your faction's. When an airbase changes hands, its runways appear or disappear within a tenth of a second. Helicopters get the airbase boundary and names, but no runways, approach line, or callout. The Tarantula tiltrotor lands on runways, so it gets everything a plane does. Carriers get nothing, since the ship icon already marks the deck.
 
 ### On the map
 
-Runways show on both the minimap and the full map. The game uses one map object for both, so everything pans, zooms, and rotates with it. Each runway is a filled strip with a thin dark rim. When you zoom out, the strip keeps a minimum width so it never shrinks to nothing, and once the full map is zoomed far out, all runway numbers hide together until you zoom back in. The minimap always shows them.
+Runways show on both the minimap and the full map. The game uses one map object for both, so everything pans, zooms, and rotates with it. Each runway is a filled strip with a thin dark rim. When you zoom out, the strip keeps a minimum width so it never shrinks to nothing. Once the full map is zoomed far out, all runway numbers hide together until you zoom back in. The minimap always shows them.
 
-Each end carries the runway number you'd land on from that end. The mod works each number out from the runway heading, the same way the game numbers an unnamed runway in its landing clearance. Where the paint on the tarmac differs, the paint wins, so the clearance can name a different number from the map. The same goes for a runway a mission has named. So far that's one runway, Feldspar's crossing runway on Ignus, which the mod labels 16/34 where the heading gives 15/33. A mission can give a runway its own name, but the mod ignores it, because mission names don't always match the paint. Takeoff-only runways aren't drawn.
+Each end carries the runway number you'd land on from that end. The mod works each number out from the runway heading, the same way the game numbers an unnamed runway in its landing clearance. Where the paint on the tarmac differs, the mod uses the paint, so the clearance can name a different number from the map. So far that's one runway, Feldspar's crossing runway on Ignus, which the mod labels 16/34 where the heading gives 15/33. A mission can also give a runway its own name, which the clearance uses. The mod ignores it, because mission names don't always match the paint, so the clearance and the map can differ there too. The mod doesn't draw takeoff-only runways.
 
 ### The approach line
 
@@ -36,7 +36,11 @@ The circle is the game's own rule. An aircraft that counts as landed inside it (
 
 ### Airbase names
 
-Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, under where the game draws their icon. As you zoom in, the name moves down to the edge of the airbase's capture circle, the same circle as the landing zone, so it stays clear of the base's units, up to a limit that keeps it on screen. Every airbase the game gives your side an icon for gets a name: the map's own, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them, and carriers get none either, since the ship's icon marks the deck. The labels are a faint version of the runway numbers' green by default and don't show on the minimap. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
+Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, under where the game draws their icon. As you zoom in, the name moves down to the edge of the airbase's capture circle, the same circle as the landing zone, so it stays clear of the base's units. A limit keeps it on screen.
+
+Every airbase the game gives your side an icon for gets a name. That covers the map's own airbases, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them. Carriers get none either, since the ship's icon marks the deck. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
+
+By default the labels are a faint version of the runway numbers' green. They don't show on the minimap.
 
 ### Map tools
 
@@ -50,9 +54,11 @@ Between two runways or ends at about the same distance, the choice can switch as
 
 ## Settings
 
-Change settings in game with F1 if Configuration Manager is installed. Changes apply immediately. Click the mod's name to open its settings; hover over a setting's name for a longer description. Settings marked *advanced* are tuning knobs that F1 shows only with **Advanced settings** ticked at the top of its window, or when a search finds them.
+With Configuration Manager installed, press F1 in game to change settings. Changes apply immediately. Click the mod's name to open its settings, and hover over a setting's name for a longer description. Settings marked *advanced* are tuning knobs. F1 shows them only with **Advanced settings** ticked at the top of its window, or when a search finds them.
 
-Without Configuration Manager, edit `BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg` while the game is closed. The game's first start with the mod creates it. Each section below is a `[Section]` heading in the file, and the key is the name before `=`. Colours are hex `RRGGBBAA`. Settings saved by Baanish UI Improvements, this mod's name up to 0.4.0, carry over into these sections the first time the game starts with NO Map Overhaul, apart from the missile arrows, which moved to [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
+Without Configuration Manager, edit `BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg` while the game is closed. The game's first start with the mod creates it. Each section below is a `[Section]` heading in the file, and the key is the name before `=`. Colours are hex `RRGGBBAA`.
+
+Up to 0.4.0 this mod was called Baanish UI Improvements. Its saved settings carry over into these sections the first time the game starts with NO Map Overhaul. The missile arrows are the exception: they moved to [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
 The table lists the sections in the order F1 shows them.
 
@@ -82,11 +88,11 @@ The table lists the sections in the order F1 shows them.
 | HUD / Runway Callout | Only with gear down | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
 | HUD / Runway Callout | Include airbase name | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
 | HUD / Runway Callout | Callout colour | CalloutColor | `33FF33FF` | Label colour. |
-| Map Tools / General | Show map tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission. |
-| Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear; the full map and the 3D labels still show them. |
+| Map Tools / General | Show map tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both. Drawings come back when it's on again, until you leave the mission. |
+| Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear. The full map and the 3D labels still show them. |
 | Map Tools / General | Circles in 3D view | ShowCirclesIn3D | `true` | Draw each circle in the 3D view as well, as a thin ring level with its centre. |
 | Map Tools / General | Distance units | DistanceUnits | `Game` | **Game setting** follows the game's unit setting. Nautical miles, kilometres, or statute miles always use that unit. Altitudes show in metres with kilometres and in feet with miles. In the file: `Game`, `NauticalMiles`, `Kilometres`, or `StatuteMiles`. |
-| Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The rail's swatches set it; any colour works here. |
+| Map Tools / Drawing | Drawing colour, *advanced* | Color | `33FF33FF` | Colour of new lines, arrows, and text. The rail's swatches set it, and any colour works here. |
 | Map Tools / Drawing | Other channels opacity | OtherChannelsOpacity | `0.5` | How opaque drawings on a channel other than the one you're drawing to show, as a share of their own. `1` shows them like the rest. |
 | Map Tools / Drawing | Other channels brightness | OtherChannelsBrightness | `0.6` | How bright those drawings show, as a share of their own colour. `1` keeps their colour. |
 | Map Tools / Drawing | Line width, *advanced* | LineWidth | `1.5` | Width of drawn lines. Arrowheads grow with it. |
@@ -104,38 +110,52 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
 | Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `100` | Most drawings kept at once. At most `100`, what one teammate can share. |
 | Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `2500` | Most freehand points kept across all pen strokes, so the map stays fast. At most `2500`. |
-| Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1: an automatic with and without comparison. See [The perf test](#the-perf-test). |
+| Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1 compares the frame rate with and without the mod automatically. See [The perf test](#the-perf-test). |
 | Diagnostics | Perf test sharing, *advanced* | PerfTestSharing | `LocalOnly` | Where the perf test's drawings go: `LocalOnly`, `Send`, `Receive`, or `Bidirectional`. See [Testing with sharing](#testing-with-sharing). |
 | Diagnostics | Perf test cycles, *advanced* | PerfTestCycles | `4` | How many times the perf test measures each condition: `4`, `8`, `16`, `32`, `64`, or `128`. More cycles measure sustained performance. |
 | Diagnostics | Log performance, *advanced* | LogPerformance | `true` | Log the frame rate, the mod's own time, Unity's UI and render costs, and each teammate's sharing every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
 | Diagnostics | Log network | LogNetwork | `true` | Log drawing-sharing events and rejection reasons when troubleshooting. |
-
-Both logs are on in this beta, to find what slows some multiplayer sessions down. Beta 4 switches them on once even if an earlier build saved them off; turn either off and it stays off.
 | Diagnostics | Draw 3D rings on the CPU, *advanced* | RingsOnCpu | `false` | Build the circles' rings in the 3D view on the CPU instead of drawing them with the mod's shader, as it does when `nomapoverhaul-shaders.bundle` is missing. For comparing the two, or if the rings look wrong on your graphics card. |
+
+Both logs are on in this beta, to find what slows some multiplayer sessions down. Beta 4 switches them on once even if an earlier build saved them off. Turn either off and it stays off.
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 
-The **+** under the rail's swatches adds colours of your own, up to six; right click one to remove it (see [the rail](MAP_TOOLS.md#the-rail)). They're saved under the key `CustomColors` in `[Map Tools / Drawing]` as comma-separated `#RRGGBB`, such as `#FF8000,#8040FF`, and hidden from F1. Entries that aren't `#RRGGBB` are ignored.
+The **+** under the rail's swatches adds up to six colours of your own. Right click one to remove it (see [the rail](MAP_TOOLS.md#the-rail)). The file keeps them under the key `CustomColors` in `[Map Tools / Drawing]` as comma-separated `#RRGGBB`, such as `#FF8000,#8040FF`. F1 doesn't show this key. The mod ignores entries that aren't `#RRGGBB`.
 
-Open **Tools → Channels** on the full map to edit **Broadcast** and **Receive only**, turn sharing on or off, and **Apply**. The **Draw to** indicator shows the destination for new drawings; the numbered Broadcast buttons or Shift+1 through Shift+9 and Shift+0 select it. Broadcast channels receive automatically and allow collaboration; Receive only adds read-only subscriptions and has no shortcuts. Both fields display lowercase as you type. Invalid input leaves both active lists unchanged; Cancel, Escape, or closing the map discards unapplied edits. Sharing defaults off and both lists start empty. The persistent keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` remain in `[Map Tools / Sharing]` in the config file, but are hidden from F1.
+To set up sharing, open **Tools → Channels** on the full map, edit **Broadcast** and **Receive only**, turn sharing on or off, and press **Apply**. Sharing starts off, with both lists empty. Both fields show lowercase as you type. Invalid input leaves both active lists unchanged. Cancel, Escape, or closing the map discards edits you haven't applied.
 
-An accepted shared erase becomes an undo step for its original owner and clears the owner's redo branch, like any new local edit. It does not change the requester's undo history.
+You receive your Broadcast channels automatically and can collaborate on them. Receive only adds read-only channels and has no shortcuts. The **Draw to** indicator shows which channel new drawings go to. To switch it, click a numbered Broadcast button or press Shift+1 through Shift+9 or Shift+0.
 
-Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel appears in your Broadcast list and either of their channel lists. Channel names are visible to same-faction peers, not passwords, and Steam may use direct connections between teammates. Members who broadcast the same channel can use Eraser or right-click to request an erase from its owner, then redraw a replacement. Receive-only channels stay read-only. Drawings attached to units follow the recipient's own tracks and read `lost` at the last known position once their side loses the unit, like local ones; a drawing on a unit their side never knew stays hidden. Both clients need the updated protocol-6 build. Changing teams keeps prior drawings local-only, including undo history. See [sharing behavior and limits](SHARING.md). Disabling sharing removes received drawings immediately on your client; teammates expire your drawings after 15 seconds without a message. A perf test keeps sharing your drawings and showing your teammates' as before. Its own drawings stay local unless **Perf test sharing** sends them, and a team or mission change during a test cancels it and discards the test drawings.
+The config file keeps the keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` in `[Map Tools / Sharing]`, hidden from F1.
+
+An accepted shared erase becomes an undo step for its original owner and clears the owner's redo branch, like any new local edit. It doesn't change the requester's undo history.
+
+Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel is in your Broadcast list and in either of their lists. Both clients need the updated protocol-6 build. See [sharing behavior and limits](SHARING.md).
+
+Channel names aren't passwords, and same-faction peers can see them. On player-hosted games, Steam may connect teammates directly, so a paired teammate may learn your IP address. On dedicated servers, drawing sessions use Steam's relays and don't expose your IP address to teammates.
+
+Members who broadcast the same channel can use Eraser or right-click to ask its owner to erase a drawing, then draw a replacement. Receive-only channels stay read-only.
+
+Drawings attached to units follow the recipient's own tracks. Like local ones, they read `lost` at the last known position once the recipient's side loses the unit. A drawing on a unit their side never knew stays hidden.
+
+Changing teams keeps your earlier drawings local-only, including undo history. Turning sharing off removes received drawings from your map at once. Teammates drop your drawings after 15 seconds without a message.
+
+A perf test keeps sharing your drawings and showing your teammates' as before. Its own drawings stay local unless **Perf test sharing** sends them. A team or mission change during a test cancels it and discards the test drawings.
 
 ## Logging multiplayer sharing
 
-**F1 → Diagnostics → Log network** writes timestamped `Network` lines to `BepInEx/LogOutput.log`. It defaults off. Saved settings persist across updates; turn it off if an earlier playtest build enabled it. When troubleshooting, turn it on on both clients before reproducing the issue.
+**F1 → Diagnostics → Log network** writes timestamped `Network` lines to `BepInEx/LogOutput.log`. It's on by default in this beta. To troubleshoot, make sure it's on for both clients before you reproduce the issue.
 
-The log records mission eligibility, channel-change resets, anonymous peer labels, handshakes, channel-match counts, Steam send results, connection failure codes, snapshot counts and bytes, exclusions, receive limits, quarantines and erase results. A successful Steam send means queued locally; a receiver's `snapshot applied` line confirms that its drawing store accepted the update. Local-only drawing exclusions and channel mismatches have separate counts.
+The log records mission eligibility, channel-change resets, anonymous peer labels, handshakes, channel-match counts, Steam send results, connection failure codes, snapshot counts and bytes, exclusions, receive limits, quarantines, and erase results. A successful Steam send only means the message was queued locally. A receiver's `snapshot applied` line confirms that its drawing store accepted the update. Local-only drawing exclusions and channel mismatches have separate counts.
 
-Peer labels belong to one client and are not comparable between players. The build identifier and protocol version help check that both clients use the same DLL. Logs omit Steam IDs, IPs, session nonces, channel names, note text and drawing coordinates. Network logging allows 128 event lines per five seconds, plus a count of suppressed events. Turning logging off stops those events without changing sharing.
+Each client picks its own peer labels, so labels don't match between players. Use the build identifier and protocol version to check that both clients run the same DLL. The log omits Steam IDs, IPs, session nonces, channel names, note text, and drawing coordinates. It keeps at most 128 event lines per five seconds, plus a count of the events it dropped. Turning logging off stops those lines and doesn't change sharing.
 
-Reproduce the issue, then save **both players'** `BepInEx/LogOutput.log` files before restarting the game, which overwrites them. Include each player's broadcast and receive-only setup in the bug report. Other mods and the game may write personal information to the same file; the omissions above apply to this mod's `Network` lines.
+Reproduce the issue, then save both players' `BepInEx/LogOutput.log` files before restarting the game, which overwrites them. Include each player's Broadcast and Receive only setup in the bug report. Other mods and the game may write personal information to the same file. The omissions above apply only to this mod's `Network` lines.
 
 ## Measuring the mod's cost
 
-Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 seconds the mod writes two lines to `BepInEx/LogOutput.log`, and a third while sharing with teammates. The first:
+With **Diagnostics → Log performance** on (an advanced setting), the mod writes two lines to `BepInEx/LogOutput.log` every 5 seconds, and a third while you share with teammates. The first looks like this:
 
 ```text
 [Info   :NO Map Overhaul] Perf 5.0 s, mod on: 1679 frames, 335.7 fps avg (2.98 ms), 1% low 216.7 fps, worst frame 17.7 ms. Mod per frame 0.022 ms avg, 0.141 ms worst. Map refresh 49x, 0.054 ms avg, 0.089 ms worst. Mod allocated 0.1 KB per frame. GC 1x, heap 93 of 104 MB. Drawings 0 own, 0 received, 0 shown. Mod graphics 26 drawn, 8 TMP, 34 held. Sharing sent 0 (0.0 KB), received 0 (0.0 KB), 0 snapshots applied, Steam calls 0.0 ms, worst 0.0 ms. Mod ms per frame by part: Draw 0.004, Labels 0.001, Upright 0.001, 3D text 0.003, 3D rings 0.003, Input 0.002, Runways 0.002, Sharing 0.003, Meshes 0.000.
@@ -143,27 +163,32 @@ Turn on **Diagnostics → Log performance**, an advanced setting, and every 5 se
 
 - **mod on** or **mod off** is whether Enabled was on for those 5 seconds, or **on and off** if you flipped it partway.
 - **fps avg**, **1% low**, and **worst frame** are the whole game's frame rate. The 1% low is the rate that 99% of frames beat, so it shows stutter the average hides.
-- **Mod per frame** is the time the mod's own code takes each frame, and **Map refresh** the time it takes on each of the game's map updates, about 10 a second. Neither counts what the graphics card spends drawing the mod's lines and text. That cost shows only in the frame rate, which is why the comparison below flips the mod off.
-- The rest counts what the mod holds and does: memory allocated and garbage collections, your drawings and teammates', the mod's graphics, sharing traffic and the time spent in Steam's calls, and the mod's time per frame split into the parts the perf test's third table names, each as average/worst frame (see [The perf test](#the-perf-test)). A number that keeps climbing while the frame rate falls points at the part to blame.
+- **Mod per frame** is the time the mod's own code takes each frame. **Map refresh** is the time it takes on each of the game's map updates, about 10 a second. Neither counts what the graphics card spends drawing the mod's lines and text. That cost shows only in the frame rate, which is why the comparison below flips the mod off.
+- The rest counts what the mod holds and does. That's memory allocated and garbage collections, your drawings and teammates', the mod's graphics, sharing traffic, the time spent in Steam's calls, and the mod's time per frame. The time per frame splits into the parts the perf test's third table names, each as average/worst frame (see [The perf test](#the-perf-test)). A number that keeps climbing while the frame rate falls points at the part to blame.
 
 The **Perf detail** line after it covers the same 5 seconds:
 
 - **Unity canvas update** is what Unity spends each frame laying out, rebuilding and batching every UI canvas, the game's HUD and map as well as the mod's, as an average and the worst frame. While the perf test runs it takes this timer, and the line says so.
-- **batches**, **SetPass calls**, **draw calls** and **vertices** are Unity's render counters per frame, averaged: what the frame asked the graphics card to draw. **n/a** marks a counter this build of the game doesn't record.
-- **Rebuilt** counts how often, in those 5 seconds, the map labels were laid out again, the mod's own meshes were rebuilt, and the map took a changed set of teammates' drawings.
+- **batches**, **SetPass calls**, **draw calls** and **vertices** are Unity's render counters per frame, averaged. They count what the frame asked the graphics card to draw. **n/a** marks a counter this build of the game doesn't record.
+- **Rebuilt** counts how often, in those 5 seconds, the mod laid out the map labels again, rebuilt its own meshes, and took a changed set of teammates' drawings.
 - **3D rings** is the most circles drawn in the cockpit view in one frame, and whether the mod's shader (**GPU**) or the CPU drew them. **not drawn** means no frame got that far, such as with the map tools off.
-- Then the game's state, the players on your side counting you, the icons on the map (units and airbases), whether the minimap or the full map was showing, and the mission time, all read as the line is written.
+- Then comes the game's state as the line is written. That's the players on your side counting you, the icons on the map (units and airbases), whether the minimap or the full map was showing, and the mission time.
 
-While you share with teammates, a **Perf teammates** line follows, one entry per teammate. Each is labelled **peer 1**, **peer 2** and so on, the labels the network log uses: they're local to your game, and the log never names a player or a Steam ID.
+While you share with teammates, a **Perf teammates** line follows, with one entry per teammate. Each is labelled **peer 1**, **peer 2** and so on, the same labels the network log uses. They're local to your game, and the log never names a player or a Steam ID.
 
-- **ready** means the two games have paired, so drawings flow; **not ready** means they're still looking for each other. Teammates not ready and silent for the whole 5 seconds, usually players without the mod, are only counted at the end: **3 not ready with no traffic**.
+- **ready** means the two games have paired, so drawings flow. **not ready** means they're still looking for each other. Teammates not ready and silent for the whole 5 seconds, usually players without the mod, only get a count at the end: **3 not ready with no traffic**.
 - **drawings held, shown** is how many drawings the teammate's last update left with you, and how many of those your map draws. It shows fewer when there are more than 400 teammates' drawings to share out, or a drawing is on a unit your side has never seen.
-- **snapshots applied** is how many of their updates your game took, and **in** and **out** the messages and kilobytes received from them and sent to them.
-- The rest is Steam's own view of the connection: its state (**Connected** when all is well), **ping**, **quality** (the share of packets that arrived, **n/a** while Steam can't tell), the reliable bytes **pending** (queued, not yet sent) and **unacked** (sent, not yet confirmed), and the **queue** time a new message would wait. Pending bytes or queue time that climb mean Steam can't send as fast as sharing queues. **Steam n/a** means Steam has no session with that teammate, and the loopback test build always reads it.
+- **snapshots applied** is how many of their updates your game took. **in** and **out** are the messages and kilobytes received from them and sent to them.
+- The rest is Steam's own view of the connection. That's its state (**Connected** when all is well), **ping**, **quality** (the share of packets that arrived, **n/a** while Steam can't tell), the reliable bytes **pending** (queued, not yet sent) and **unacked** (sent, not yet confirmed), and the **queue** time a new message would wait. Pending bytes or queue time that climb mean Steam can't send as fast as sharing queues. **Steam n/a** means Steam has no session with that teammate. The loopback test build always reads it.
 
-When the frame rate drops, compare the lines from before the drop with those during it. Only the first line's frame rate falling, with the mod's times and the canvas update flat, points at the game or the graphics card; check the render counters and the context. A canvas update that grows with **Rebuilt** counts points at UI rebuilds. A mod time that grows names its part in the first line. A teammate whose queue or pending bytes climb, or whose messages arrive in bursts, points at the connection with that teammate.
+When the frame rate drops, compare the lines from before the drop with those during it.
 
-An example from the host of a four-player test on one PC, just after every player ran the perf test. Its teammates connect over the loopback test build, so Steam has nothing to report:
+- If only the first line's frame rate falls, with the mod's times and the canvas update flat, look at the game or the graphics card. Check the render counters and the context.
+- If the canvas update grows with the **Rebuilt** counts, look at UI rebuilds.
+- If a mod time grows, the first line names its part.
+- If a teammate's queue or pending bytes climb, or their messages arrive in bursts, look at the connection with that teammate.
+
+Here is an example from the host of a four-player test on one PC, just after every player ran the perf test. Its teammates connect over the loopback test build, so Steam has nothing to report.
 
 ```text
 [Info   :NO Map Overhaul] Perf 5.0 s, mod on: 297 frames, 59.4 fps avg (16.84 ms), 1% low 59.3 fps, worst frame 65.4 ms. Mod per frame 0.049 ms avg, 0.409 ms worst. Map refresh 46x, 0.079 ms avg, 0.120 ms worst. Mod allocated 0.3 KB per frame. GC 0x, heap 136 of 168 MB. Drawings 0 own, 0 received, 0 shown. Mod graphics 26 drawn, 8 TMP, 34 held. Sharing sent 6 (0.4 KB), received 6 (0.4 KB), 0 snapshots applied, Steam calls 0.5 ms, worst 0.1 ms. Mod ms per frame by part, average/worst frame: Draw 0.011/0.06, Labels 0.001/0.01, Upright 0.001/0.00, 3D text 0.005/0.02, 3D rings 0.005/0.03, Input 0.003/0.00, Runways 0.003/0.01, Sharing 0.013/0.36, Meshes 0.000/0.00.
@@ -184,18 +209,22 @@ Compare the **mod on** lines with the **mod off** lines, skipping any line that 
 
 ### The perf test
 
-The perf test does the comparison for you, including a typical and a heavy load of map drawings. It takes about 85 seconds.
+The perf test runs the comparison for you, and adds a typical and a heavy load of map drawings. It takes about 85 seconds.
 
 1. Load the preset Escalation mission and spawn in an aircraft.
 2. Fly straight and level, or sit still on the runway, in the cockpit view. The game shows the minimap only in the cockpit view.
 3. Open F1 and press **Diagnostics → Run perf test**. Close F1 within 5 seconds, since its window costs frames too.
 4. Don't touch the camera or the map until the result appears. The test opens and closes the full map itself.
 
-It measures eight conditions: the minimap with the mod off, with it on, with it on plus typical drawings, and with it on plus heavy drawings, then the same four on the full map. Within each map the four take turns in slices of 2 seconds, each after half a second for the switch to settle, four times over, reversing the order every other round. So each condition gets 8 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly lands on all four alike.
+It measures eight conditions: the minimap with the mod off, with it on, with it on plus typical drawings, and with it on plus heavy drawings, then the same four on the full map. Within each map the four take turns in slices of 2 seconds, four times over, reversing the order every other round. Each slice starts after half a second for the switch to settle. So each condition gets 8 seconds, spread across the same stretch of flight, and a frame rate that drifts as you fly affects all four alike.
 
-The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, the first one starts on another, and one circle sits on the nearest, so its 3D ring moves with it. The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 50-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with them like drawings on real targets. The header says how many units each set rode on, since fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
+The typical drawings are about what you'd keep up in a mission: a 7-waypoint route, 3 bearing arrows, 2 circles, 3 notes, and 2 short pen lines. Each arrow ends on one of the 3 nearest units the map shows, and the first one starts on another. One circle sits on the nearest unit, so its 3D ring moves with it.
 
-When it's done, a short summary appears in the game's message feed: how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
+The heavy drawings fill the minimap: ten long pen lines using 90% of **Most pen points**, a full 50-waypoint route, 20 bearing arrows, 20 circles, and 20 notes. Arrows, half the circles, and every tenth waypoint sit on the nearest units the map shows, up to 10 of them, so they move with those units like drawings on real targets.
+
+The header says how many units each set rode on. Fewer anchors means fewer drawings redrawing ten times a second, so compare runs with the same count.
+
+When it's done, the game's message feed shows a short summary of how much the average and 1% low fps dropped in each condition, against the same map with the mod off. `BepInEx/LogOutput.log` gets the full tables, with each condition's fps, 1% low, and the mod's own time per frame and per map refresh:
 
 ```text
 [Info   :NO Map Overhaul] Perf test: each condition measured in 4 slices of 2.0 s, taking turns with the others in its view, 0.5 s to settle after each switch. Drawings: typical 11 shapes on 3 live units, heavy 71 shapes on 10 live units (at most 10). Changes are against the same view with the mod off.
@@ -221,19 +250,36 @@ Minimap, mod on                          0.120     0.210     0.004     0.140    
 
 The second table is for finding where a cost comes from. **Canvas ms** is the time Unity spends rebuilding and batching all UI each frame, the game's included, so compare it with the mod-off phase like the fps. **Batches**, **SetPass**, **Draw calls**, and **Vertices** are Unity's render counters for the whole frame, and the two marker columns read n/a unless the game is a development build. **Mod graphics/TMP** counts the mod's graphics at the end of the condition's last slice, and how many of them are TextMeshPro text.
 
-The third table splits the mod's own time per frame: **Draw** is drawing shapes into their meshes, **Labels** placing map labels, **Upright** turning markers and notes upright on the minimap, **3D text** the tools' per-frame work and 3D labels, **3D rings** the circles in the 3D view, **Input** the tools rail and strip and their input, **Runways** the HUD callout and runway numbers, and **Sharing** sending and receiving teammates' drawings. **Meshes** is the mod's own meshes being rebuilt, which Unity does in its canvas update, so it's part of Canvas ms rather than Mod ms. **Other** is whatever Mod ms the named parts don't cover.
+The third table splits the mod's own time per frame:
+
+- **Draw** is drawing shapes into their meshes.
+- **Labels** is placing map labels.
+- **Upright** is turning markers and notes upright on the minimap.
+- **3D text** is the tools' per-frame work and 3D labels.
+- **3D rings** is the circles in the 3D view.
+- **Input** is the tools rail and strip and their input.
+- **Runways** is the HUD callout and runway numbers.
+- **Sharing** is sending and receiving teammates' drawings.
+- **Meshes** is rebuilding the mod's own meshes. Unity does that in its canvas update, so it counts in Canvas ms, not Mod ms.
+- **Other** is whatever Mod ms the named parts don't cover.
 
 The fourth table gives each part's single costliest frame. The 1% low comes from slow frames, which an average hides, so a part that is cheap on average but spikes shows up here. A frame with a garbage collection is left out, since the collection pauses whichever part happens to be running.
 
-Press the button again to cancel. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. Leaving the mission is the exception: your drawings clear, as they always do when you leave. A route you were flying keeps the waypoint you were on. While it runs, the test shows your drawings on the minimap and switches the mod off and on, all without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
+To cancel, press the button again. The test also stops on its own if you leave the mission, lose the aircraft, or open or close the map. Your own drawings then come back with their undo history, and the map goes back to how you had it. A route you were flying keeps the waypoint you were on. Leaving the mission is the exception: your drawings clear, as they always do when you leave.
+
+While it runs, the test shows your drawings on the minimap and switches the mod off and on. It does this without changing **Show map tools**, **Show on minimap**, or **Enabled**, so even a crash can't leave them changed.
 
 #### Testing with sharing
 
-**Perf test sharing**, an advanced setting, measures what sharing costs between two PCs. `Send` sends the test's drawings, `Receive` draws none and shows what the other PC sends, and `Bidirectional` does both. Join a Steam multiplayer mission on the same team on both PCs, then start the test on each within the same half minute: slices start on the next half-minute mark of the clock, so the two PCs measure the same condition at the same time. A test that sends replaces one note every half second while its drawings show, about as often as a busy teammate's change.
+**Perf test sharing**, an advanced setting, measures what sharing costs between two PCs. `Send` sends the test's drawings, `Receive` draws none and shows what the other PC sends, and `Bidirectional` does both.
 
-The test uses a `perf-test` channel of its own and needs no channel set up. With Sharing on, your own drawings and your teammates' keep travelling as before. With Sharing off, only the test's drawings go out. The log's **Sharing and memory** table, in every test, gives each condition's sharing traffic per second, the time the game spends inside Steam's calls, managed memory allocated per frame (the game's too), garbage collections, and how many teammates' drawings showed.
+To run it, join a Steam multiplayer mission on the same team on both PCs, then start the test on each within the same half minute. Slices start on the next half-minute mark of the clock, so the two PCs measure the same condition at the same time. A test that sends replaces one note every half second while its drawings show, about as often as a busy teammate changes one.
 
-**Perf test cycles** repeats each condition more times: `4` takes about 85 seconds, and each step up doubles it. A test of more than 4 cycles also logs each cycle's average fps per condition, so a frame rate that falls as the test runs shows up as a trend down the rows.
+The test uses a `perf-test` channel of its own and needs no channel set up. With Sharing on, your own drawings and your teammates' keep travelling as before. With Sharing off, only the test's drawings go out.
+
+Every test logs a **Sharing and memory** table. For each condition it gives sharing traffic per second, the time the game spends inside Steam's calls, managed memory allocated per frame (the game's too), garbage collections, and how many teammates' drawings showed.
+
+**Perf test cycles** repeats each condition more times. `4` takes about 85 seconds, and each step up doubles it. A test of more than 4 cycles also logs each cycle's average fps per condition, so a frame rate that falls as the test runs shows up as a trend down the rows.
 
 For unattended runs, start the game with `-nomo-perftest <mode>`, such as `-nomo-perftest bidirectional`. The test starts by itself 15 seconds after you're first in an aircraft. `-nomo-perftest bidirectional@<unix seconds>` names when its first slice measures, to line two PCs up exactly.
 
@@ -257,9 +303,9 @@ With **Include airbase name** on, the airbases on the stock maps use these abbre
 | Ashwood Airbase | ASHWD AB |
 | Ashwood Auxiliary Airstrip | ASHWD AUX |
 
-Any other airbase, including those in custom missions, is shortened the same way:
+The mod shortens any other airbase, including those in custom missions, by the same rules:
 
-- The words Airbase, Airport, Airstrip, Airfield, and Naval are dropped.
+- It drops the words Airbase, Airport, Airstrip, Airfield, and Naval.
 - International, Auxiliary, Highway, Heliport, and the compass directions get standard short forms: INT, AUX, HWY, HELI, N, S, E, W.
 - Every other word keeps its first letter and its consonants.
 

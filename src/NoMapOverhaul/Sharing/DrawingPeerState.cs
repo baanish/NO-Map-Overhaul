@@ -61,7 +61,23 @@ internal sealed class DrawingPeerState
 
     public bool CanTransmit(double now) => now >= _retryAt;
 
-    /// <summary>Counts every dequeued frame, including unauthorized and superseded ones, before any managed copy.</summary>
+    internal static bool IsUniqueTeammate<T>(IEnumerable<T> players, ulong id,
+        Func<T, ulong> steamId, Func<T, bool> isTeammate)
+    {
+        if (id == 0) return false;
+        var found = false;
+        var eligible = false;
+        foreach (var player in players)
+        {
+            if (steamId(player) != id) continue;
+            if (found) return false;
+            found = true;
+            eligible = isTeammate(player);
+        }
+        return found && eligible;
+    }
+
+    /// <summary>Counts every dequeued frame, including unauthorized and superseded ones, before any payload decode.</summary>
     public bool CountReceive(double now, out bool flooded, int bytes = 0)
     {
         if (now - ReceiveWindow >= 1) { ReceiveWindow = now; ReceiveCount = ReceiveBytes = 0; }
@@ -80,7 +96,7 @@ internal sealed class DrawingPeerState
     {
         ObserveHandshake();
         // A teammate that has shown it runs the mod keeps trying: a half-open handshake whose replies all failed would
-        // otherwise never pair. Probing teammates who may not have the mod is DrawingDiscovery's sparse schedule.
+        // otherwise never pair. Probing teammates who may not have the mod is DrawingDiscovery's single probe.
         if (!CanTransmit(now) || now < _nextHello || (!Protocol.IsReady && !_compatible && _attempts >= 3)) return false;
         _nextHello = now + 5;
         if (!Protocol.IsReady) _attempts++;

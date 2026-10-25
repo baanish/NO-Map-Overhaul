@@ -280,6 +280,19 @@ internal static class MenuLayout
     public const float TagGap = 6f;
 
     /// <summary>
+    /// From the cursor's hot spot to the author label, in design pixels. The pointer's arrow hangs right and down from
+    /// the hot spot, so the label starts right of it and a little below its tip, and flipped, just left of or above the tip.
+    /// </summary>
+    public const float AuthorLabelRight = 22f;
+
+    public const float AuthorLabelDown = 6f;
+    public const float AuthorLabelLeft = 8f;
+    public const float AuthorLabelUp = 4f;
+
+    /// <summary>The author label stays this far inside the map's edge, which clips it.</summary>
+    public const float AuthorLabelMargin = 4f;
+
+    /// <summary>
     /// The game's HUD around the full map: the speed, altitude, and attitude readouts along the top, the mission clock the
     /// game shows there instead while the player has no aircraft, and the columns of MFD buttons down both sides, from the
     /// game's VirtualMFD in its level1 scene (tools/dump_map_ui.py prints them). Centres and sizes in the canvas units of a
@@ -366,6 +379,55 @@ internal static class MenuLayout
         var left = rail.Outside && width + TagGap <= rail.TagRoom + cell.X;
         return (left ? cell.X - TagGap - width : cell.X + cell.Width + TagGap, cell.Y + (cell.Height - height) * 0.5f);
     }
+
+    /// <summary>
+    /// The top-left corner of the author label, <paramref name="width"/> by <paramref name="height"/> design pixels, beside
+    /// the cursor at (<paramref name="cursorX"/>, <paramref name="cursorY"/>) on screen, in design pixels from the map's
+    /// top-left corner. It goes right of the pointer's arrow and a little below its tip; past the map's right edge it flips
+    /// left of the cursor, and past the bottom edge above it, keeping <see cref="AuthorLabelMargin"/> inside the map. The
+    /// first of right-below, left-below, right-above, and left-above that also clears every box in
+    /// <paramref name="obstacles"/> (the menu inside the map, the game's HUD) wins; with none clear, the first inside the
+    /// map, and with none inside, right-below pushed back into the map.
+    /// </summary>
+    public static (float X, float Y) AuthorLabel(PixelBox map, float pixelsPerDesign, float cursorX, float cursorY, float width, float height,
+        IReadOnlyList<PixelBox> obstacles)
+    {
+        var w = width * pixelsPerDesign;
+        var h = height * pixelsPerDesign;
+        var right = cursorX + AuthorLabelRight * pixelsPerDesign;
+        var left = cursorX - AuthorLabelLeft * pixelsPerDesign - w;
+        var below = cursorY + AuthorLabelDown * pixelsPerDesign;
+        var above = cursorY - AuthorLabelUp * pixelsPerDesign - h;
+        var inside = map.Grown(-AuthorLabelMargin * pixelsPerDesign);
+        PixelBox? fallback = null;
+        for (var i = 0; i < 4; i++) // per frame, so no array of candidates
+        {
+            var box = new PixelBox(i % 2 == 0 ? right : left, i < 2 ? below : above, w, h);
+            if (box.X < inside.X || box.Right > inside.Right || box.Y < inside.Y || box.Bottom > inside.Bottom)
+            {
+                continue;
+            }
+
+            var clear = true;
+            for (var j = 0; clear && j < obstacles.Count; j++)
+            {
+                clear = !box.Overlaps(obstacles[j]);
+            }
+
+            if (clear)
+            {
+                return FromMap(map, pixelsPerDesign, box.X, box.Y);
+            }
+
+            fallback ??= box;
+        }
+
+        return fallback is { } first ? FromMap(map, pixelsPerDesign, first.X, first.Y)
+            : FromMap(map, pixelsPerDesign, Math.Max(inside.X, Math.Min(right, inside.Right - w)), Math.Max(inside.Y, Math.Min(below, inside.Bottom - h)));
+    }
+
+    private static (float X, float Y) FromMap(PixelBox map, float pixelsPerDesign, float x, float y) =>
+        ((x - map.X) / pixelsPerDesign, (y - map.Y) / pixelsPerDesign);
 
     /// <summary>
     /// The fewest columns that fit left of the map, clear of the HUD and on screen. Each hangs from the map's top edge, or

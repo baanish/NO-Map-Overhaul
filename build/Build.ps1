@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Assert-ReleasePlugin.ps1')
 
 $root = Split-Path -Parent $PSScriptRoot
 $game = & (Join-Path $PSScriptRoot 'Find-NuclearOption.ps1') -GameDir $GameDir
@@ -16,12 +17,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 & (Join-Path $PSScriptRoot 'Build-Shaders.ps1') -Check
 
 $project = Join-Path $root 'src\NoMapOverhaul\NoMapOverhaul.csproj'
-dotnet build $project -c Release "-p:GameDir=$game"
+dotnet build $project -c Release "-p:GameDir=$game" -p:SharingLoopback=false
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
 $dll = Join-Path $root 'src\NoMapOverhaul\bin\Release\netstandard2.1\NoMapOverhaul.dll'
 $bundle = Join-Path (Split-Path $dll) 'nomapoverhaul-shaders.bundle'
 if ($Install) {
+    Assert-ReleasePlugin $dll
     # NOMM toggles a mod by moving its folder between plugins and disabledPlugins; reinstall wherever it is now.
     $target = Join-Path $game 'BepInEx\plugins\NoMapOverhaul'
     $disabled = Join-Path $game 'BepInEx\disabledPlugins\NoMapOverhaul'

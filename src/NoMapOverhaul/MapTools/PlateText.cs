@@ -81,7 +81,7 @@ internal sealed class PlateText
             _typesetter.fontStyle = hudStyle.fontStyle;
         }
 
-        _typesetter.text = text;
+        _typesetter.text = NoteFont.Filter(text, _typesetter.font);
         _typesetter.fontSize = size;
         _typesetter.ForceMeshUpdate(ignoreActiveState: true);
         glyphs.Vertices.Clear();

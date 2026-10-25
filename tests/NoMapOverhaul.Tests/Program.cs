@@ -44,6 +44,7 @@ internal static class Program
         tests.AddRange(WaypointTests.All);
         tests.AddRange(PenTextTests.All);
         tests.AddRange(CollaborativeEraseTests.All);
+        tests.AddRange(DrawingAuthorTests.All);
         tests.AddRange(MeasureToolTests.All);
         tests.AddRange(LabelLayoutTests.All);
         tests.AddRange(NoteRunsTests.All);

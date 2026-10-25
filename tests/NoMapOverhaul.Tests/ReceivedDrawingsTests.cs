@@ -404,12 +404,20 @@ internal static class ReceivedDrawingsTests
     /// </summary>
     private static void KeptDecodedShapes()
     {
-        Expect(DrawingProtocol.TryEncode(new DrawingPacket(DrawingPacketKind.Snapshot, new SharedMissionEpoch(37, 1234.5, 7),
-            Guid.NewGuid(), Guid.NewGuid(), 1, Array.Empty<string>(), new MapShape[] { Note(1), Stamp(new CircleShape(Point(), 100, 0, Color), 2) }),
+        var epoch = new SharedMissionEpoch(37, 1234.5, 7);
+        var sender = Guid.NewGuid();
+        var receiver = new DrawingPeer(epoch, new[] { "a" });
+        Expect(receiver.Receive(new DrawingPacket(DrawingPacketKind.Acknowledgement, epoch, sender, receiver.LocalSession,
+            0, Array.Empty<string>(), Array.Empty<MapShape>()), out _, out _), "receiver pairs before accepting cached snapshots");
+        Expect(DrawingProtocol.TryEncode(new DrawingPacket(DrawingPacketKind.Snapshot, epoch,
+            sender, receiver.LocalSession, 1, Array.Empty<string>(), new MapShape[] { Note(1), Stamp(new CircleShape(Point(), 100, 0, Color), 2) }),
             out var bytes), "snapshot encodes");
+        uint sequence = 0;
         MapShape[] Decoded()
         {
-            Expect(DrawingProtocol.TryDecode(bytes, out var packet) && packet != null, "snapshot decodes");
+            DrawingProtocol.Readdress(bytes, sender, receiver.LocalSession, ++sequence);
+            Expect(receiver.TryDecode(bytes, bytes.Length, out var packet, out _) && packet != null &&
+                receiver.Receive(packet, out _, out _), "snapshot decodes and is accepted before caching");
             return packet!.Shapes;
         }
 

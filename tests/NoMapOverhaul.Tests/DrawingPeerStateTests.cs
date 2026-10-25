@@ -18,9 +18,28 @@ internal static class DrawingPeerStateTests
         ("a stall's backlog is received until the flood limit, which flags the peer once per second", FloodLimit),
         ("drawing receive byte window bounds full frames and survives transport restart", ByteLimit),
         ("erase eligibility respects handshake, request cooldown, sequence, and transport retry", DeleteEligibility),
+        ("drawing roster excludes duplicate Steam IDs across every player and faction", UniqueRoster),
     };
 
     private static readonly SharedMissionEpoch Epoch = new(42, 100.25, 7);
+
+    private static void UniqueRoster()
+    {
+        var local = (Id: 1UL, Faction: 7, Local: true);
+        var teammate = (Id: 2UL, Faction: 7, Local: false);
+        var enemy = (Id: 2UL, Faction: 9, Local: false);
+        bool Eligible(ulong id, params (ulong Id, int Faction, bool Local)[] players) =>
+            DrawingPeerState.IsUniqueTeammate(players, id, player => player.Id,
+                player => !player.Local && player.Faction == local.Faction);
+        Expect(Eligible(2, local, teammate), "one same-faction player is eligible");
+        Expect(!Eligible(2, local, teammate, enemy), "a duplicate account across factions is excluded");
+        Expect(!Eligible(2, local, teammate, teammate), "two same-faction entries for one account are excluded");
+        Expect(!Eligible(1, local, (1UL, 7, false)), "the local player's account counts toward duplicates");
+        Expect(!Eligible(1, local) && !Eligible(2, local, enemy) && !Eligible(3, local, teammate),
+            "local, opposing and absent players are excluded");
+        Expect(!Eligible(0, (0UL, 7, false)), "an unidentified player is excluded");
+    }
+
     private static void ByteLimit()
     {
         Expect(DrawingPeerState.FloodBytes == 256 * 1024, "peer byte policy is exactly two hundred fifty-six KiB per window");

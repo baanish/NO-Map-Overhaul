@@ -4,11 +4,11 @@ My map mod for Nuclear Option: numbered runways with an approach line and a runw
 
 ![A seven-waypoint route on the full map, with the Waypoint tool's strip above the map](docs/images/waypoint-route.jpg)
 
-**To install it, follow the [install guide](docs/INSTALL.md).** It isn't in the Nuclear Option Mod Manager catalog yet.
+**To install it, follow the [install guide](docs/INSTALL.md).** Nuclear Option Mod Manager lists 0.5.1; the 0.6.0 betas go in by hand.
 
 Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
-Drawing sharing is off by default. When enabled, compatible teammates can see your fixed map drawings on matching Broadcast or Receive only subscriptions through Steam networking. A compatibility patch keeps drawing connection callbacks out of the game's Mirage transport; it adds no gameplay messages. Shockfront's dev team reviewed this design in October 2026 and said it's fine. Version 0.4.0 was tested in multiplayer; the 0.6.0 sharing code is a local preview with multiplayer reliability still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
+Drawing sharing is off by default. Turn it on and teammates with a compatible build see your map drawings on matching Broadcast or Receive only channels, sent over Steam networking. A compatibility patch keeps the drawing connections' callbacks out of the game's Mirage transport, and the mod adds no gameplay messages. Shockfront's dev team reviewed this design in October 2026 and said it's fine. 0.4.0 was tested in multiplayer. Sharing is in the 0.6.0 betas, and its multiplayer reliability is still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
@@ -19,7 +19,7 @@ Drawing sharing is off by default. When enabled, compatible teammates can see yo
 
 ![An airbase with its numbered runway strip, name, and shaded landing zone; the dashed approach line off runway 23; and the MARIS RWY 21 callout over the threshold in the 3D view](docs/images/gallery-runways.jpg)
 
-It doesn't guess which way you'll land: it always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
+It doesn't guess which way you'll land. It always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
 
 ## Map tools
 
@@ -36,7 +36,7 @@ On the full map, click **Tools** or press `H` to open a rail of planning tools b
 
 ![A BRA arrow to an enemy reading 189° 2.4nm 1.5k ft; two 2 nm range circles; a BRA label with a note stacked under it in the 3D view; and a range circle drawn as a ring on the ground](docs/images/gallery-map-tools.jpg)
 
-Drawings clear when you leave the mission. Sharing is optional. Members who broadcast the same channel can erase and redraw shared drawings; Receive-only channels are read-only. Local drawings on other units use only what your side knows: when your side loses a contact, they stop where it was last seen and read `lost`. Shared drawings on units work the same way from the recipient's own tracks, and stay hidden only while their side has never known the unit.
+Drawings clear when you leave the mission. A drawing on another unit uses only what your side knows. When your side loses the contact, the drawing stops where it was last seen and reads `lost`. A shared drawing on a unit works the same way from the recipient's own tracks, and stays hidden only while the recipient's side has never known the unit.
 
 The tools work alongside [NOAutopilot](https://github.com/qwerty1423/no-autopilot-mod). Its right-click waypoints work as usual while the rail is closed. While the rail is open, an optional NOAutopilot patch holds them back, so a right click that deletes a drawing doesn't also move your autopilot route.
 
@@ -48,13 +48,13 @@ Off by default. Your side's airbases get a faint name label on the full map, so 
 
 ## Coming soon
 
-Implemented in the local 0.6.0 preview, with multiplayer reliability still under test:
+These are in the 0.6.0 betas, and their multiplayer reliability is still under test:
 
-- **Shared drawings in multiplayer, by channel.** Enable sharing and set Broadcast channels to send, receive and collaborate. Receive only adds read-only subscriptions. Each list takes max 10 comma-separated names. Channel names are subscriptions, not passwords.
+- **Shared drawings in multiplayer, by channel.** Turn on sharing and set Broadcast channels to send and receive drawings and work on them together. Receive only adds channels you can only read. Each list takes up to 10 comma-separated names. Any teammate with the mod can join a channel by naming it, so a name isn't a password.
 - **Picking a channel.** New drawings go to your first Broadcast channel. `Shift+1` to `Shift+9` pick Broadcast slots 1 to 9 for your next drawings, and `Shift+0` picks Broadcast slot 10. Receive-only channels take no shortcut slots.
-- **Collaborative channels.** Broadcasters on the same channel can erase another broadcaster's drawing through its owner, then redraw a replacement. Channels listed only under Receive only remain read-only.
+- **Shared erasing.** On a channel you both broadcast, you can ask another broadcaster's game to erase their drawing, then draw a replacement. A channel listed only under Receive only stays read-only.
 
-See the [sharing design and limits](docs/SHARING.md). Live Steam sharing still needs multiplayer testing.
+[Sharing](docs/SHARING.md) covers the design and its limits.
 
 ## Requirements
 

@@ -23,7 +23,8 @@ internal sealed class SteamDrawingSharing : IDisposable
     private readonly DrawingDiscovery _discovery = new();
     private readonly List<ulong> _roster = new(MaxPeers);
     private readonly List<ulong> _removed = new(MaxPeers);
-    private readonly Dictionary<ulong, (int Index, uint Sequence)> _newestSnapshot = new(MaxPeers);
+    private readonly Dictionary<(ulong Sender, SharedMissionEpoch Epoch, Guid SenderSession, Guid RecipientSession),
+        (int Index, uint Sequence)> _newestSnapshot = new(MaxPeers);
     private static readonly string[] ReadyStatuses = CreateReadyStatuses();
     private readonly IDrawingTransport _transport;
     private readonly DrawingMessage[] _messages = new DrawingMessage[DrawingReceiveBudget.MaxMessagesPerTick];
@@ -158,7 +159,7 @@ internal sealed class SteamDrawingSharing : IDisposable
         _wanted = wanted;
         try
         {
-            var reason = !enabled ? "mod or map tools disabled, or performance test active"
+            var reason = !enabled ? "mod or map tools disabled"
                 : !wanted ? "sharing off, invalid channels, or empty channel lists" : "faulted";
             if (!wanted || _faulted || !TryContext(out var manager, out var local, out var epoch, out var server, out reason))
             {
@@ -212,7 +213,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                 if (!peer.CanTransmit(now)) continue;
                 peer.ObserveHandshake();
                 if (_discovery.IsConfirmed(entry.Key) ? peer.TryHello(now)
-                    : !peer.Protocol.IsReady && _discovery.TryProbe(entry.Key, now))
+                    : !peer.Protocol.IsReady && _discovery.TryProbe(entry.Key))
                 {
                     Send(entry.Key, peer, peer.Protocol.CreateHello(peer.Sequence));
                     peer.Advertised = peer.Sequence;
@@ -336,7 +337,8 @@ internal sealed class SteamDrawingSharing : IDisposable
         _roster.Clear();
         foreach (var player in UnitRegistry.playerLookup.Values)
         {
-            if (player != null && player != local && player.HQ == local.HQ && _transport.IdOf(player) is var id && id != 0)
+            if (player != null && player != local && player.HQ == local.HQ &&
+                _transport.IdOf(player) is var id && UniqueTeammate(id, local))
             {
                 var index = _roster.BinarySearch(id);
                 if (index >= 0 || ~index >= MaxPeers) continue;
@@ -366,9 +368,30 @@ internal sealed class SteamDrawingSharing : IDisposable
             !TryContext(out var manager, out var local, out var epoch, out var server, out _) || !_epoch.Equals(epoch) ||
             server != _server || _hq != local.HQ || !ReferenceEquals(_connection, manager.Client.Player) ||
             _mission != MissionManager.CurrentMission) return false;
+        return UniqueTeammate(id, local);
+    }
+
+    private bool UniqueTeammate(ulong id, Player local) => DrawingPeerState.IsUniqueTeammate(
+        UnitRegistry.playerLookup.Values, id, player => player != null ? _transport.IdOf(player) : 0,
+        player => player != null && player != local && player.HQ == local.HQ);
+
+    /// <summary>
+    /// The name the game shows for the one player on the roster with this ID, or null when none or several have it, or
+    /// Steam hasn't named them yet. Read from the game's name cache rather than <c>Player.GetPlayerName</c>, which logs
+    /// the Steam ID and name whenever it resolves one. The game escapes <c>&lt;</c> for its rich-text labels; the
+    /// label beside the cursor shows text as written, so that's undone.
+    /// </summary>
+    public string? OwnerName(ulong id)
+    {
+        Player? owner = null;
         foreach (var player in UnitRegistry.playerLookup.Values)
-            if (player != null && player != local && player.HQ == local.HQ && _transport.IdOf(player) == id) return true;
-        return false;
+        {
+            if (player == null || _transport.IdOf(player) != id) continue;
+            if (owner != null) return null;
+            owner = player;
+        }
+        return owner != null && UnitRegistry.cachedPlayerNames.TryGetValue(owner.CSteamID, out var name)
+            ? name.GetDisplayName(PlayerNameContext.Other).Replace("<<i></i>", "<") : null;
     }
 
     private void OnSessionRequest(ulong id)
@@ -417,25 +440,25 @@ internal sealed class SteamDrawingSharing : IDisposable
         {
             var now = Time.unscaledTimeAsDouble;
             var count = _receiveBudget.Receive(now);
-            // Each snapshot replaces the one before, so a backlog decodes only its newest per peer: the highest sequence,
-            // so a replayed old snapshot can't displace a newer one in the same batch.
+            // Only the newest snapshot in one session needs decoding. A foreign epoch or session's sequence cannot
+            // supersede the current session, even when a handshake and its first snapshot arrive in the same batch.
             _newestSnapshot.Clear();
             for (var i = 0; i < count; i++)
             {
                 if (!_messages[i].Present) continue;
                 var message = _messages[i];
-                if (WireKind(message) != DrawingPacketKind.Snapshot || message.Size < DrawingProtocol.SequenceOffset + 4) continue;
-                var sender = message.Sender;
-                var sequence = (uint)Marshal.ReadInt32(message.Data, DrawingProtocol.SequenceOffset);
-                if (!_newestSnapshot.TryGetValue(sender, out var newest) || sequence >= newest.Sequence)
-                    _newestSnapshot[sender] = (i, sequence);
+                if (WireKind(message) != DrawingPacketKind.Snapshot || message.Size < DrawingProtocol.HeaderBytes) continue;
+                Marshal.Copy(message.Data, ReceiveScratch, 0, DrawingProtocol.HeaderBytes);
+                if (!DrawingProtocol.TryReadPacketHeader(ReceiveScratch, DrawingProtocol.HeaderBytes, out var header)) continue;
+                var key = (message.Sender, header!.Epoch, header.SenderSession, header.RecipientSession);
+                if (!_newestSnapshot.TryGetValue(key, out var newest) || header.Sequence >= newest.Sequence)
+                    _newestSnapshot[key] = (i, header.Sequence);
             }
             for (var i = 0; i < count; i++)
             {
                 if (!_messages[i].Present) continue;
                 var message = _messages[i];
                 var id = message.Sender;
-                _receiveBudget.TryConsume(now); // a batch never exceeds the window's remaining budget
                 _traffic.ReceivedMessages++;
                 _traffic.ReceivedBytes += message.Size;
                 if (!_peers.TryGetValue(id, out var peer))
@@ -461,6 +484,7 @@ internal sealed class SteamDrawingSharing : IDisposable
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, "rx ignored: sender not eligible.");
                     continue;
                 }
+                _receiveBudget.TryConsume(now); // a batch never exceeds the window's remaining budget
                 if (message.Channel != Channel || message.Size <= 0 ||
                     message.Size > DrawingProtocol.MaxPacketBytes || message.Data == IntPtr.Zero)
                 {
@@ -478,16 +502,23 @@ internal sealed class SteamDrawingSharing : IDisposable
                     peer.OtherVersion = true;
                     continue;
                 }
-                if (WireKind(message) == DrawingPacketKind.Snapshot && _newestSnapshot.TryGetValue(id, out var newestSnapshot) &&
+                var size = message.Size;
+                Marshal.Copy(message.Data, ReceiveScratch, 0, size);
+                if (DrawingProtocol.TryReadPacketHeader(ReceiveScratch, size, out var snapshotHeader) &&
+                    snapshotHeader!.Kind == DrawingPacketKind.Snapshot &&
+                    _newestSnapshot.TryGetValue((id, snapshotHeader.Epoch, snapshotHeader.SenderSession, snapshotHeader.RecipientSession), out var newestSnapshot) &&
                     newestSnapshot.Index != i)
                 {
                     if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: rx Snapshot superseded in the same batch; skipped.");
                     continue;
                 }
-                var size = message.Size;
-                Marshal.Copy(message.Data, ReceiveScratch, 0, size);
-                if (!DrawingProtocol.TryDecode(ReceiveScratch, size, out var packet) || packet == null)
+                if (!peer.Protocol.TryDecode(ReceiveScratch, size, out var packet, out var malformed) || packet == null)
                 {
+                    if (!malformed)
+                    {
+                        if (_networkLog.Enabled) _networkLog.Write(now, $"peer {peer.DiagnosticId}: snapshot header rejected by session or replay checks.");
+                        continue;
+                    }
                     if (_networkLog.Enabled) _networkLog.Write(Time.unscaledTimeAsDouble, $"peer {peer.DiagnosticId}: decode rejected; bytes={size}; wireVersion={(size > 4 ? ReceiveScratch[4] : -1)}; expectedVersion={DrawingProtocol.Version}.");
                     RejectPeer(id, "invalid packet or incompatible protocol");
                     continue;

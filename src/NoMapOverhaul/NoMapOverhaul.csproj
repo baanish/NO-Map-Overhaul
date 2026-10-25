@@ -10,6 +10,7 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <ContinuousIntegrationBuild Condition="'$(Configuration)' == 'Release'">true</ContinuousIntegrationBuild>
     <!-- Assembly-CSharp transitively references a newer compression facade that this plugin never uses. -->
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <GameDir Condition="'$(GameDir)' == '' and '$(NUCLEAR_OPTION_DIR)' != ''">$(NUCLEAR_OPTION_DIR)</GameDir>

@@ -45,6 +45,20 @@ public sealed class DrawingPeer
     /// <summary>A Hello, which a paired peer also sends as its heartbeat, naming the last snapshot it sent.</summary>
     public DrawingPacket CreateHello(uint lastSnapshot = 0) => Handshake(DrawingPacketKind.Hello, Guid.Empty, lastSnapshot);
 
+    internal bool CanReceiveSnapshot(DrawingPacket header) => header.Kind == DrawingPacketKind.Snapshot &&
+        header.Epoch.Equals(_epoch) && IsReady && header.SenderSession == RemoteSession &&
+        header.RecipientSession == LocalSession && header.Sequence != 0 && header.Sequence > _lastSequence;
+
+    internal bool TryDecode(byte[] bytes, int length, out DrawingPacket? packet, out bool malformed)
+    {
+        packet = null;
+        malformed = !DrawingProtocol.TryReadPacketHeader(bytes, length, out var header);
+        if (malformed) return false;
+        if (header!.Kind == DrawingPacketKind.Snapshot && !CanReceiveSnapshot(header)) return false;
+        malformed = !DrawingProtocol.TryDecode(bytes, length, out packet);
+        return !malformed;
+    }
+
     /// <summary>
     /// Receives an already decoded packet after the adapter authorizes its sender. Only an accepted snapshot is
     /// returned in snapshot; rejected packets leave state unchanged. Responses must go to the authenticated sender.
@@ -59,8 +73,7 @@ public sealed class DrawingPeer
 
         if (packet.Kind == DrawingPacketKind.Snapshot)
         {
-            if (!IsReady || packet.SenderSession != RemoteSession || packet.RecipientSession != LocalSession ||
-                packet.Sequence == 0 || packet.Sequence <= _lastSequence || packet.Channels.Length != 0 ||
+            if (!CanReceiveSnapshot(packet) || packet.Channels.Length != 0 ||
                 packet.BroadcastChannels.Length != 0 || packet.TargetShapeId != 0 ||
                 !string.IsNullOrEmpty(packet.TargetChannel))
             {
@@ -68,6 +81,7 @@ public sealed class DrawingPeer
             }
 
             _lastSequence = packet.Sequence;
+            DrawingProtocol.RememberSnapshot(packet);
             snapshot = packet;
             return true;
         }

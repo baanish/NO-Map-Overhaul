@@ -1,51 +1,66 @@
 # Changelog
 
+## 0.6.0 beta 6
+
+- Sharing is harder to abuse. A Steam ID that the server lists on more than one player, or on the other faction, gets no drawings, so a modified server can't simply add an enemy's account beside their real player. A teammate flooding messages no longer slows other teammates' drawings, and a snapshot from the wrong session is rejected before its drawings are decoded.
+- Notes can't contain line breaks or text-direction characters, which could push a note's text away from where it's attached. A character the map font can't draw shows as a question mark instead of making the game log a warning for each one.
+- Pointing at a teammate's drawing on the full map shows who drew it, by their in-game name, beside the cursor. Nobody can pass a drawing off as another teammate's.
+- On dedicated servers, drawing sharing uses Steam's relays instead of ICE, Steam's direct-route search, to avoid ICE setup holding Steam's networking lock and freezing the game. This also keeps teammates from learning each other's IP address. On player-hosted games, the mod leaves ICE on for the game's own connection. The mod still requests relay network access once, as soon as sharing could run. Each teammate without the mod is asked once per mission instead of three times, so a big server sees about a third as many connection attempts.
+
 ## 0.6.0 beta 5
 
-- Sharing works on Steam dedicated servers, not only on player-hosted games. Drawings still go directly between teammates, and the server needs no mod.
+- Sharing works on Steam dedicated servers as well as player-hosted games. Drawings still go directly between teammates, and the server needs no mod.
 
 ## 0.6.0 beta 4
 
-- **Log performance** and **Log network** are on by default for this beta, and its first start switches them on once even if an earlier build saved them off. Save `BepInEx/LogOutput.log` after a session that slows down, before restarting the game.
-- New settings **Other channels opacity** and **Other channels brightness** set how faint drawings on other channels show; the defaults keep the old look.
-- Drawings cost less, especially teammates' and drawings on units. A drawing on units redraws only when one of them moves, drawings outside the map's view switch their graphics off, teammates' drawings are worked out again on the game's 10 Hz map refresh instead of every frame, and 3D labels and rings re-batch on their own canvases instead of the game's whole HUD. The 3D view's rings are drawn by a shader instead of being rebuilt on the CPU each frame (Diagnostics → Draw 3D rings on the CPU switches back), map notes draw from shared meshes instead of two graphics each, map labels are placed against nearby boxes only, and lines, labels and notes build their meshes with less work. Runway markings and the HUD callout stop rewriting positions that didn't change.
-- Sharing makes far less garbage, so the game pauses to collect it less often: a teammate's unchanged drawings are kept instead of decoded again, and a change is encoded once for all teammates on the same channels. With three teammates drawing heavily, the mod's allocation fell from about 30 KB a frame to about 5 KB.
-- The colour swatches get a second row for up to six colours of your own. **+** opens a colour wheel with a brightness slider and a preview; **Add** saves the colour and draws with it, and a right click removes one. They're kept between games. Add on a colour a swatch already has picks that swatch instead of saving a copy. The rail keeps its three columns beside the map: its rows sit a little closer, and where the MFD buttons leave too little room its top rises slightly above the map's.
-- **Log performance** now splits the mod's time per frame into its parts, each with its worst frame, and the perf test adds a worst-frame table, to find what drags the 1% low.
-- **Log performance** adds a second line with Unity's canvas time and render counters, how often the mod rebuilt labels, meshes and teammates' drawings, the 3D rings drawn, and the session around it, and while sharing a line with each teammate's drawings, traffic and Steam connection status.
-- A drawing error no longer switches the mod off. The mod's graphics are rebuilt after a pause, 1 second doubling to 60 while errors repeat, and your drawings, teammates' drawings, and sharing carry on. A text outline no longer throws when its text hasn't been laid out yet, which switched the mod off in beta 3.
-- Fixed freezes of up to 1.5 seconds inside Steam's receive call: sharing starts Steam's relay network access early, so Steam doesn't fetch its network config mid-session with its networking lock held.
+- **Log performance** and **Log network** are on by default for this beta. Its first start switches them on once, even if an earlier build saved them off. After a session that slows down, save `BepInEx/LogOutput.log` before restarting the game.
+- New settings **Other channels opacity** and **Other channels brightness** set how faint drawings on other channels look. The defaults keep the old look.
+- Drawings cost less, especially teammates' drawings and drawings on units:
+  - A drawing on units redraws only when one of them moves.
+  - Drawings outside the map's view switch their graphics off.
+  - Teammates' drawings are worked out again on the game's 10 Hz map refresh instead of every frame.
+  - 3D labels and rings re-batch on their own canvases instead of the game's whole HUD.
+  - A shader draws the 3D view's rings instead of the CPU rebuilding them each frame. Diagnostics → Draw 3D rings on the CPU switches back.
+  - Map notes draw from shared meshes instead of two graphics each.
+  - Map labels are placed against nearby boxes only, and lines, labels and notes build their meshes with less work.
+  - Runway markings and the HUD callout stop rewriting positions that didn't change.
+- Sharing makes far less garbage, so the game pauses to collect it less often. A teammate's unchanged drawings are kept instead of decoded again, and a change is encoded once for all teammates on the same channels. With three teammates drawing heavily, the mod's allocation fell from about 30 KB a frame to about 5 KB.
+- The colour swatches get a second row for up to six colours of your own. **+** opens a colour wheel with a brightness slider and a preview. **Add** saves the colour and draws with it, and a right click removes one. Your colours are kept between games. Add on a colour a swatch already has picks that swatch instead of saving a copy. The rail keeps its three columns beside the map. Its rows sit a little closer, and where the MFD buttons leave too little room, its top rises slightly above the map's.
+- **Log performance** now splits the mod's time per frame into its parts, each with its worst frame, and the perf test adds a worst-frame table. Together they find what drags down the 1% low.
+- **Log performance** adds a second line with Unity's canvas time and render counters, how often the mod rebuilt labels, meshes and teammates' drawings, the 3D rings drawn, and the session around it. While sharing, it also logs a line with each teammate's drawings, traffic and Steam connection status.
+- A drawing error no longer switches the mod off. The mod rebuilds its graphics after a pause, 1 second at first and doubling to 60 while errors repeat, and your drawings, teammates' drawings, and sharing carry on. A text outline no longer throws when its text hasn't been laid out yet. In beta 3 that error switched the mod off.
+- Fixed freezes of up to 1.5 seconds inside Steam's receive call. Sharing starts Steam's relay network access early, so Steam doesn't fetch its network config mid-session while holding its networking lock.
 - Map labels on moving units keep their places instead of jumping between slots. 3D rings go to the circles in view first, so a circle in front of you always shows its ring. Teammates' drawings keep a stable stacking order, by when each teammate first paired.
 - A message from someone who isn't a current teammate closes their drawing session.
-- The perf test keeps sharing your drawings and teammates' while it runs, and keeps the waypoint your route was on. New advanced settings: **Perf test sharing** measures sharing between two PCs (`Send`, `Receive`, `Bidirectional`), and **Perf test cycles** runs longer tests that log each cycle to show drift. `-nomo-perftest <mode>` starts a test by itself.
+- The perf test keeps sharing your drawings and teammates' while it runs, and keeps the waypoint your route was on. Two new advanced settings: **Perf test sharing** measures sharing between two PCs (`Send`, `Receive`, `Bidirectional`), and **Perf test cycles** runs longer tests that log each cycle to show drift. `-nomo-perftest <mode>` starts a test by itself.
 
 ## 0.6.0 beta 3
 
-- Circles, notes and waypoint routes attached to units now share, the way BRA arrows already did: they carry only the unit's ID, each recipient places them on its own tracks. Shared drawings on units, BRA arrows included, now stop at the recipient's last known position and read `lost` when their side loses the unit, as local ones do, instead of hiding; they stay hidden only while that side has never known the unit. Protocol 6 requires this build on both clients.
-- Quitting the game from a mission with sharing on no longer crashes Steam: drawing sessions close before the game shuts Steam down.
+- Circles, notes and waypoint routes attached to units now share, as BRA arrows already did. They carry only the unit's ID, and each recipient places them on its own tracks. Protocol 6 requires this build on both clients.
+- Shared drawings on units, BRA arrows included, now stop at the recipient's last known position and read `lost` when the recipient's side loses the unit, as local ones do. They hide only while that side has never known the unit.
+- Quitting the game from a mission with sharing on no longer crashes Steam. Drawing sessions close before the game shuts Steam down.
 - A teammate's snapshots apply at most once every 0.5 s, and added or changed drawings spend from per-teammate and shared budgets, so a teammate can't keep your map busy rebuilding. An over-budget snapshot waits and still arrives. Over 256 KiB from one teammate in a second resets their drawing channel, and a frame from another version is skipped before it's copied.
 - Changed drawings, yours and teammates', redraw in place instead of being rebuilt.
 
 ## 0.6.0 beta 2
 
-- A Steam transport compatibility patch filters gameplay callbacks by connection ownership, preventing Mirage from accepting or closing drawing connections. Sharing stays unavailable if that protection cannot load.
-- Asynchronous Steam failures rotate the drawing session and back off for 30 seconds. Incoming handshakes remain eligible during backoff. A teammate not yet known to run the mod gets three probes per mission, at 0, 60 and 300 seconds, and channel changes don't renew them.
-- Paired teammates exchange a small heartbeat every 5 seconds; full drawings are resent only after an edit, a new pairing, or a heartbeat showing the teammate is behind.
-- Handshake, acknowledgement and erase messages are never dropped at the receive limit, and only the newest of a teammate's queued snapshots is decoded. A burst over 40 messages a second resets that teammate's channel instead of quarantining them. A teammate on another protocol version is shown as such rather than quarantined.
-- A frame gap over 5 seconds and any Steam call blocking past 250 ms are logged, with network logging off.
-- Diagnostics → Log network records sharing handshakes, resets, snapshot counts, exclusions and rejection reasons. Off by default, with anonymous peer labels and bounded output when enabled.
-
-- Optional sharing of fixed map drawings and unit-linked BRA arrows with compatible Steam teammates. Broadcast channels send, receive and collaborate; Receive only adds read-only subscriptions. Each list supports ten channels; sharing starts off.
-- Tools → Channels on the full map edits both lists and sharing on/off. A visible Draw to indicator and numbered Broadcast buttons select the drawing destination; F1 is no longer needed.
-- Shift+1 through Shift+9, and Shift+0, select only Broadcast channels for subsequent drawings. The tool strip shows the destination and sharing status.
-- Receive-only channels are read-only. Shared routes appear on the map without changing the receiver's navigation.
-- Mission, faction, subscription, and peer-session checks reject stale or unrelated packets. Bounded packets and received-drawing budgets limit remote work.
-- Periodic sharing work runs at most five times per second and supports 32 peers. Disablement and local session changes remain immediate; frame stalls do not trigger catch-up batches.
-- Shared BRA arrows transmit unit references without unit positions or altitude. Recipients calculate measurements from their own live tracks; arrows hide while either endpoint is untracked. Other unit-anchored drawings stay local-only, and incoming anchored fallback coordinates and elevation are rejected. Protocol 5 requires this updated build on both clients. Opposing factions, spectators, and dedicated-server sessions receive no drawings in this client-only preview.
-- Eraser and right-click allow broadcasters to request removal of another broadcaster's drawing on the same channel through its owner. The drawing remains visible until the owner publishes the deletion; redraw a replacement to edit it.
-- A team change keeps existing drawings and undo history local-only. Performance-test drawings stay local.
-- Drawings on a channel other than the one you're drawing to show half as opaque and darker, yours and teammates', with the Waypoint tool's guide line dimming with its route.
-- Limits: 100 drawings and 2,500 pen points by default and at most; routes of up to 50 waypoints, five per shared snapshot. If your drawings exceed what one snapshot carries, the oldest that fit are shared and the status counts the rest. Teammates' drawings share the received space evenly.
+- A compatibility patch for Steam's transport checks which connection each gameplay callback belongs to, so Mirage can't accept or close drawing connections. If that protection can't load, sharing stays unavailable.
+- When Steam reports a failure after a send, the drawing session rotates and backs off for 30 seconds. Incoming handshakes still go through during backoff. A teammate not yet known to run the mod gets three probes per mission, at 0, 60 and 300 seconds, and channel changes don't renew them.
+- Paired teammates exchange a small heartbeat every 5 seconds. Full drawings go out again only after an edit, a new pairing, or a heartbeat showing the teammate is behind.
+- Handshake, acknowledgement and erase messages are never dropped at the receive limit, and only the newest of a teammate's queued snapshots is decoded. A burst over 40 messages a second resets that teammate's channel instead of quarantining them. A teammate on another protocol version shows as such instead of being quarantined.
+- The mod logs a frame gap over 5 seconds and any Steam call blocking past 250 ms, even with network logging off.
+- Diagnostics → Log network records sharing handshakes, resets, snapshot counts, exclusions and rejection reasons. It's off by default, and when on it labels peers anonymously and caps its output.
+- You can share fixed map drawings and unit-linked BRA arrows with Steam teammates who run a compatible build. Broadcast channels send, receive and collaborate. Receive only channels add read-only subscriptions. Each list holds ten channels, and sharing starts off.
+- Tools → Channels on the full map edits both lists and turns sharing on or off. A Draw to indicator and numbered Broadcast buttons pick where new drawings go, so F1 is no longer needed.
+- Shift+1 through Shift+9, and Shift+0, pick the Broadcast channel new drawings go to. They never pick a Receive only channel. The tool strip shows where drawings go and whether sharing is on.
+- Receive only channels are read-only. Shared routes appear on the map without changing the receiver's navigation.
+- Mission, faction, subscription, and peer-session checks reject stale or unrelated packets. Limits on packet size and on received drawings cap the work a teammate can cause.
+- Periodic sharing work runs at most five times a second and supports 32 peers. Switching sharing off and local session changes still take effect at once, and a frame stall doesn't trigger a catch-up burst.
+- Shared BRA arrows send unit references without the units' positions or altitude. Recipients measure from their own live tracks, and an arrow hides while either end is untracked. Other drawings on units stay local, and incoming fallback coordinates and elevation on anchored drawings are rejected. Protocol 5 requires this build on both clients. Opposing factions, spectators, and dedicated-server sessions receive no drawings in this client-only preview.
+- With the Eraser or a right click, a broadcaster can ask the owner to remove another broadcaster's drawing on the same channel. The drawing stays visible until the owner publishes the deletion. To edit someone else's drawing, draw a replacement.
+- After a team change, existing drawings and undo history stay local-only. Perf test drawings stay local.
+- Drawings on a channel other than the one you're drawing to show half as opaque and darker, yours and teammates'. The Waypoint tool's guide line dims with its route.
+- You can have 100 drawings and 2,500 pen points, by default and at most, and routes of up to 50 waypoints, five routes per shared snapshot. If your drawings are more than one snapshot carries, the oldest that fit are shared and the status counts the rest. Teammates' drawings split the received space evenly.
 - The Waypoint tool keeps working on the route you fly when the drawing channel changes. The Text tool refuses notes with nothing visible in them.
 - Label plates stop below Unity's mesh vertex limit instead of failing to draw.
 

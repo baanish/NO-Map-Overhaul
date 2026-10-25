@@ -2,7 +2,7 @@ using System;
 
 namespace NoMapOverhaul.Sharing;
 
-/// <summary>Global decode limits defer native dequeues so one-shot requests remain in Steam's queue.</summary>
+/// <summary>Global decode limits charge authorized peers below their flood limits and defer native dequeues when full.</summary>
 internal sealed class DrawingReceiveBudget
 {
     public const int MaxMessagesPerTick = 32;

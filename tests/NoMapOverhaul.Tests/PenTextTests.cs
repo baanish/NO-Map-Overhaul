@@ -31,6 +31,15 @@ internal static class PenTextTests
         ("backspace deletes and the length is capped", BackspaceAndLengthCap),
         ("text preserves whole Unicode pairs at the limit and through backspace", UnicodePairs),
         ("blank or invisible text places nothing", BlankTextPlacesNothing),
+        ("notes reject Unicode line and paragraph separators", NoteSeparatorsRejected),
+        ("notes reject bidirectional embeddings and overrides", NoteBidiEmbeddingsRejected),
+        ("notes reject bidirectional isolates", NoteBidiIsolatesRejected),
+        ("notes accept ordinary text and joined emoji", NoteVisibleTextAccepted),
+        ("typed notes discard separators and bidi controls before preview", UnsafeNoteInputDiscarded),
+        ("note glyph filtering preserves supported Unicode scalars", SupportedNoteGlyphsPreserved),
+        ("note glyph filtering uses one fixed replacement per missing scalar", MissingNoteGlyphsReplaced),
+        ("note glyph filtering replaces unpaired surrogates", UnpairedNoteSurrogatesReplaced),
+        ("note glyph filtering requires the fixed replacement glyph", MissingNoteReplacementHidesText),
         ("clicking elsewhere places the note and starts the next", ClickElsewherePlacesNote),
         ("a note labels the 3D view at ground height", NoteLabelsThreeDView),
         ("a text note undoes and erases", TextNoteUndoesAndErases),
@@ -257,6 +266,69 @@ internal static class PenTextTests
         Type(text, "­ ​\n"); // a soft hyphen and a zero-width space: nothing visible, and unshareable
         Expect(context.Shapes.Shapes.Count == 0, "expected no note of invisible characters");
     }
+
+    private static void NoteSeparatorsRejected()
+    {
+        foreach (var separator in new[] { '\u2028', '\u2029' })
+        {
+            Expect(!TextTool.IsPlaceable(new string(separator, 63) + "X"), "separators must not displace a note from its anchor");
+        }
+    }
+
+    private static void NoteBidiEmbeddingsRejected() => NoteBidiRejected('\u202a', '\u202e');
+
+    private static void NoteBidiIsolatesRejected() => NoteBidiRejected('\u2066', '\u2069');
+
+    private static void NoteBidiRejected(char first, char last)
+    {
+        for (var control = first; control <= last; control++)
+        {
+            Expect(!TextTool.IsPlaceable("A" + control + "B"), $"U+{(int)control:X4} must not reorder note text");
+        }
+    }
+
+    private static void NoteVisibleTextAccepted()
+    {
+        Expect(TextTool.IsPlaceable("Hold at runway 09"), "ordinary text must remain placeable");
+        Expect(TextTool.IsPlaceable("\U0001f469\u200d\U0001f680"), "joined emoji must remain placeable");
+        Expect(TextTool.IsPlaceable("A\u200c\u200d\u00adB"), "other format characters must remain accepted with visible text");
+    }
+
+    private static void UnsafeNoteInputDiscarded()
+    {
+        var context = new FakeContext();
+        var tool = new TextTool(context);
+        tool.OnClick(At(0, 0));
+        Type(tool, "A\u2028\u2029\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069B");
+        var preview = new RecordingCanvas();
+        tool.DrawOverlay(preview);
+        ExpectText(preview.Label!, "AB_");
+        Type(tool, "\n");
+        ExpectText(OnlyNote(context).Text, "AB");
+    }
+
+    private static void SupportedNoteGlyphsPreserved()
+    {
+        const string note = "A\U0001f469\u200d\U0001f680\n lost";
+        var seen = new HashSet<uint>();
+        var result = TextTool.ReplaceUnsupportedCharacters(note, character => { seen.Add(character); return true; });
+        Expect(ReferenceEquals(note, result), "supported text should be returned unchanged");
+        Expect(seen.Contains(0x1f469) && seen.Contains(0x1f680) && seen.Contains(0x200d), "membership must receive full Unicode scalars");
+        Expect(!seen.Any(character => character >= 0xd800 && character <= 0xdfff), "membership must never receive a surrogate half");
+    }
+
+    private static void MissingNoteGlyphsReplaced()
+    {
+        var result = TextTool.ReplaceUnsupportedCharacters("A\u4e00\U0001f680\U0001f680B", character => character < 128);
+        ExpectText(result, "A???B");
+        ExpectText(TextTool.ReplaceUnsupportedCharacters(new string('\u4e00', 64), character => character < 128), new string('?', 64));
+    }
+
+    private static void UnpairedNoteSurrogatesReplaced() =>
+        ExpectText(TextTool.ReplaceUnsupportedCharacters("A\ud800B\udc00", _ => true), "A?B?");
+
+    private static void MissingNoteReplacementHidesText() =>
+        ExpectText(TextTool.ReplaceUnsupportedCharacters("A\u4e00B", character => character == 'A' || character == 'B'), string.Empty);
 
     private static void ClickElsewherePlacesNote()
     {

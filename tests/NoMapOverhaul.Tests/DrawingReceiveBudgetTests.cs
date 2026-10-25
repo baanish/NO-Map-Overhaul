@@ -9,7 +9,42 @@ internal static class DrawingReceiveBudgetTests
     {
         ("global drawing budget defers dequeue and release of a one-shot erase", QueuedErase),
         ("drawing receive callback pulls only the remaining window budget", PartialWindow),
+        ("flooding and unknown drawing senders preserve an honest peer's global allowance", FloodIsolation),
     };
+
+    private static void FloodIsolation()
+    {
+        var epoch = new SharedMissionEpoch(42, 100.25, 7);
+        var flooder = new DrawingPeerState(epoch, Array.Empty<string>(), Array.Empty<string>());
+        var honest = new DrawingPeerState(epoch, Array.Empty<string>(), Array.Empty<string>());
+        var queue = new Queue<DrawingPeerState?>(Enumerable.Repeat<DrawingPeerState?>(flooder, 64)
+            .Concat(Enumerable.Repeat<DrawingPeerState?>(null, 32)).Append(honest));
+        var returned = new List<DrawingPeerState?>();
+        var budget = new DrawingReceiveBudget(limit =>
+        {
+            Expect(limit <= 32, "rejected traffic still has a per-tick dequeue cap");
+            returned.Clear();
+            while (returned.Count < limit && queue.Count > 0) returned.Add(queue.Dequeue());
+            return returned.Count;
+        });
+        var honestReceived = 0;
+        for (var tick = 0; tick < 4; tick++)
+        {
+            var now = tick * 0.2;
+            var count = budget.Receive(now);
+            for (var i = 0; i < count; i++)
+            {
+                var peer = returned[i];
+                if (peer == null || !peer.CountReceive(now, out _)) continue;
+                Expect(budget.TryConsume(now), "each roster peer below its flood limit has capacity");
+                if (ReferenceEquals(peer, honest)) honestReceived++;
+            }
+        }
+        Expect(queue.Count == 0 && honestReceived == 1, "the second peer is received in the same window");
+        var remaining = 0;
+        while (budget.TryConsume(0.8)) remaining++;
+        Expect(remaining == 87, "only forty flooder frames and one honest frame consumed the 128-message window");
+    }
 
     private static void QueuedErase()
     {

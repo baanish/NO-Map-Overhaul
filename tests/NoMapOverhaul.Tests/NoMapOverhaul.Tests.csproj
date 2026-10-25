@@ -43,6 +43,7 @@
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Circle\RingProjection.cs" Link="MapTools\Circle\RingProjection.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Circle\RingMesh.cs" Link="MapTools\Circle\RingMesh.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\DoubleTap.cs" Link="MapTools\DoubleTap.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\DrawingAuthor.cs" Link="MapTools\DrawingAuthor.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Eraser\EraserTool.cs" Link="MapTools\Eraser\EraserTool.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\IMapCanvas.cs" Link="MapTools\IMapCanvas.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\LabelLayout.cs" Link="MapTools\LabelLayout.cs" />

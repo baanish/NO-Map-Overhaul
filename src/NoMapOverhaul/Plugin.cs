@@ -77,6 +77,7 @@ public sealed class Plugin : BaseUnityPlugin
 #endif
         _mapTools.RequestSharedErase = _sharing.RequestErase;
         _mapTools.CanRequestSharedErase = _sharing.CanRequestErase;
+        _mapTools.OwnerName = _sharing.OwnerName;
         _performance.Counts = PerformanceCounts;
         _performance.Context = PerformanceContext;
         _performance.Teammates = _sharing.TakeTeammates;

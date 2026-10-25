@@ -28,6 +28,9 @@ internal static class MenuLayoutTests
         ("a narrow strip moves the buttons to a second row rather than wrap a short hint", NarrowStripMovesButtonsDown),
         ("only a hint too long for its row wraps", LongHintWraps),
         ("a hover tag sits beside its cell, centred on it, on every screen", HoverTagSitsBesideItsCell),
+        ("the author label sits right of the cursor and a little below it, scaled with the map", AuthorLabelBesideCursor),
+        ("the author label flips left at the map's right edge and above at its bottom edge", AuthorLabelFlipsAtEdges),
+        ("the author label keeps clear of the menu, else stays inside the map", AuthorLabelClearsMenu),
     };
 
     /// <summary>A hover tag's height, and the widths of a short tag ("TOOLS H") and the longest ("BEARING/RANGE" and its key).</summary>
@@ -296,6 +299,63 @@ internal static class MenuLayoutTests
     {
         ExpectNear(slot.X, x, what + " x");
         ExpectNear(slot.Y, y, what + " y");
+    }
+
+    /// <summary>The map at 2560x1440, 1200 pixels square in the screen's centre, where a design pixel is a screen pixel.</summary>
+    private static readonly PixelBox Map1440 = new(680f, 120f, 1200f, 1200f);
+
+    private static readonly PixelBox[] NoObstacles = Array.Empty<PixelBox>();
+
+    private static void AuthorLabelBesideCursor()
+    {
+        var (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 500f, 80f, 20f, NoObstacles);
+        ExpectNear(x, 1000f - 680f + MenuLayout.AuthorLabelRight, "x at 1440p");
+        ExpectNear(y, 500f - 120f + MenuLayout.AuthorLabelDown, "y at 1440p");
+
+        // At 1920x1080 the map is 900 pixels square and a design pixel is three quarters of a screen pixel.
+        (x, y) = MenuLayout.AuthorLabel(new PixelBox(510f, 90f, 900f, 900f), 0.75f, 900f, 400f, 80f, 20f, NoObstacles);
+        ExpectNear(x, (900f - 510f) / 0.75f + MenuLayout.AuthorLabelRight, "x at 1080p");
+        ExpectNear(y, (400f - 90f) / 0.75f + MenuLayout.AuthorLabelDown, "y at 1080p");
+    }
+
+    private static void AuthorLabelFlipsAtEdges()
+    {
+        // 22 right of a cursor 30 short of the right edge leaves 8 for an 80-wide label: it goes left of the cursor.
+        var (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1850f, 500f, 80f, 20f, NoObstacles);
+        ExpectNear(x, 1850f - 680f - MenuLayout.AuthorLabelLeft - 80f, "x by the right edge");
+        ExpectNear(y, 500f - 120f + MenuLayout.AuthorLabelDown, "y by the right edge");
+
+        (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 1310f, 80f, 20f, NoObstacles);
+        ExpectNear(x, 1000f - 680f + MenuLayout.AuthorLabelRight, "x by the bottom edge");
+        ExpectNear(y, 1310f - 120f - MenuLayout.AuthorLabelUp - 20f, "y by the bottom edge");
+
+        (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1850f, 1310f, 80f, 20f, NoObstacles);
+        ExpectNear(x, 1850f - 680f - MenuLayout.AuthorLabelLeft - 80f, "x in the bottom-right corner");
+        ExpectNear(y, 1310f - 120f - MenuLayout.AuthorLabelUp - 20f, "y in the bottom-right corner");
+    }
+
+    private static void AuthorLabelClearsMenu()
+    {
+        // A rail inside the map just right of the cursor: the label goes left of the cursor rather than over the rail.
+        var rail = new[] { new PixelBox(1030f, 400f, 48f, 300f) };
+        var (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 500f, 80f, 20f, rail);
+        ExpectNear(x, 1000f - 680f - MenuLayout.AuthorLabelLeft - 80f, "x beside the rail");
+        ExpectNear(y, 500f - 120f + MenuLayout.AuthorLabelDown, "y beside the rail");
+        Expect(!new PixelBox(680f + x, 120f + y, 80f, 20f).Overlaps(rail[0]), "expected it clear of the rail");
+
+        // A strip just below the cursor as well: it goes above, and still left of the rail.
+        var menu = new[] { rail[0], new PixelBox(700f, 510f, 1100f, 90f) };
+        (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 500f, 80f, 20f, menu);
+        ExpectNear(x, 1000f - 680f - MenuLayout.AuthorLabelLeft - 80f, "x by the rail and strip");
+        ExpectNear(y, 500f - 120f - MenuLayout.AuthorLabelUp - 20f, "y by the rail and strip");
+
+        // With nothing clear, the first place inside the map; too wide for the map, its left end stays inside it.
+        var everything = new[] { Map1440 };
+        (x, y) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 500f, 80f, 20f, everything);
+        ExpectNear(x, 1000f - 680f + MenuLayout.AuthorLabelRight, "x with nothing clear");
+        ExpectNear(y, 500f - 120f + MenuLayout.AuthorLabelDown, "y with nothing clear");
+        (x, _) = MenuLayout.AuthorLabel(Map1440, 1f, 1000f, 500f, 1300f, 20f, NoObstacles);
+        ExpectNear(x, MenuLayout.AuthorLabelMargin, "x of a label wider than the map");
     }
 
     private static void ExpectNear(float actual, float expected, string what) =>

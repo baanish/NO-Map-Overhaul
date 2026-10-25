@@ -1,4 +1,6 @@
+using System;
 using System.Globalization;
+using System.Text;
 
 namespace NoMapOverhaul.MapTools.Text;
 
@@ -109,7 +111,7 @@ public sealed class TextTool : MapTool
 
                 break;
             default:
-                if (!char.IsControl(character) && _text.Length < MaxLength)
+                if (IsAllowedCharacter(character) && _text.Length < MaxLength)
                 {
                     SetText(_text + character);
                 }
@@ -153,7 +155,7 @@ public sealed class TextTool : MapTool
     }
 
     /// <summary>
-    /// A note with something visible in it: no control characters, and more than whitespace and invisible format
+    /// A single-line note without directional overrides, and more than whitespace and invisible format
     /// characters such as a soft hyphen. Shared notes must pass this too, so a note the tool keeps can always be sent.
     /// </summary>
     public static bool IsPlaceable(string? text)
@@ -162,12 +164,51 @@ public sealed class TextTool : MapTool
         var hasVisibleText = false;
         for (var i = 0; i < text.Length; i++)
         {
-            if (char.IsControl(text[i])) return false;
+            if (!IsAllowedCharacter(text[i])) return false;
             if (!char.IsWhiteSpace(text[i]) && CharUnicodeInfo.GetUnicodeCategory(text, i) != UnicodeCategory.Format)
                 hasVisibleText = true;
             if (char.IsSurrogatePair(text, i)) i++;
         }
         return hasVisibleText;
+    }
+
+    private static bool IsAllowedCharacter(char character)
+    {
+        var category = char.GetUnicodeCategory(character);
+        return category != UnicodeCategory.Control && category != UnicodeCategory.LineSeparator &&
+               category != UnicodeCategory.ParagraphSeparator &&
+               !(character >= '\u202a' && character <= '\u202e') && !(character >= '\u2066' && character <= '\u2069');
+    }
+
+    /// <summary>
+    /// Notes use only existing glyphs. Missing Unicode scalars become one question mark, including a whole surrogate
+    /// pair. A font without that fixed replacement shows no text rather than asking TMP to choose another glyph.
+    /// </summary>
+    internal static string ReplaceUnsupportedCharacters(string text, Func<uint, bool> canRender)
+    {
+        if (!canRender('?')) return string.Empty;
+        StringBuilder? filtered = null;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var length = char.IsSurrogatePair(text, i) ? 2 : 1;
+            var character = length == 2 ? (uint)char.ConvertToUtf32(text, i) : text[i];
+            var supported = !(length == 1 && char.IsSurrogate(text[i])) && canRender(character);
+            if (!supported && filtered == null)
+            {
+                filtered = new StringBuilder(text.Length);
+                filtered.Append(text, 0, i);
+            }
+
+            if (filtered != null)
+            {
+                if (supported) filtered.Append(text, i, length);
+                else filtered.Append('?');
+            }
+
+            i += length - 1;
+        }
+
+        return filtered?.ToString() ?? text;
     }
 
     /// <summary>Stores the note being typed, if it has any visible text, and stops typing.</summary>

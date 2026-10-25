@@ -1,13 +1,13 @@
 # Map tools
 
-The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Drawings are local unless you enable sharing, and clear when you leave the mission. Multiplayer sharing in the 0.6.0 preview still needs playtesting.
+The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Drawings stay local unless you turn on [sharing](SHARING.md), and clear when you leave the mission. Sharing is new in 0.6.0 and still under test.
 
-Every setting mentioned here is listed in the [user guide's settings table](USER_GUIDE.md#settings), in the **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
+The [user guide's settings table](USER_GUIDE.md#settings) lists every setting mentioned here, in its **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
 
 ## Quick start
 
 1. Open the full map.
-2. Click **Tools** just outside the map's top-left corner, or press `H`. A green rail of tool icons opens left of the map, with Bearing/range picked the first time, and the tool you last picked after that.
+2. Click **Tools** just outside the map's top-left corner, or press `H`. A green rail of tool icons opens left of the map. Bearing/range is picked the first time, and after that the tool you last picked.
 3. Press `5` for Waypoint, then click the map to drop waypoints. A numbered route appears, and a line runs from your aircraft to the next waypoint.
 4. Close the map. The next two waypoints show in the 3D view with their distance and bearing, such as `WP2 4.2nm 045°`.
 5. Open the map again. The rail closed with the map, so your clicks go to the game until you press `H` or click **Tools**.
@@ -30,17 +30,17 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels; ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels, and the ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
 
-A selected friendly unit keeps its right click: with one selected, right click gives it a move order as usual, and the tools leave that click alone.
+With a friendly unit selected, right click gives it a move order as usual, and the tools leave that click alone.
 
 ## The rail
 
 ![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](images/tool-rail.jpg)
 
-The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on the tool you last picked, Bearing/range the first time after starting the game, and closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on the tool you last picked, or on Bearing/range the first time after starting the game. Closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
-Under the swatches is a row for up to six colours of your own. Click **+** to open the colour picker in the map's top-left corner. Drag around the wheel to pick the hue, out from its centre for a stronger colour, and along **Brightness** for a lighter or darker one; the swatch beside **Add** shows the result. **Add** puts the colour in the next free slot and draws with it; if a swatch already has that exact colour, it picks that swatch instead. **Cancel**, Escape, or closing the map leaves the row as it was. Your colours work like the six above and are kept for your next game. Right click one to remove it; the colour you're drawing with stays until you pick another. Once all six slots are used, the **+** goes until you remove one.
+Under the swatches is a row for up to six colours of your own. Click **+** to open the colour picker in the map's top-left corner. Drag around the wheel to pick the hue, out from its centre for a stronger colour, and along **Brightness** for a lighter or darker one. The swatch beside **Add** shows the result. **Add** puts the colour in the next free slot and draws with it. If a swatch already has that exact colour, **Add** picks that swatch instead. **Cancel**, Escape, or closing the map leaves the row as it was. Your colours work like the six above and are kept for your next game. Right click one to remove it. The colour you're drawing with stays until you pick another. Once all six slots are used, the **+** disappears until you remove one.
 
 The strip above the map, between the speed readout and the attitude ball or mission clock, names the picked tool and says what your next click does. It also holds that tool's buttons, such as **Skip** and **Restart** for a route, or the preset circle sizes. When something can't be done, such as when a limit is reached, the strip turns amber and says why.
 
@@ -48,7 +48,7 @@ When the screen leaves no room outside the map, the rail or the strip moves insi
 
 ## Waypoint
 
-You fly one route at a time. New waypoints, Skip and Restart always act on it, whichever drawing channel is selected, and it stays on the channel it started on. Received routes are map references and never become your active navigation route.
+You fly one route at a time. New waypoints, Skip, and Restart always act on it, whichever drawing channel is selected. The route stays on the channel it started on. Received routes are map references and never become your active navigation route.
 
 Click the map to add a waypoint to the end of your route. Waypoints are numbered in order and joined by one line. Click on or beside a unit's icon to put the waypoint on that unit, and it moves with the unit.
 
@@ -116,15 +116,15 @@ Each circle also shows in the 3D view as a thin ring, level with its centre: at 
 
 With the Eraser, an editable drawing under the cursor turns red, and a click deletes it. A right click erases a drawing with any tool picked. **Clear** deletes your drawings at once, as one step, so Undo brings them all back.
 
-On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels receive automatically; Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings; the owner can undo a shared erase. See [sharing behavior](SHARING.md).
+On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels also receive, and Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings, and the owner can undo a shared erase. See [sharing behavior](SHARING.md).
 
 ## Planning ideas
 
 - **Stay out of a SAM's reach.** Put a circle on the SAM's icon, sized to its range. Its ring then shows in the 3D view, so you can see the edge of the threat from the cockpit.
-- **Time on target from two sides.** Each pilot puts a circle of the same size around the target and picks an entry point on it, on opposite sides. Measure from each entry point to the target, and call "in" together so both arrive at once. Drawings aren't shared, so each pilot draws their own.
+- **Time on target from two sides.** Each pilot puts a circle of the same size around the target and picks an entry point on it, on opposite sides. Measure from each entry point to the target, and call "in" together so both arrive at once. Unless you share drawings, each pilot draws their own.
 - **Keep a target's bearing handy.** Measure from your aircraft to a moving target, with both ends on units. The label keeps updating as you both move, while your side tracks the target.
 - **Brief a route.** Drop waypoints over the ingress, add notes such as `IP` or `EGRESS`, and fly it with the 3D labels.
-- **Tag contacts for a flight.** As ATC or AWACS, put notes such as `BOMBERS` or `CAP 2` on contacts' icons. Each tag follows its contact, reads `lost` when your side loses it, and goes when it's destroyed, so the picture you call out stays current. Drawings aren't shared, so the tags are for your own calls.
+- **Tag contacts for a flight.** As ATC or AWACS, put notes such as `BOMBERS` or `CAP 2` on contacts' icons. Each tag follows its contact, reads `lost` when your side loses it, and goes when it's destroyed, so the picture you call out stays current. Without sharing, the tags are for your own calls.
 
 ## What drawings know
 
@@ -133,6 +133,8 @@ Drawings only use what your side knows. A drawing on a unit follows it only wher
 ## Where drawings show
 
 Drawings show on the full map and on the minimap. Turn off **Show on minimap** to keep the minimap clear. They sit under the game's unit icons, so they never hide a unit.
+
+On the full map, point at a teammate's drawing, with the tool rail open or closed, and the name of whoever drew it shows beside the cursor, such as `Maverick`. It's the name the game shows for that player, so a drawing can't pass as someone else's. Your own drawings name no one. A drawing whose owner the game can't name, because Steam hasn't sent their name yet or they've just left, reads `Teammate`. Near the map's right or bottom edge the name moves to the cursor's other side.
 
 In the 3D view, a measurement's label shows at the arrowhead, a note shows on its unit or on the ground at its spot, the next two waypoints show with their distance and bearing, and each circle shows as a ring. They hide with the HUD and while the map is open. Labels on one point, such as a measurement and a note on the same contact, stack downward from it with the measurement on top.
 

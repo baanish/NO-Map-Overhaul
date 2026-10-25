@@ -25,6 +25,7 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
     public bool TryIdentify(NetworkManagerNuclearOption manager, Player local, out ulong server, out string reason)
     {
         server = 0;
+        _dedicatedServer = false;
         reason = "local authenticated player or faction not ready";
         if (local.SteamID == 0 || local.SteamID != LocalSteamId()) return false;
         if (manager.Server.Active)
@@ -38,6 +39,7 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
             reason = "server Steam identity not eligible";
             server = connection.SteamID.m_SteamID;
             if (!connection.SteamID.BIndividualAccount() && !connection.SteamID.BGameServerAccount()) return false;
+            _dedicatedServer = connection.SteamID.BGameServerAccount();
         }
         else
         {
@@ -111,7 +113,7 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
         {
             // A probe that found the session broken, by an earlier unanswered probe from either side, would fail at once
             // without the restart flag, and a teammate who enabled sharing late would never pair. DrawingDiscovery's
-            // three probes, not the flag, bound the attempts made towards a teammate without the mod.
+            // one probe, not the flag, bounds the attempts made towards a teammate without the mod.
             var sent = SteamNetworkingMessages.SendMessageToUser(ref identity, pin.AddrOfPinnedObject(), (uint)bytes.Length,
                 Constants.k_nSteamNetworkingSend_Reliable | Constants.k_nSteamNetworkingSend_AutoRestartBrokenSession, channel);
             result = sent.ToString();
@@ -170,6 +172,7 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
 
     public void Listen(Action<ulong> sessionRequested, Action<ulong, string> sessionFailed)
     {
+        if (_dedicatedServer) SetIce(Constants.k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Disable);
         // An identity that can't be read reaches the handlers as 0, which no teammate has, rather than escaping into
         // Steamworks' callback dispatch.
         _request = Callback<SteamNetworkingMessagesSessionRequest_t>.Create(request =>
@@ -183,6 +186,33 @@ internal sealed class SteamDrawingTransport : IDrawingTransport
     {
         _request?.Dispose(); _request = null;
         _failure?.Dispose(); _failure = null;
+        if (_iceDisabled) SetIce(null);
+    }
+
+    /// <summary>Whether the last <see cref="TryIdentify"/> found a dedicated server's game-server account.</summary>
+    private bool _dedicatedServer;
+    private bool _iceDisabled;
+
+    /// <summary>
+    /// Sets Steam's global ICE setting, which new player-to-player sessions copy when they open, or with null returns
+    /// it to Steam's default; the game never sets it. ICE looks for a direct route between the players' PCs, and
+    /// setting it up held Steam's networking lock for up to a second as each drawing session opened, freezing the
+    /// game. On a dedicated server only drawing sessions use player-to-player connections, so they go over Steam's
+    /// relays instead, which also keeps teammates from learning each other's IP address. On a player host's game the
+    /// game's own connection uses ICE, so it's left alone there.
+    /// </summary>
+    private void SetIce(int? value)
+    {
+        if (!SteamManager.ClientInitialized) return;
+        var handle = GCHandle.Alloc(value ?? 0, GCHandleType.Pinned);
+        try
+        {
+            SteamNetworkingUtils.SetConfigValue(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable,
+                ESteamNetworkingConfigScope.k_ESteamNetworkingConfig_Global, IntPtr.Zero,
+                ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32, value.HasValue ? handle.AddrOfPinnedObject() : IntPtr.Zero);
+        }
+        finally { handle.Free(); }
+        _iceDisabled = value.HasValue;
     }
 
     public bool Listening => _request != null || _failure != null;

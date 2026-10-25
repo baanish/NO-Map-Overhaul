@@ -72,6 +72,7 @@ internal sealed class MapToolMenu
 
     private const float NameSize = 13f;
     private const float HintSize = 15f;
+    private const float AuthorSize = 15f;
     private const float HeadLabelSize = 10f;
 
     /// <summary>Letter spacing in TextMeshPro's hundredths of an em: 1.5 px on 13 px caps, 1 px on buttons, 0.5 px on the head label.</summary>
@@ -139,6 +140,17 @@ internal sealed class MapToolMenu
     private TextMeshProUGUI _tagName = null!;
     private TextMeshProUGUI _tagKey = null!;
     private StrokeGraphic _tagKeyBox = null!;
+    private OutlinedText _authorLabel = null!;
+    private string? _shownAuthor;
+    private TextMeshProUGUI? _authorFont;
+    private Vector2 _authorSize;
+    private Vector2 _authorAt;
+    private readonly List<PixelBox> _authorObstacles = new();
+
+    /// <summary>The map's rect on screen in pixels, Y down, the screen pixels per design pixel, and the game's HUD, as last placed.</summary>
+    private PixelBox _mapBox;
+    private float _pixelsPerDesign;
+    private PixelBox[] _hud = System.Array.Empty<PixelBox>();
     private TextMeshProUGUI? _fontSource;
     private (MenuCommand Command, int Index) _command;
     private RailGrid _grid = null!;
@@ -329,8 +341,60 @@ internal sealed class MapToolMenu
         _shownSwatch = -2;
         _shownCustom = null;
         _shownTag = null;
+        _shownAuthor = null;
         _optionLabels = null;
         LayoutVersion++;
+    }
+
+    /// <summary>The cursor is on the Tools button, which with the rail closed is all of the menu there is.</summary>
+    public bool HeadHovered => _head != null && _head.Hover.Hovered;
+
+    /// <summary>
+    /// Per frame while the full map is open, after <see cref="Render"/>: the name of whoever drew the drawing under the
+    /// cursor beside it, or nothing for an empty <paramref name="author"/>. The text is set only when the name changes
+    /// (<see cref="DrawingAuthor"/> keeps the same string per drawing), and the label moves with the cursor, placed by
+    /// <see cref="MenuLayout.AuthorLabel"/> clear of the menu inside the map and the game's HUD. Its rich text is off, so
+    /// a name shows as written.
+    /// </summary>
+    public void ShowAuthor(string author, TextMeshProUGUI? hudStyle)
+    {
+        if (author.Length == 0 || _placedFor == null)
+        {
+            _authorLabel.Visible = false;
+            return;
+        }
+
+        _authorLabel.Visible = true;
+        if (!ReferenceEquals(author, _shownAuthor) || !ReferenceEquals(hudStyle, _authorFont))
+        {
+            _authorLabel.Set(author, AuthorSize * Px, HintColor, _settings.OutlineColor.Value, hudStyle);
+            _authorSize = _authorLabel.PreferredSize / Px;
+            _shownAuthor = _authorLabel.Ready ? author : null; // TextMeshPro sizes nothing before it wakes; try again next frame
+            _authorFont = hudStyle;
+        }
+
+        _authorObstacles.Clear();
+        _authorObstacles.AddRange(_hud);
+        for (var i = 0; i < _areas.Count; i++)
+        {
+            var area = _areas[i];
+            if (area != null && area.gameObject.activeInHierarchy)
+            {
+                area.GetWorldCorners(_corners);
+                _authorObstacles.Add(new PixelBox(_corners[0].x, Screen.height - _corners[2].y, _corners[2].x - _corners[0].x,
+                    _corners[2].y - _corners[0].y));
+            }
+        }
+
+        Vector2 mouse = Input.mousePosition;
+        var (x, y) = MenuLayout.AuthorLabel(_mapBox, _pixelsPerDesign, mouse.x, Screen.height - mouse.y, _authorSize.x, _authorSize.y,
+            _authorObstacles);
+        var at = P(x, y);
+        if (at != _authorAt)
+        {
+            _authorAt = at;
+            _authorLabel.Rect.anchoredPosition = at;
+        }
     }
 
     /// <summary>Reads what the strip shows. Compares by reference, so a tool that keeps returning the same strings costs nothing per frame.</summary>
@@ -753,14 +817,18 @@ internal sealed class MapToolMenu
 
         // A screen-space overlay canvas's world units are screen pixels, Y up.
         var scale = mapRect.lossyScale.x;
-        var mapBox = new PixelBox(key.Map.xMin, key.Height - key.Map.yMax, key.Map.width, key.Map.height);
-        (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, mapBox, scale * Px, MenuLayout.GameHud(key.Width, key.Height, scale),
-            toolCount, ShapeColor.Palette.Count, CustomColors.Max);
+        _mapBox = new PixelBox(key.Map.xMin, key.Height - key.Map.yMax, key.Map.width, key.Map.height);
+        _pixelsPerDesign = scale * Px;
+        _hud = MenuLayout.GameHud(key.Width, key.Height, scale);
+        (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, _mapBox, _pixelsPerDesign, _hud, toolCount, ShapeColor.Palette.Count,
+            CustomColors.Max);
 
         _strip.SetParent(_stripPlace.Outside ? outside : _root, false);
         _rail.SetParent(_railPlace.Outside ? outside : _root, false);
         _strip.SetAsLastSibling();
         _rail.SetAsLastSibling(); // over the strip, for the joined rim and the hover tag
+        _authorLabel.Rect.SetAsLastSibling();
+        _shownAuthor = null; // the rim is baked at the canvas's scale
         Box(_rail, _railPlace.X, _railPlace.Y, 0f, 0f);
         _grid = new RailGrid(_railPlace.Columns, toolCount, ShapeColor.Palette.Count, CustomColors.Max);
         _head.Place(_grid.Head);
@@ -932,6 +1000,10 @@ internal sealed class MapToolMenu
         BuildTag();
         Sharing = new MapSharingPanel(_root);
         ColorPanel = new MapColorPanel(_root);
+        _authorLabel = new OutlinedText("AuthorLabel", _root, new Vector2(0f, 1f), TextAlignmentOptions.TopLeft);
+        Box(_authorLabel.Rect, 0f, 0f, 0f, 0f);
+        _authorAt = Vector2.zero;
+        _authorLabel.Visible = false;
     }
 
     /// <summary>The strip's ground, rim, and contents, in design pixels from the strip's top-left corner.</summary>

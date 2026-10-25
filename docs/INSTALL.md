@@ -1,14 +1,14 @@
 # Install NO Map Overhaul
 
-NO Map Overhaul is a BepInEx 5 plugin, so installing it means installing BepInEx once, then dropping the mod's folder into it. It isn't in the Nuclear Option Mod Manager catalog yet, so for now it goes in by hand.
+NO Map Overhaul is a BepInEx 5 plugin, so installing it means installing BepInEx once, then dropping the mod's folder into it. Nuclear Option Mod Manager lists 0.5.1, but the 0.6.0 betas aren't in its catalog, so they go in by hand.
 
 Every path below is relative to the game folder, the one holding `NuclearOption.exe`. To open it, right-click Nuclear Option in your Steam library and choose **Manage → Browse local files**.
 
 ## 1. Install BepInEx 5
 
-Skip this step if `BepInEx/core` already exists in the game folder: another mod installed it.
+If `BepInEx/core` already exists in the game folder, another mod installed BepInEx. Skip to step 2.
 
-1. Download `BepInEx_win_x64_5.4.23.4.zip` from the [BepInEx 5.4.23.4 release](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.4). That's the version the mod is tested with. Take the `win_x64` file: the game is 64-bit. BepInEx 6 doesn't load BepInEx 5 plugins.
+1. Download `BepInEx_win_x64_5.4.23.4.zip` from the [BepInEx 5.4.23.4 release](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.4). That's the version the mod is tested with. The game is 64-bit, so take the `win_x64` file. BepInEx 6 doesn't load BepInEx 5 plugins.
 2. Extract the zip into the game folder, so `winhttp.dll`, `doorstop_config.ini`, and the `BepInEx` folder sit beside `NuclearOption.exe`.
 3. On Linux through Proton, set the game's Steam launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`, or Proton skips BepInEx.
 4. Start the game once and quit at the main menu. BepInEx creates `BepInEx/plugins`, `BepInEx/config`, and `BepInEx/LogOutput.log`.
@@ -23,6 +23,7 @@ Skip this step if `BepInEx/core` already exists in the game folder: another mod 
    BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll
    BepInEx/plugins/NoMapOverhaul/nomapoverhaul-shaders.bundle
    BepInEx/plugins/NoMapOverhaul/LICENSE.txt
+   BepInEx/plugins/NoMapOverhaul/meta.json
    BepInEx/plugins/NoMapOverhaul/README.txt
    BepInEx/plugins/NoMapOverhaul/THIRD_PARTY_NOTICES.txt
    ```
@@ -31,19 +32,19 @@ Skip this step if `BepInEx/core` already exists in the game folder: another mod 
 
 ## 3. Check that it loaded
 
-Start the game and open `BepInEx/LogOutput.log` in a text editor. This line means the mod loaded:
+Start the game and open `BepInEx/LogOutput.log` in a text editor. A line like this, with your version, means the mod loaded:
 
 ```text
-[Info   :NO Map Overhaul] NO Map Overhaul 0.5.0 loaded.
+[Info   :NO Map Overhaul] NO Map Overhaul 0.6.0 loaded.
 ```
 
 In a mission, your side's runways show as green strips on the minimap, and the full map has a **Tools** button just outside its top-left corner.
 
-If the line is missing, check that `NoMapOverhaul.dll` sits at `BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll`, and that `LogOutput.log` changed when you last started the game. An old log means BepInEx itself didn't start: go back to step 1.
+If the line is missing, check that `NoMapOverhaul.dll` sits at `BepInEx/plugins/NoMapOverhaul/NoMapOverhaul.dll`, and that `LogOutput.log` changed when you last started the game. If the log is old, BepInEx itself didn't start. Go back to step 1.
 
 ## Change settings in game
 
-This part is optional. BepInEx Configuration Manager opens every setting in a window when you press F1 in game, and changes apply at once. Download `BepInEx.ConfigurationManager_BepInEx5_v18.4.1.zip` from its [18.4.1 release](https://github.com/BepInEx/BepInEx.ConfigurationManager/releases/tag/v18.4.1), the version the mod is tested with, and extract it into the game folder the same way.
+This part is optional. With BepInEx Configuration Manager, F1 in game opens every setting in a window, and changes apply at once. Download `BepInEx.ConfigurationManager_BepInEx5_v18.4.1.zip` from its [18.4.1 release](https://github.com/BepInEx/BepInEx.ConfigurationManager/releases/tag/v18.4.1), the version the mod is tested with, and extract it into the game folder the same way.
 
 Without it, edit `BepInEx/config/com.baanish.nuclearoption.mapoverhaul.cfg` while the game is closed. The first start creates that file. The [user guide](USER_GUIDE.md#settings) lists every setting.
 

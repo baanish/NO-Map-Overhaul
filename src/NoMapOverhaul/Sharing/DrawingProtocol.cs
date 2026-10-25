@@ -50,6 +50,7 @@ public sealed class DrawingPacket
     public string[] BroadcastChannels { get; }
     public int TargetShapeId { get; }
     public string TargetChannel { get; }
+    internal Dictionary<int, DrawingProtocol.ShapeRecord>? SnapshotRecords { get; set; }
 }
 
 /// <summary>Bounded, little-endian drawing data. Invalid frames produce no partial packet.</summary>
@@ -65,7 +66,7 @@ public static class DrawingProtocol
     public const int MaxRoutes = 5;
     public const float MaxCoordinate = 2000000f;
     public const float MaxElevation = 100000f;
-    private const int HeaderBytes = SequenceOffset + 4;
+    internal const int HeaderBytes = SequenceOffset + 4;
     /// <summary>Where the header's sequence starts: after magic, version, kind, epoch and both session nonces.</summary>
     public const int SequenceOffset = 4 + 1 + 1 + 4 + 8 + 4 + 16 + 16;
     // Canonical channel names are ASCII, so each character occupies one UTF-8 byte.
@@ -127,6 +128,23 @@ public static class DrawingProtocol
         if (data == IntPtr.Zero || size < 6 || (uint)Marshal.ReadInt32(data) != Magic) return false;
         version = Marshal.ReadByte(data, 4);
         kind = (DrawingPacketKind)Marshal.ReadByte(data, 5);
+        return true;
+    }
+
+    internal static bool TryReadPacketHeader(byte[] bytes, int length, out DrawingPacket? header)
+    {
+        header = null;
+        if (length < HeaderBytes || length > bytes.Length || length > MaxPacketBytes ||
+            BitConverter.ToUInt32(bytes, 0) != Magic || bytes[4] != Version) return false;
+        var kind = (DrawingPacketKind)bytes[5];
+        var epoch = new SharedMissionEpoch(BitConverter.ToUInt32(bytes, 6), BitConverter.ToDouble(bytes, 10),
+            BitConverter.ToUInt32(bytes, 18));
+        var sender = new Guid(new ReadOnlySpan<byte>(bytes, SenderSessionOffset, 16));
+        var recipient = new Guid(new ReadOnlySpan<byte>(bytes, SenderSessionOffset + 16, 16));
+        try { CheckHeader(kind, epoch, sender, recipient); }
+        catch (Exception error) when (InvalidFrame(error)) { return false; }
+        header = new DrawingPacket(kind, epoch, sender, recipient, BitConverter.ToUInt32(bytes, SequenceOffset),
+            Array.Empty<string>(), Array.Empty<MapShape>());
         return true;
     }
 
@@ -207,35 +225,36 @@ public static class DrawingProtocol
     public static bool TryDecode(byte[]? bytes, out DrawingPacket? packet) => TryDecode(bytes, bytes?.Length ?? 0, out packet);
 
     /// <summary>A shape as decoded, and the record bytes it was decoded from.</summary>
-    private readonly struct ShapeRecord
+    internal readonly struct ShapeRecord
     {
         public ShapeRecord(byte[] bytes, MapShape shape) { Bytes = bytes; Shape = shape; }
         public byte[] Bytes { get; }
         public MapShape Shape { get; }
     }
 
-    /// <summary>One session's last decoded snapshot by wire ID, and the next one's, filled while it decodes.</summary>
-    private sealed class SnapshotRecords
-    {
-        public Dictionary<int, ShapeRecord> Last = new();
-        public Dictionary<int, ShapeRecord> Next = new();
-    }
-
     /// <summary>
-    /// The last snapshot decoded for each session, so a teammate's unchanged drawings are handed back instead of built
+    /// The last snapshot accepted for each session, so a teammate's unchanged drawings are handed back instead of built
     /// again twice a second. Keyed by the recipient session: the nonce this client made for one teammate, which no other
     /// teammate learns, so nobody can put shapes into another teammate's snapshots. Sessions rotate on every pairing, so
     /// the table is emptied whenever it fills.
     /// </summary>
-    private static readonly Dictionary<Guid, SnapshotRecords> LastSnapshots = new();
+    private static readonly Dictionary<Guid, Dictionary<int, ShapeRecord>> LastSnapshots = new();
     private const int MaxLastSnapshots = 2 * ReceivedDrawings.MaxPeers;
 
     /// <summary>Lets go of every session's last snapshot, when sharing resets and its sessions end.</summary>
     public static void ForgetSnapshots() => LastSnapshots.Clear();
 
+    internal static void RememberSnapshot(DrawingPacket packet)
+    {
+        if (packet.SnapshotRecords == null) return;
+        if (!LastSnapshots.ContainsKey(packet.RecipientSession) && LastSnapshots.Count >= MaxLastSnapshots)
+            LastSnapshots.Clear();
+        LastSnapshots[packet.RecipientSession] = packet.SnapshotRecords;
+    }
+
     /// <summary>
     /// Decodes the first <paramref name="length"/> bytes, so a receive buffer can be reused for every message. A
-    /// snapshot's unchanged drawings are the shape objects of the last snapshot decoded for the same recipient session,
+    /// snapshot's unchanged drawings are the shape objects of the last snapshot accepted for the same recipient session,
     /// as long as <see cref="ReceivedDrawings"/> kept none of them, so of two snapshots decoded for one session apply
     /// only the newer.
     /// </summary>
@@ -259,25 +278,21 @@ public static class DrawingProtocol
             var broadcastChannels = Array.Empty<string>();
             var targetShapeId = 0;
             var targetChannel = string.Empty;
-            SnapshotRecords? records = null;
+            Dictionary<int, ShapeRecord>? records = null;
             if (kind == DrawingPacketKind.Snapshot)
             {
                 var count = reader.ReadUInt16();
                 Require(count <= MaxShapes);
                 shapes = new MapShape[count];
-                if (!LastSnapshots.TryGetValue(recipient, out records))
-                {
-                    if (LastSnapshots.Count >= MaxLastSnapshots) LastSnapshots.Clear();
-                    LastSnapshots.Add(recipient, records = new SnapshotRecords());
-                }
-                records.Next.Clear();
+                LastSnapshots.TryGetValue(recipient, out var last);
+                records = new Dictionary<int, ShapeRecord>();
                 var points = 0;
                 var routes = 0;
                 for (var i = 0; i < count; i++)
                 {
-                    var record = ReadRecord(reader, records.Last, ref points);
+                    var record = ReadRecord(reader, last, ref points);
                     shapes[i] = record.Shape;
-                    Require(records.Next.TryAdd(shapes[i].Id, record) && (shapes[i] is not WaypointRoute || ++routes <= MaxRoutes));
+                    Require(records.TryAdd(shapes[i].Id, record) && (shapes[i] is not WaypointRoute || ++routes <= MaxRoutes));
                 }
             }
             else if (kind == DrawingPacketKind.DeleteRequest)
@@ -292,9 +307,8 @@ public static class DrawingProtocol
                 broadcastChannels = ReadChannels(reader);
             }
             Require(stream.Position == stream.Length);
-            if (records != null) (records.Last, records.Next) = (records.Next, records.Last);
             packet = new DrawingPacket(kind, epoch, sender, recipient, sequence, channels, shapes,
-                broadcastChannels, targetShapeId, targetChannel);
+                broadcastChannels, targetShapeId, targetChannel) { SnapshotRecords = records };
             return true;
         }
         catch (Exception error) when (InvalidFrame(error)) { return false; }
@@ -382,7 +396,7 @@ public static class DrawingProtocol
     /// one. A record's bytes alone decide every check <see cref="ReadShape"/> makes apart from the snapshot's point
     /// total, so identical bytes pass them again and only the total is counted.
     /// </summary>
-    private static ShapeRecord ReadRecord(BinaryReader reader, Dictionary<int, ShapeRecord> last, ref int points)
+    private static ShapeRecord ReadRecord(BinaryReader reader, Dictionary<int, ShapeRecord>? last, ref int points)
     {
         var stream = (MemoryStream)reader.BaseStream;
         var buffer = stream.GetBuffer();
@@ -390,7 +404,7 @@ public static class DrawingProtocol
         var remaining = (int)stream.Length - start;
         // ReceivedDrawings gives every shape it keeps a local ID below zero. A kept shape is on the map, so another is
         // built rather than letting one object stand for two drawings.
-        if (remaining >= 5 && last.TryGetValue(BitConverter.ToInt32(buffer, start + 1), out var record) &&
+        if (remaining >= 5 && last != null && last.TryGetValue(BitConverter.ToInt32(buffer, start + 1), out var record) &&
             record.Shape.Id > 0 && record.Bytes.Length <= remaining &&
             new ReadOnlySpan<byte>(buffer, start, record.Bytes.Length).SequenceEqual(record.Bytes))
         {

@@ -17,6 +17,7 @@ internal static class DrawingProtocolTests
     public static readonly (string Name, Action Test)[] All =
     {
         ("drawing protocol preserves shapes but redacts anchored fallback geometry", RoundTrip),
+        ("drawing notes reject separators and bidi controls on send and receive", NoteLayoutControls),
         ("drawing protocol puts no anchored fallback coordinates on the wire", AnchoredWire),
         ("shared BRA wire keeps unit IDs and fixed geometry while rejecting sender track data", BearingWire),
         ("drawing protocol shares single-click pen dots and rejects empty strokes", PenDots),
@@ -44,10 +45,11 @@ internal static class DrawingProtocolTests
 
     private static void ReusedRecords()
     {
-        var session = Guid.NewGuid();
+        var receiver = CacheReceiver();
+        var session = receiver.LocalSession;
         var circle = Stamp(new CircleShape(new MapPoint(new Vector2(1, 2), 0), 900f, 3f, Color), 2);
         var pen = Stamp(new PenStroke(new[] { Vector2.Zero, Vector2.One }, Color), 3);
-        var first = Decode(Encode(Snapshot(session, Note("before"), circle, pen))).Shapes;
+        var first = PrimeCache(receiver, Encode(Snapshot(session, Note("before"), circle, pen)), 1).Shapes;
         var again = Decode(Encode(Snapshot(session, Note("after"), circle, pen))).Shapes;
         Expect(again[0] is TextNote { Text: "after" } && !ReferenceEquals(first[0], again[0]), "a changed drawing is built afresh");
         Expect(ReferenceEquals(first[1], again[1]) && ReferenceEquals(first[2], again[2]), "unchanged drawings are the same objects");
@@ -62,13 +64,14 @@ internal static class DrawingProtocolTests
     private static void ReusedRecordValidation()
     {
         const int records = 60; // the header and the shape count
-        var session = Guid.NewGuid();
+        var receiver = CacheReceiver();
+        var session = receiver.LocalSession;
         var route = new WaypointRoute(Color, new RouteWaypoint(new MapPoint(new Vector2(21, 22), 0), 23))
             .With(new RouteWaypoint(new MapPoint(Vector2.Zero, 9), 0));
         var source = Encode(Snapshot(session, Note(), Stamp(new CircleShape(new MapPoint(new Vector2(1, 2), 0), 900f, 3f, Color), 2),
             Stamp(new PenStroke(new[] { Vector2.Zero, Vector2.One, new Vector2(5, 6) }, Color), 3), Stamp(route, 4),
             Stamp(new BearingRangeShape(new MapPoint(Vector2.Zero, 5), new MapPoint(new Vector2(7, 8), 0), 0, 9, Color), 5)));
-        var primed = Decode(source).Shapes;
+        var primed = PrimeCache(receiver, source, 1).Shapes;
         for (var i = 0; i < source.Length; i++) Reject(source.Take(i).ToArray());
         Expect(Decode(source).Shapes.SequenceEqual(primed), "rejected frames leave the session's records as they were");
 
@@ -100,11 +103,29 @@ internal static class DrawingProtocolTests
         }
         byte[] Stroke(int id, int points) => Encode(Snapshot(session, Stamp(new PenStroke(Enumerable.Repeat(Vector2.One, points).ToArray(), Color), id)));
         var big = Stroke(1, 2000);
-        var kept = Decode(big).Shapes[0];
+        var kept = PrimeCache(receiver, big, 2).Shapes[0];
         Reject(Spliced(Stroke(2, 1001), big));
         Reject(Spliced(big, big));
         var full = Decode(Spliced(Stroke(2, 1000), big)).Shapes;
         Expect(ReferenceEquals(full[1], kept), "the spliced frame reused the stroke, so the rejections above came from the reused record");
+    }
+
+    private static DrawingPeer CacheReceiver()
+    {
+        var receiver = new DrawingPeer(new SharedMissionEpoch(37, 1234.5, 7), Array.Empty<string>());
+        Expect(receiver.Receive(new DrawingPacket(DrawingPacketKind.Acknowledgement, new SharedMissionEpoch(37, 1234.5, 7),
+            Sender, receiver.LocalSession, 0, Array.Empty<string>(), Array.Empty<MapShape>()), out _, out _),
+            "cache fixture completes a compatible handshake");
+        return receiver;
+    }
+
+    private static DrawingPacket PrimeCache(DrawingPeer receiver, byte[] source, uint sequence)
+    {
+        var bytes = (byte[])source.Clone();
+        DrawingProtocol.Readdress(bytes, Sender, receiver.LocalSession, sequence);
+        var packet = Decode(bytes);
+        Expect(receiver.Receive(packet, out _, out _), "only an accepted snapshot primes the record cache");
+        return packet;
     }
 
     /// <summary>One encoding serves every teammate on the same channels, so readdressing must equal encoding afresh.</summary>
@@ -447,6 +468,21 @@ internal static class DrawingProtocolTests
         Expect(Decode(Encode(hello)).Channels.Length == 10, "ten subscriptions accepted");
         Reject(new DrawingPacket(DrawingPacketKind.Hello, hello.Epoch, Sender, Guid.Empty, 0, manyChannels.Concat(new[] { "eleven" }).ToArray(), Array.Empty<MapShape>()));
         Reject(Replace(Encode(hello), 58, new byte[] { 11 }));
+    }
+
+    private static void NoteLayoutControls()
+    {
+        foreach (var control in "\u2028\u2029\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
+        {
+            var text = "A" + control + "B";
+            var payload = Encoding.UTF8.GetBytes(text);
+            var bytes = Encode(Packet(Note(new string('a', payload.Length))));
+            var crafted = Replace(bytes, bytes.Length - payload.Length, payload);
+            Expect(!DrawingProtocol.TryEncode(Packet(Note(text)), out var output) && output.Length == 0,
+                $"U+{(int)control:X4} must be rejected before sending");
+            Expect(!DrawingProtocol.TryDecode(crafted, out var packet) && packet == null,
+                $"U+{(int)control:X4} must be rejected when received");
+        }
     }
 
     private static void NoteVisibility()

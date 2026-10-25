@@ -41,6 +41,7 @@ internal sealed class MapToolHost
     private readonly DoubleTap _bearingKeyTap = new();
     private readonly WorldLabelPool _worldLabels;
     private readonly EraserTool _eraser;
+    private readonly DrawingAuthor _author = new();
     private DynamicMap? _map;
     private FactionHQ? _hq;
     private MissionManager? _mission;
@@ -175,6 +176,9 @@ internal sealed class MapToolHost
     public System.Func<MapShape, bool>? RequestSharedErase { private get; set; }
     public System.Func<MapShape, bool>? CanRequestSharedErase { private get; set; }
 
+    /// <summary>A received drawing's owner's name on the game's roster, or null; see <see cref="DrawingAuthor"/>.</summary>
+    public System.Func<ulong, string?>? OwnerName { private get; set; }
+
     public MapToolHost(ModSettings settings)
     {
         _settings = settings;
@@ -297,6 +301,15 @@ internal sealed class MapToolHost
         }
 
         _input.Update(map, _menu.Catcher, _active >= 0 ? _tools[_active] : null, MenuPanelOpen, _editingChannels);
+        // With the rail closed no catcher covers the map, so the cursor is on it where the game's own map takes it to be, off the Tools button.
+        var cursor = _active >= 0 ? _input.Hover
+            : open && !_menu.HeadHovered && map.IsCursorInMapRectangle() ? MapToolInput.CursorMeters(map) : null;
+        // Without teammates' drawings there's nothing to name, so no hit test.
+        _author.Hover(_visibleReceived.Count > 0 && cursor is { } at ? _eraser.FindAt(at) : null, Received, OwnerName);
+        if (open)
+        {
+            _menu.ShowAuthor(_author.Name, hudStyle);
+        }
         if (!MenuPanelOpen && _active >= 0 && _input.TakeRightClick(map, _menu.Catcher) is { } rightClick)
         {
             RightClick(map, _tools[_active], rightClick);
