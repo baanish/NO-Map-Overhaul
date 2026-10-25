@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 RC 1
+
+- New look by default: black runways with white numbers and a black outline, airbase names (size 14) and landing zones shown, and the HUD callout naming the airbase. The first start moves each of these settings still at its old default to the new one, once. Any you changed stay as you set them.
+- The dark outline around runway numbers, airbase names and notes now draws. It used the game's additive HUD text material, which can only brighten, so it never showed. **Map / Outline → Text outline width** sets it, from 0 (none) to 3.
+- Zoomed in far enough, each runway number moves onto the runway at its end, the way it's painted, and stays upright. **Map / Runways → Numbers on runway** turns it off, **On runway from** sets how far you zoom in before it happens, and **Turn with runway** turns it to read for a pilot landing there.
+- New **Map / Runway Centre Line** settings draw a dashed centre line down each runway, off by default. Dashes are 30 m with 60 m gaps on the ground, so they grow as you zoom in like the paint, and zoomed out the line isn't drawn. Colour, width, dash and gap are all settings.
+- Runway number size is set separately for the full map (**Number size**, 14) and the minimap (**Minimap number size**, 8).
+- Parallel runways get L, C or R for the side they lie on as you land, so Feldspar's long runways read 06L and 06R instead of two 06s.
+- Runway numbers show the number ATC calls. **Map / Runways → Number as painted** shows the paint instead where the two differ: Feldspar's crossing runway (16/34 painted, 15/33 called) and Harmony Sands' southwest runway (14R/32L painted, 13R/31L called).
+- Broadcast channel keys can be rebound in **F1 → Map Tools / Keys and Limits**, with **Advanced settings** ticked. **Channel 1 key** to **Channel 10 key** default to Shift+1 through Shift+9 and Shift+0, with either Shift key. Clear a binding to disable its shortcut.
+
 ## 0.6.0 beta 6
 
 - Sharing is harder to abuse. A Steam ID that the server lists on more than one player, or on the other faction, gets no drawings, so a modified server can't simply add an enemy's account beside their real player. A teammate flooding messages no longer slows other teammates' drawings, and a snapshot from the wrong session is rejected before its drawings are decoded.

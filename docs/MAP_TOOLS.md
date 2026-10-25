@@ -1,6 +1,6 @@
 # Map tools
 
-The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Drawings stay local unless you turn on [sharing](SHARING.md), and clear when you leave the mission. Sharing is new in 0.6.0 and still under test.
+The map tools let you plan on the full map: bearing and range measurements, range circles, text notes and contact tags, freehand lines, and a waypoint route with markers in the 3D view. Drawings stay local unless you turn on [sharing](SHARING_GUIDE.md), and clear when you leave the mission. Sharing is new in 0.6.0 and still under test.
 
 The [user guide's settings table](USER_GUIDE.md#settings) lists every setting mentioned here, in its **Map Tools** sections. The limits are advanced settings, which F1 shows with **Advanced settings** ticked.
 
@@ -25,12 +25,12 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | `H` | Open or close the rail, like clicking **Tools**. |
 | `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
 | `1` twice, quickly | Pick Bearing/range and measure from your aircraft: your next click sets the other end. |
-| `Shift+1` to `Shift+9`, `Shift+0` | Pick the next drawing's Broadcast channel, slots 1 through 10. Receive channels have no shortcut slots. |
+| `Shift+1` to `Shift+9`, `Shift+0` by default | Pick the next drawing's Broadcast channel, slots 1 through 10. Rebind **Channel 1 key** to **Channel 10 key** in F1. Receive channels have no shortcut slots. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels, and the ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels by default, with either Shift key. Rebind them in **F1 → Map Tools / Keys and Limits**, with **Advanced settings** ticked, using **Channel 1 key** to **Channel 10 key**. Clear a binding to disable that slot's shortcut. Ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
 
 With a friendly unit selected, right click gives it a move order as usual, and the tools leave that click alone.
 
@@ -116,7 +116,7 @@ Each circle also shows in the 3D view as a thin ring, level with its centre: at 
 
 With the Eraser, an editable drawing under the cursor turns red, and a click deletes it. A right click erases a drawing with any tool picked. **Clear** deletes your drawings at once, as one step, so Undo brings them all back.
 
-On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels also receive, and Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings, and the owner can undo a shared erase. See [sharing behavior](SHARING.md).
+On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels also receive, and Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings, and the owner can undo a shared erase. See [erasing a teammate's drawing](SHARING_GUIDE.md#erasing-a-teammates-drawing).
 
 ## Planning ideas
 
@@ -144,6 +144,6 @@ Distances follow the game's unit setting: kilometres for metric, nautical miles 
 
 ## Keeping it fast
 
-A few drawings cost almost nothing, and a map full of them costs frames. Two limits keep that in check. **Most drawings** caps the number of drawings, 200 by default, and **Most pen points** caps pen detail.
+A few drawings cost almost nothing, and a map full of them costs frames. Two limits keep that in check. **Most drawings** caps the number of drawings, 100 by default, and **Most pen points** caps pen detail.
 
 To measure the cost on your own machine, run the perf test described in the [user guide](USER_GUIDE.md#the-perf-test).

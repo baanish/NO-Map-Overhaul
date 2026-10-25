@@ -5,8 +5,9 @@ using UnityEngine.UI;
 namespace NoMapOverhaul.Drawing;
 
 /// <summary>
-/// The dark rim of an <see cref="OutlinedText"/>: the face's glyph quads copied eight times, one unit around it, as one
-/// mesh in the face's font material. It sits beside the face with the same origin, so the face's vertices need no
+/// The dark rim of an <see cref="OutlinedText"/>: the face's glyph quads copied eight times around it per ring, as one
+/// mesh in the face's font material. A rim wider than one unit gets a ring per unit, evenly spaced out to its width, so
+/// the copies leave no gaps between them. It sits beside the face with the same origin, so the face's vertices need no
 /// moving, and fits its rect around the copies, since a RectMask2D culls a graphic by its rect.
 /// Glyphs the face takes from a fallback font live in its sub-meshes and get no rim.
 /// </summary>
@@ -19,6 +20,7 @@ internal sealed class TextRim : ModGraphic
 
     private TMP_Text? _face;
     private Color32 _color;
+    private float _width;
 
     public override Texture mainTexture =>
         m_Material != null && m_Material.mainTexture != null ? m_Material.mainTexture : s_WhiteTexture;
@@ -27,7 +29,7 @@ internal sealed class TextRim : ModGraphic
     /// Copies the glyphs the face last generated, so call it after <see cref="TMP_Text.ForceMeshUpdate"/>. A face that
     /// hasn't woken has generated nothing, and the rim keeps what it had.
     /// </summary>
-    public void Bake(TMP_Text face, Color32 color)
+    public void Bake(TMP_Text face, Color32 color, float width)
     {
         if (face.textInfo is not { } info)
         {
@@ -36,9 +38,11 @@ internal sealed class TextRim : ModGraphic
 
         _face = face;
         _color = color;
-        if (!ReferenceEquals(m_Material, face.fontSharedMaterial))
+        _width = Mathf.Max(0f, width);
+        var rimMaterial = TextRimMaterial.For(face.font, face.fontSharedMaterial);
+        if (!ReferenceEquals(m_Material, rimMaterial))
         {
-            material = face.fontSharedMaterial;
+            material = rimMaterial;
         }
 
         var min = new Vector2(float.MaxValue, float.MaxValue);
@@ -62,8 +66,8 @@ internal sealed class TextRim : ModGraphic
         if (min.x <= max.x)
         {
             // A pivot at the origin's place in the grown box keeps the origin, and so the face's vertices, where they are.
-            min -= Vector2.one;
-            max += Vector2.one;
+            min -= Vector2.one * _width;
+            max += Vector2.one * _width;
             var size = max - min;
             rectTransform.sizeDelta = size;
             rectTransform.pivot = new Vector2(-min.x / size.x, -min.y / size.y);
@@ -81,8 +85,11 @@ internal sealed class TextRim : ModGraphic
         }
 
         var mesh = info.meshInfo[0];
-        foreach (var offset in Offsets)
+        var rings = Mathf.CeilToInt(_width);
+        for (var ring = 1; ring <= rings; ring++)
+        foreach (var unit in Offsets)
         {
+            var offset = unit * (_width * ring / rings);
             for (var i = 0; i < info.characterCount; i++)
             {
                 var character = info.characterInfo[i];

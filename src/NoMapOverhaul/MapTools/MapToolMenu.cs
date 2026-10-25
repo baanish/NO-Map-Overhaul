@@ -998,7 +998,7 @@ internal sealed class MapToolMenu
 
         _swatchRing = NewGraphic<StrokeGraphic>("SwatchRing", open, raycast: false);
         BuildTag();
-        Sharing = new MapSharingPanel(_root);
+        Sharing = new MapSharingPanel(_root, _settings.MapChannelKeys);
         ColorPanel = new MapColorPanel(_root);
         _authorLabel = new OutlinedText("AuthorLabel", _root, new Vector2(0f, 1f), TextAlignmentOptions.TopLeft);
         Box(_authorLabel.Rect, 0f, 0f, 0f, 0f);

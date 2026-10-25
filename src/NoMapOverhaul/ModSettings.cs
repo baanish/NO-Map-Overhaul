@@ -24,32 +24,44 @@ internal sealed class ModSettings
         Enabled = Bind(SettingSections.General, "Enabled", true, "Enabled", "Off hides everything this mod draws, as if it were not installed. Useful for checking whether a problem comes from the mod or the game.");
 
         MapRunways = Bind(SettingSections.MapRunways, "ShowRunways", true, "Show runways", "Draw friendly runways and their numbers on the minimap and full map.");
-        RunwayColor = Bind(SettingSections.MapRunways, "RunwayColor", new Color(0f, 0.85f, 0f, 0.85f), "Runway colour", "Fill colour of runway strips.");
-        RunwayLabelColor = Bind(SettingSections.MapRunways, "RunwayLabelColor", new Color(0.6f, 1f, 0.6f, 1f), "Number colour", "Colour of the runway numbers on the map.");
+        RunwayColor = Bind(SettingSections.MapRunways, "RunwayColor", Color.black, "Runway colour", "Fill colour of runway strips.");
+        RunwayLabelColor = Bind(SettingSections.MapRunways, "RunwayLabelColor", Color.white, "Number colour", "Colour of the runway numbers on the map.");
         RunwayBothEnds = Bind(SettingSections.MapRunways, "NumberBothEnds", true, "Number both ends", "Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from.");
-        RunwayLabelSize = Bind(SettingSections.MapRunways, "RunwayLabelSize", 8f, "Number size", "Runway number size on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
+        RunwayNumbersOnRunway = Bind(SettingSections.MapRunways, "NumbersOnRunway", true, "Numbers on runway", "Once you zoom in far enough for a number to fit across its runway, draw it on the runway at that end, the way it's painted, upright like the rest of the map's text.");
+        RunwayNumbersOnRunwayFrom = Bind(SettingSections.MapRunways, "NumbersOnRunwayFrom", 0.75f, "On runway from", "How large a number must be able to show across its runway, as a multiple of its size beside the runway, before it moves onto it. Higher waits until you're zoomed in further.", new AcceptableValueRange<float>(0.5f, 5f));
+        RunwayNumbersTurn = Bind(SettingSections.MapRunways, "NumbersOnRunwayTurn", false, "Turn with runway", "Turn a number on the runway to read for a pilot landing there, like the paint, instead of keeping it upright.");
+        RunwayPaintedNumbers = Bind(SettingSections.MapRunways, "PaintedNumbers", false, "Number as painted", "Where the number painted on a runway differs from the game's own, show the paint: 34/16 rather than 33/15 on Feldspar's crossing runway, and 14/32 rather than 13/31 on Harmony Sands' southwest runway. Off shows the game's number, the one ATC calls. Applies to the map and the HUD callout.");
+        RunwayLabelSize = Bind(SettingSections.MapRunways, "RunwayLabelSize", 14f, "Number size", "Runway number size on the full map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
+        MinimapRunwayLabelSize = Bind(SettingSections.MapRunways, "MinimapRunwayLabelSize", 8f, "Minimap number size", "Runway number size on the minimap, which shows a smaller area.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
         RunwayMinWidth = Bind(SettingSections.MapRunways, "RunwayMinWidth", 6f, "Minimum width", "Narrowest a runway strip gets when zoomed out, in map icon units.", new AcceptableValueRange<float>(1f, 30f), advanced: true);
         RunwayNumbersMinGridSquare = Bind(SettingSections.MapRunways, "NumbersMinGridSquare", 100f, "Numbers from zoom", "On the full map, hide every runway number while one grid square is narrower than this on screen, in map icon units, so zoomed far out they don't pile onto the airbases. The minimap always shows them. 0 always shows them.", new AcceptableValueRange<float>(0f, 1000f), advanced: true);
+
+        CentreLine = Bind(SettingSections.MapCentreLine, "ShowCentreLine", false, "Show centre line", "Draw a dashed line down the middle of each runway, between its ends.");
+        CentreLineColor = Bind(SettingSections.MapCentreLine, "Color", Color.white, "Line colour", "Colour of the runway centre line.");
+        CentreLineWidth = Bind(SettingSections.MapCentreLine, "Width", 1f, "Line width", "Centre line width, in map icon units.", new AcceptableValueRange<float>(0.25f, 6f));
+        CentreLineDash = Bind(SettingSections.MapCentreLine, "DashLength", 30f, "Dash length (m)", "Length of each dash on the ground, in metres, so the dashes grow as you zoom in like the paint. Zoomed out, once a dash would be shorter than 2 map icon units, the line isn't drawn.", new AcceptableValueRange<float>(5f, 500f));
+        CentreLineGap = Bind(SettingSections.MapCentreLine, "GapLength", 60f, "Gap length (m)", "Length of the gap between dashes on the ground, in metres.", new AcceptableValueRange<float>(5f, 500f));
 
         ApproachRangeKm = Bind(SettingSections.MapApproachLine, "TriggerRangeKm", 5f, "Show within (km)", "Show the approach line, and the HUD runway callout, for the nearest runway within this distance.", new AcceptableValueRange<float>(0.5f, 30f));
         ApproachLineLengthKm = Bind(SettingSections.MapApproachLine, "LineLengthKm", 5f, "Line length (km)", "Length of the dashed centerline drawn off the nearest runway end. Each dash plus gap is 500 m.", new AcceptableValueRange<float>(0.5f, 30f));
         ApproachLineColor = Bind(SettingSections.MapApproachLine, "LineColor", new Color(0f, 0.85f, 0f, 0.4f), "Line colour", "Colour of the dashed approach line on the map. Keep it fainter than the runway so the two read apart.");
         ApproachLineWidth = Bind(SettingSections.MapApproachLine, "LineWidth", 1f, "Line width", "Approach line width, in map icon units.", new AcceptableValueRange<float>(0.5f, 10f), advanced: true);
 
-        ShowAirbaseNames = Bind(SettingSections.MapAirbaseNames, "ShowNames", false, "Show airbase names", "Name your faction's airbases just under them on the full map.");
-        AirbaseNameColor = Bind(SettingSections.MapAirbaseNames, "Color", new Color(0.6f, 1f, 0.6f, 0.75f), "Name colour", "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
-        AirbaseNameSize = Bind(SettingSections.MapAirbaseNames, "Size", 8f, "Name size", "Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
+        ShowAirbaseNames = Bind(SettingSections.MapAirbaseNames, "ShowNames", true, "Show airbase names", "Name your faction's airbases just under them on the full map.");
+        AirbaseNameColor = Bind(SettingSections.MapAirbaseNames, "Color", new Color(0.75f, 1f, 0.75f, 1f), "Name colour", "Colour of the airbase names, a fainter version of the runway numbers' green by default. Much lower alpha loses the green text over the map's green linework.");
+        AirbaseNameSize = Bind(SettingSections.MapAirbaseNames, "Size", 14f, "Name size", "Airbase name size on the map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
 
-        ShowBoundaries = Bind(SettingSections.MapAirbaseBoundary, "ShowBoundary", false, "Show landing zone", "Shade each friendly airbase's landing zone: stop inside it after landing and the sortie ends as returned instead of crashed. The same circle is the capture zone. Uses the game's friendly map colour.");
+        ShowBoundaries = Bind(SettingSections.MapAirbaseBoundary, "ShowBoundary", true, "Show landing zone", "Shade each friendly airbase's landing zone: stop inside it after landing and the sortie ends as returned instead of crashed. The same circle is the capture zone. Uses the game's friendly map colour.");
         BoundaryFillOpacity = Bind(SettingSections.MapAirbaseBoundary, "FillOpacity", 0.01f, "Fill opacity", "Opacity of the shaded zone, 0 to 1. The game blends in linear colour space, so small values already read strongly over the dark map.", new AcceptableValueRange<float>(0f, 1f), advanced: true, display: new() { ShowRangeAsPercent = false });
         BoundaryEdgeOpacity = Bind(SettingSections.MapAirbaseBoundary, "EdgeOpacity", 0.1f, "Edge opacity", "Opacity of the zone's edge line, 0 to 1. 0 hides it.", new AcceptableValueRange<float>(0f, 1f), advanced: true, display: new() { ShowRangeAsPercent = false });
 
-        OutlineColor = Bind(SettingSections.MapOutline, "OutlineColor", new Color(0.02f, 0.08f, 0.02f, 0.85f), "Outline colour", "Dark rim around runways, approach dashes, and map text so they stay readable over bright map linework.", advanced: true);
-        OutlineWidth = Bind(SettingSections.MapOutline, "OutlineWidth", 0.75f, "Outline width", "Rim width around runways and approach dashes, in map icon units. 0 turns it off. Text always gets a 1-unit rim.", new AcceptableValueRange<float>(0f, 6f), advanced: true);
+        OutlineColor = Bind(SettingSections.MapOutline, "OutlineColor", Color.black, "Outline colour", "Dark rim around runways, approach dashes, and map text so they stay readable over bright map linework.", advanced: true);
+        TextOutlineWidth = Bind(SettingSections.MapOutline, "TextOutlineWidth", 2f, "Text outline width", "Rim width around runway numbers and airbase names, in map icon units, in the outline colour. 0 turns it off.", new AcceptableValueRange<float>(0f, 3f), advanced: true);
+        OutlineWidth = Bind(SettingSections.MapOutline, "OutlineWidth", 1f, "Outline width", "Rim width around runways and approach dashes, in map icon units. 0 turns it off. Text outline width sets the rim around map text.", new AcceptableValueRange<float>(0f, 6f), advanced: true);
 
         HudCallout = Bind(SettingSections.HudRunwayCallout, "ShowRunwayCallout", true, "Show runway callout", "Label the nearest runway end in the 3D view, for ATC calls.");
         HudGearDownOnly = Bind(SettingSections.HudRunwayCallout, "OnlyWithGearDown", false, "Only with gear down", "Show the callout only while the landing gear is down.");
-        HudAirbaseName = Bind(SettingSections.HudRunwayCallout, "IncludeAirbaseName", false, "Include airbase name", "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
+        HudAirbaseName = Bind(SettingSections.HudRunwayCallout, "IncludeAirbaseName", true, "Include airbase name", "Prefix the callout with the abbreviated airbase name, e.g. NBSCLI RWY 27.");
         HudColor = Bind(SettingSections.HudRunwayCallout, "CalloutColor", new Color(0.2f, 1f, 0.2f, 1f), "Callout colour", "Colour of the HUD runway callout.");
 
         ShowMapTools = Bind(SettingSections.MapToolsGeneral, "ShowTools", true, "Show map tools", "Show the Tools button on the full map and everything drawn with it. Off hides both; drawings come back when it's on again, until you leave the mission.");
@@ -58,7 +70,7 @@ internal sealed class ModSettings
         MapToolUnits = Bind(SettingSections.MapToolsGeneral, "DistanceUnits", UnitsSetting.Game, "Distance units", "Units for distances the tools show. Game setting follows the game: kilometres for metric, nautical miles for imperial.");
 
         MapSharingEnabled = Bind(SettingSections.MapToolsSharing, "Enabled", false, "Share drawings", "Managed by Channels in the full map's Tools menu. Off stops sending and receiving drawings.", display: new ConfigurationManagerAttributes { Browsable = false });
-        MapBroadcastChannels = Bind(SettingSections.MapToolsSharing, "BroadcastChannels", string.Empty, "Broadcast channels", "Managed by Channels in the full map's Tools menu. Comma-separated channels where you send, receive and collaborate, up to 10. Empty keeps your drawings local. Shift+1 to Shift+9 and Shift+0 choose the channel for new drawings.", display: new ConfigurationManagerAttributes { Browsable = false });
+        MapBroadcastChannels = Bind(SettingSections.MapToolsSharing, "BroadcastChannels", string.Empty, "Broadcast channels", "Managed by Channels in the full map's Tools menu. Comma-separated channels where you send, receive and collaborate, up to 10. Empty keeps your drawings local. Channel keys choose the channel for new drawings, defaulting to Shift+1 to Shift+9 and Shift+0. Rebind them in F1.", display: new ConfigurationManagerAttributes { Browsable = false });
         MapReceiveChannels = Bind(SettingSections.MapToolsSharing, "ReceiveChannels", string.Empty, "Receive-only channels", "Managed by Channels in the full map's Tools menu. Extra channels whose drawings you only view, up to 10. Broadcast channels are already received and allow collaboration. Names use ASCII letters, digits, spaces, dots, underscores or hyphens, up to 32 characters.", display: new ConfigurationManagerAttributes { Browsable = false });
 
         MapToolColor = Bind(SettingSections.MapToolsDrawing, "Color", (Color)new Color32(51, 255, 51, 255), "Drawing colour", "Colour of new lines, arrows, and text. The menu's swatches set it; any colour works here.", advanced: true);
@@ -80,6 +92,16 @@ internal sealed class ModSettings
         MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha4);
         MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha5);
         MapToolEraserKey = BindToolKey("EraserKey", "Eraser", KeyCode.Alpha6);
+        MapChannelKeys = new ConfigEntry<KeyboardShortcut>[DrawingChannels.MaxChannels];
+        for (var index = 0; index < MapChannelKeys.Length; index++)
+        {
+            var slot = index + 1;
+            var key = index == 9 ? KeyCode.Alpha0 : (KeyCode)((int)KeyCode.Alpha1 + index);
+            MapChannelKeys[index] = Bind(SettingSections.MapToolsKeysAndLimits, "ChannelKey" + slot,
+                new KeyboardShortcut(key, KeyCode.LeftShift), "Channel " + slot + " key",
+                $"Pick Broadcast slot {slot} for new drawings while the full map is open. Either Shift key works for a Shift modifier. Clear the binding to disable this shortcut.", advanced: true);
+        }
+
         MapToolMaxShapes = Bind(SettingSections.MapToolsKeysAndLimits, "MaxShapes", 100, "Most drawings", "Most drawings kept at once. Tools can't add more until something is erased or undone.", new AcceptableValueRange<int>(10, 100), advanced: true);
         MapToolMaxPenPoints = Bind(SettingSections.MapToolsKeysAndLimits, "MaxPenPoints", 2500, "Most pen points", "Most freehand points kept across all pen strokes, so the map stays fast.", new AcceptableValueRange<int>(500, 2500), advanced: true);
 
@@ -98,6 +120,22 @@ internal sealed class ModSettings
             LogPerformance.Value = true;
             LogNetwork.Value = true;
             logsOnFor.Value = LogsOnBeta;
+        }
+
+        var lookFor = Bind(SettingSections.Diagnostics, "LookUpdatedFor", string.Empty, "Look updated for", "The release that last moved the map's look to its new defaults once (LookUpgrade).", display: new ConfigurationManagerAttributes { Browsable = false });
+        if (lookFor.Value != LookUpgrade.Release)
+        {
+            foreach (var (section, key, _, _) in LookUpgrade.Changes)
+            {
+                var definition = new ConfigDefinition(section, key);
+                if (_config.ContainsKey(definition) &&
+                    LookUpgrade.Upgrade(section, key, _config[definition].GetSerializedValue()) is { } upgraded)
+                {
+                    _config[definition].SetSerializedValue(upgraded);
+                }
+            }
+
+            lookFor.Value = LookUpgrade.Release;
         }
     }
 
@@ -124,11 +162,17 @@ internal sealed class ModSettings
     public ConfigEntry<Color> RunwayColor { get; }
     public ConfigEntry<Color> RunwayLabelColor { get; }
     public ConfigEntry<bool> RunwayBothEnds { get; }
+    public ConfigEntry<bool> RunwayPaintedNumbers { get; }
+    public ConfigEntry<bool> RunwayNumbersOnRunway { get; }
+    public ConfigEntry<float> RunwayNumbersOnRunwayFrom { get; }
+    public ConfigEntry<bool> RunwayNumbersTurn { get; }
     public ConfigEntry<float> RunwayLabelSize { get; }
+    public ConfigEntry<float> MinimapRunwayLabelSize { get; }
     public ConfigEntry<float> RunwayMinWidth { get; }
     public ConfigEntry<float> RunwayNumbersMinGridSquare { get; }
     public ConfigEntry<Color> OutlineColor { get; }
     public ConfigEntry<float> OutlineWidth { get; }
+    public ConfigEntry<float> TextOutlineWidth { get; }
 
     public ConfigEntry<bool> ShowBoundaries { get; }
     public ConfigEntry<float> BoundaryFillOpacity { get; }
@@ -138,6 +182,11 @@ internal sealed class ModSettings
     public ConfigEntry<Color> AirbaseNameColor { get; }
     public ConfigEntry<float> AirbaseNameSize { get; }
 
+    public ConfigEntry<bool> CentreLine { get; }
+    public ConfigEntry<Color> CentreLineColor { get; }
+    public ConfigEntry<float> CentreLineWidth { get; }
+    public ConfigEntry<float> CentreLineDash { get; }
+    public ConfigEntry<float> CentreLineGap { get; }
     public ConfigEntry<float> ApproachRangeKm { get; }
     public ConfigEntry<float> ApproachLineLengthKm { get; }
     public ConfigEntry<Color> ApproachLineColor { get; }
@@ -178,6 +227,7 @@ internal sealed class ModSettings
     public ConfigEntry<KeyboardShortcut> MapToolBearingRangeKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolCircleKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolEraserKey { get; }
+    public ConfigEntry<KeyboardShortcut>[] MapChannelKeys { get; }
 
     public ConfigEntry<float> MapToolWaypointReachKm { get; }
     public ConfigEntry<float> MapToolWaypointPassedKm { get; }

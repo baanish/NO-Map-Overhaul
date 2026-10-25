@@ -8,11 +8,12 @@ Automated checks come first, then in-game checks. A screenshot from one flight s
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-350 tests pass. They cover:
+360 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
-- callout text, painted-number overrides, the abbreviation table, and the fallback abbreviation rule;
+- callout text, painted-number overrides, L, C and R on parallel runways (Feldspar and Harmony Sands from the game data, and three lines), the abbreviation table, and the fallback abbreviation rule;
 - the drawing store: undo and redo, Clear as one step, the shape and point caps, replace, reset, save and restore, and the 100-step history;
+- channel key modifiers: either Shift key or both matching a Shift binding, missing or extra keys blocking it, combinations requiring every other bound key, and non-Shift modifiers keeping their bound side;
 - bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels where the map placed them, the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
 - the eraser with shared drawings: picking the nearest of shared and local shapes and breaking ties, skipping invisible geometry while a shape at alpha 1 stays selectable, refusing a read-only shape under an overlap, permission changing while the cursor stays still, refusing a stale reference, safe callback defaults, and remote requests keeping received drawings and local history;
@@ -36,6 +37,7 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - sharing's security checks: a Steam ID listed twice or on another faction getting no drawings, a flooding teammate or stranger leaving the receive budget to honest teammates, and a snapshot with the wrong session or an old sequence rejected before its drawings are decoded or cached;
 - note text: line and paragraph separators and text-direction controls rejected when typed, sent, and received, and characters the font lacks shown as one question mark each, surrogate pairs included;
 - settings migration from a real 0.4.0 file, a new value winning, and dropping a removed setting;
+- the 0.6.0 look's one-time switch: a setting saved at an old default moving to the new one, one a player changed staying, and the new defaults pinned;
 - carrying settings over from the Baanish UI Improvements file on the first start, without the missile arrows, and never over settings already saved.
 
 The 0.6.0 sharing tests also cover:
@@ -119,6 +121,10 @@ On 2026-10-24, logs from three modded players in one ATF session on beta 5 each 
 
 Later on 2026-10-24, the build with the security review's fixes (DLL SHA-256 `aad6f7d063ec76608fce729f5caca4db9ea8d344316ab0c7ab5ec650d713ab2c` on both PCs) ran on the VM's dedicated server. Both clients picked BDF and paired, and a pen line drawn on Gemini reached Vulcan. With Vulcan's tool rail open, hovering that line started the strip with `Drawn by` and Gemini's player name. Hovering empty map showed the usual hint. Vulcan's Player.log recorded no Steam lock held for 100 ms or more and no exception.
 
+On 2026-10-25, NO Agentic Framework sessions at Feldspar on Ignus (2560x1440) checked the RC's map changes with the `rc/0.6.0` build. Runway numbers moved onto the runway once zoomed in and stayed upright. The centre line drew 30 m dashes with 60 m gaps and wasn't drawn zoomed out. The black text outline traced each letter at width 1 and thickened at 2. With two Broadcast channels, Shift+2 moved Draw to onto the second and Shift+1 back to the first. A seeded airbase name size of 11, an old default, came up as 14 on the first start, as the one-time look switch moves it.
+
+Later on 2026-10-25, the RC 1 build (DLL SHA-256 starting `ebe98619`, on both PCs) ran on the VM's dedicated server in Steam mode. Vulcan and Gemini joined BDF and paired, and a pen line drawn on Gemini reached Vulcan. Neither Player.log recorded a Steam lock hold after sharing started, and the only ICE warnings came from the game's own server connection.
+
 On 2026-10-17, a single-player NO Agentic Framework session checked the in-place redraw with the build that adds it. It drew a three-waypoint route, undid back to two waypoints, redid to three, then switched the drawing channel. Undo removed the third waypoint's line, marker, and number and left nothing behind. Redo restored them, and after the switch the route dimmed with its labels. A teammate's changing drawings use the same redraw but weren't checked between two PCs.
 
 On 2026-10-22, NO Agentic Framework sessions on Vulcan checked the 3D rings drawn by the shader (DLL SHA-256 `0c774007208de1a80964665cfa872c1074a8c79ea99e3af582e386e6364c632d`, `nomapoverhaul-shaders.bundle` `a6d16586ca334f08d2f855af251b4a4c267e31579a945ddfa47ae91bc7b426a1`) at 2560x1440. They flew at 150 m past 10 ships carrying the perf test's heavy drawings, straight and weaving 60 degrees either way. Each of eight paused frames was shot twice, once drawn by the shader and once with RingsOnCpu on. The two matched, including rings cut by the screen's edges and rings passing under and behind the camera. Seven frames differed in 2 to 38 of 3,686,400 pixels by more than 24 levels. One, with many rings stacked edge-on near the horizon, differed in 1,690. Without the bundle beside the DLL, the log said the rings were drawn on the CPU, and they were. In the perf test's heavy minimap slices, flying straight and then weaving, the rings' own time fell from 0.198 to 0.030 ms a frame and from 0.144 to 0.031. Mesh rebuilds fell from 0.339 to 0.016 and from 0.259 to 0.027, and canvas time from 1.050 to 0.726 and from 1.052 to 0.847. Not checked: the shader's rings hiding while the full map is open, other graphics cards, and Direct3D 12 or Vulkan.
@@ -170,6 +176,9 @@ Tested on Nuclear Option 0.34.2 (Steam build 24724372), Unity 2022.3.62, BepInEx
 | Airbase boundary | Observed | The circle centers on each friendly airbase, also in a helicopter, and the tuned 1% fill and 10% edge read well. |
 | Harmony Sands takeoff-only lane | Observed | The takeoff-only lane is hidden; its garbled custom-name label is gone. |
 | Feldspar painted numbers | Observed | Ignus: 16/34 on the crossing runway, and the free-flight mission's duplicate airbases carry the same numbers. Other fields' paint hasn't been compared. |
+| Harmony Sands painted numbers | Checked by agent | 2026-10-11, NO Agentic Framework free camera over each threshold: all four ends of the parallel pair are painted 14 or 32, with no letter. Main's build labelled the southwest runway 13/31. |
+| Number as painted setting | Checked by agent | 2026-10-11, NO Agentic Framework, Ignus at 4K: on (the default), Feldspar's crossing runway reads the painted 16/34; off, it reads 15/33 like the game's clearance. |
+| Parallel runway letters | Checked by agent | 2026-10-11, NO Agentic Framework, Ignus with Feldspar friendly: the long runways read 06L/24R (north) and 06R/24L (south), and the crossing runway keeps 16/34. Main's build showed 06 and 24 on both. Not yet seen by the author. |
 | Airbase names | Observed | Full map with ShowNames on: one name per airbase under its centre, clear of the friendly icon, and Ignus free flight's three Feldspar airbases share one label. |
 | Airbase names zoomed in | Observed | Zooming the full map in moves each name down to its capture circle's edge, below the base's units, up to a limit. |
 | Runway numbers zoomed out | Observed | Zooming the full map far out hides every runway's numbers on the same wheel click; the cutoff of 100 was tuned live at 3K. |

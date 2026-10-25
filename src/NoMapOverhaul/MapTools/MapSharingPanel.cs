@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using BepInEx.Configuration;
 using NoMapOverhaul.Drawing;
 using TMPro;
 using UnityEngine;
@@ -34,6 +36,8 @@ internal sealed class MapSharingPanel
     private readonly List<TextMeshProUGUI> _texts = new();
     private readonly List<PanelButton> _channels = new();
     private readonly List<MenuHover> _channelHover = new();
+    private readonly ConfigEntry<KeyboardShortcut>[] _channelKeys;
+    private readonly KeyboardShortcut[] _shownKeys = new KeyboardShortcut[DrawingChannels.MaxChannels];
     private readonly TextMeshProUGUI _destination;
     private readonly TextMeshProUGUI _sharingStatus;
     private readonly TextMeshProUGUI _selection;
@@ -55,8 +59,9 @@ internal sealed class MapSharingPanel
     private Vector2 _mapSize;
     private bool _visible;
 
-    public MapSharingPanel(RectTransform parent)
+    public MapSharingPanel(RectTransform parent, ConfigEntry<KeyboardShortcut>[] channelKeys)
     {
+        _channelKeys = channelKeys;
         _parent = parent;
         _root = NewRect("Sharing", parent);
         _bar = NewPlate("ChannelBar", _root);
@@ -175,7 +180,14 @@ internal sealed class MapSharingPanel
             var exists = i < broadcast.Names.Count;
             SetActive(button.Rect.gameObject, exists);
             if (!exists) continue;
-            if (channelsChanged) button.Label.text = "Shift+" + (i == 9 ? 0 : i + 1) + "  " + broadcast.Names[i];
+            var key = _channelKeys[i].Value;
+            if (channelsChanged || !_shownKeys[i].Equals(key))
+            {
+                var label = key.MainKey == KeyCode.None ? (i + 1).ToString()
+                    : string.Join("+", key.Modifiers.Select(KeyLabel).Append(KeyLabel(key.MainKey)));
+                button.Label.text = label + "  " + broadcast.Names[i];
+                _shownKeys[i] = key;
+            }
             if (channelsChanged || selectionChanged) button.Show(broadcast.Names[i] == broadcast.Selected);
             if (_channelHover[i].Hovered) hoveredChannel = broadcast.Names[i];
         }
@@ -296,6 +308,9 @@ internal sealed class MapSharingPanel
         input.placeholder = hint;
         return input;
     }
+
+    private static string KeyLabel(KeyCode key) =>
+        key is KeyCode.LeftShift or KeyCode.RightShift ? "Shift" : key.ToString().Replace("Alpha", string.Empty);
 
     private static void ShowInputFocus(TMP_InputField input) =>
         input.GetComponent<FeatheredRect>().SetEdges(Px, input.isFocused ? Green : Rim, Px);

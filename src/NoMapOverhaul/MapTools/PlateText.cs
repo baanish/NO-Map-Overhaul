@@ -86,6 +86,7 @@ internal sealed class PlateText
         _typesetter.ForceMeshUpdate(ignoreActiveState: true);
         glyphs.Vertices.Clear();
         glyphs.Materials.Clear();
+        glyphs.Font = _typesetter.font;
         glyphs.MaterialIndices.Clear();
         glyphs.Sprites.Clear();
         glyphs.Version++;
@@ -213,6 +214,9 @@ internal sealed class PlateText
         public List<UIVertex> Vertices { get; } = new();
 
         public List<Material> Materials { get; } = new();
+
+        /// <summary>The HUD font the glyphs at material index 0 come from, for their rim's material (<see cref="Drawing.TextRimMaterial"/>).</summary>
+        public TMP_FontAsset? Font { get; set; }
 
         /// <summary>Each glyph's place among the text's materials: 0 for the HUD font, then one per fallback font it used.</summary>
         public List<int> MaterialIndices { get; } = new();

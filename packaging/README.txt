@@ -13,10 +13,10 @@ Runway markers
 - Friendly runways drawn on the minimap and full map, numbered at each end.
 - A dashed approach line off the nearest runway end, within 5 km.
   Each dash plus gap is 500 m.
-- A "RWY 27" label over that runway's threshold in the 3D view, with an
-  optional airbase prefix for ATC calls, such as "NBSCLI RWY 27". Another
-  option hides it until the landing gear is down.
-- An optional airbase boundary, off by default, shading each friendly
+- A label over that runway's threshold in the 3D view for ATC calls, with
+  the airbase, such as "NBSCLI RWY 27". Options drop the airbase and hide
+  the label until the landing gear is down.
+- An airbase boundary, shading each friendly
   airbase's landing zone. Stop inside it after landing and the sortie counts
   as returned.
 
@@ -39,14 +39,17 @@ doesn't also move the autopilot route.
 
 Airbase names
 
-Off by default. Your faction's airbases get a name on the full map,
+Your faction's airbases get a name on the full map,
 including ones a mission adds and ones your side captures. Enemy and
 neutral airbases get no name, since the game doesn't mark them.
 
 Sharing drawings
 
-Sharing is off by default, and its multiplayer reliability is still under
-test. It sends drawings between compatible teammates over Steam Messages.
+Sharing is off by default. The sharing guide walks through setting it up
+with your flight:
+https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/SHARING_GUIDE.md
+
+It sends drawings between compatible teammates over Steam Messages.
 A compatibility patch keeps drawing connection callbacks out of gameplay
 networking. Both clients need this protocol 6 build.
 

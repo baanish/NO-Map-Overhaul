@@ -24,6 +24,7 @@ internal sealed class RunwayHudCallout
     private Airbase.Runway? _textRunway;
     private bool _textReverse;
     private bool _textWithName;
+    private bool _textPainted;
 
     public RunwayHudCallout(ModSettings settings) => _settings = settings;
 
@@ -62,14 +63,16 @@ internal sealed class RunwayHudCallout
         }
 
         var withName = _settings.HudAirbaseName.Value;
-        if (!ReferenceEquals(_textRunway, usage.Runway) || _textReverse != usage.Reverse || _textWithName != withName)
+        var painted = _settings.RunwayPaintedNumbers.Value;
+        if (!ReferenceEquals(_textRunway, usage.Runway) || _textReverse != usage.Reverse || _textWithName != withName || _textPainted != painted)
         {
-            var (startNumber, endNumber) = RunwayMapOverlay.EndNumbers(usage.Runway);
+            var (startNumber, endNumber) = RunwayMapOverlay.EndNumbers(usage.Runway, painted);
             var airbaseName = withName ? usage.Runway.airbase?.SavedAirbase?.DisplayName : null;
             _label!.text = RunwayNames.Callout(usage.Reverse ? endNumber : startNumber, airbaseName);
             _textRunway = usage.Runway;
             _textReverse = usage.Reverse;
             _textWithName = withName;
+            _textPainted = painted;
         }
 
         TransformWrites.SetPosition(_label!.transform, new Vector3(screen.x, screen.y - BelowThreshold, 0f));

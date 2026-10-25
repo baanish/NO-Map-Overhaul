@@ -136,7 +136,7 @@ internal sealed class NoteText
         var piece = new PieceBuilder(note);
         foreach (var offset in TextRim.Offsets)
         {
-            piece.AddQuads(glyphs, 0, at + (Vector3)offset, look.Rim, toMap, inverseScale);
+            piece.AddQuads(glyphs, 0, at + (Vector3)offset, look.Rim, toMap, inverseScale, rim: true);
         }
 
         piece.AddQuads(glyphs, 0, at, look.Face, toMap, inverseScale);
@@ -278,7 +278,9 @@ internal sealed class NoteText
             _max = new Vector2(float.MinValue, float.MinValue);
         }
 
-        public void AddQuads(PlateText.Glyphs glyphs, int materialIndex, Vector3 at, Color32 color, Quaternion toMap, float inverseScale)
+        /// <param name="rim">A dark copy under the text, drawn with the font's own material, not the additive one.</param>
+        public void AddQuads(PlateText.Glyphs glyphs, int materialIndex, Vector3 at, Color32 color, Quaternion toMap, float inverseScale,
+            bool rim = false)
         {
             // TextMeshPro draws a sprite white at the text's opacity, unless told to tint every sprite.
             var sprite = new Color32(255, 255, 255, color.a);
@@ -289,7 +291,7 @@ internal sealed class NoteText
                     continue;
                 }
 
-                _material ??= glyphs.Materials[quad];
+                _material ??= rim ? TextRimMaterial.For(glyphs.Font, glyphs.Materials[quad]) : glyphs.Materials[quad];
                 var quadColor = glyphs.Sprites[quad] ? sprite : color;
                 for (var corner = 0; corner < 4; corner++)
                 {

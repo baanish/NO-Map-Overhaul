@@ -5,7 +5,7 @@ namespace NoMapOverhaul.Drawing;
 
 /// <summary>
 /// Map text in the HUD label's font with a one-unit dark rim, so small, faint text stays readable over bright map
-/// linework. The rim is a <see cref="TextRim"/>, the face's glyphs copied eight times around it in one mesh, so a label
+/// linework. The rim is a <see cref="TextRim"/>, the face's glyphs copied in rings around it in one mesh, so a label
 /// is two graphics rather than nine. TMP's own SDF outline can't do it: the HUD font's atlas leaves too little padding
 /// around each glyph, so an outline wide enough to see draws every glyph's quad as a box, and a narrower one eats into
 /// the thin font. The container is scaled by the inverse map scale rather than resizing the text, so zooming
@@ -23,12 +23,28 @@ internal sealed class OutlinedText
     private string? _bakedText;
     private float _bakedSize;
     private Color _bakedRim;
+    private float _bakedRimWidth;
     private Object? _bakedFont;
     private float _bakedScale;
+
+    /// <summary>The vertex data the font's SDF shader reads past position, colour and UV: the glyphs' SDF scale is in TexCoord1.</summary>
+    private const AdditionalCanvasShaderChannels TextChannels =
+        AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.Normal | AdditionalCanvasShaderChannels.Tangent;
 
     /// <summary>Children draw after their parent, so the rim and the face are siblings under an empty container, face last.</summary>
     public OutlinedText(string name, Transform parent, Vector2 pivot, TextAlignmentOptions alignment)
     {
+        // TextMeshPro asks its own canvas for these as it draws, but the rim is a plain graphic, and a canvas without them
+        // strips TexCoord1 from its mesh: with no SDF scale, the shader draws each glyph's whole quad as a faint box.
+        if (parent.GetComponentInParent<Canvas>() is { } canvas)
+        {
+            canvas.additionalShaderChannels |= TextChannels;
+            if (canvas.rootCanvas != null)
+            {
+                canvas.rootCanvas.additionalShaderChannels |= TextChannels;
+            }
+        }
+
         Rect = NewRect(name, parent);
         _rim = NewRect("Rim", Rect).gameObject.AddComponent<TextRim>();
         _rim.raycastTarget = false;
@@ -81,7 +97,8 @@ internal sealed class OutlinedText
     /// Every TMP setter here returns early on an unchanged value, so calling this each refresh is cheap. Set the
     /// container's scale first: the rim is copied from the face again when the text, its style, or its world scale changed.
     /// </summary>
-    public void Set(string text, float size, Color color, Color rim, TextMeshProUGUI? hudStyle)
+    /// <param name="rimWidth">The rim's width in the container's units; 0 draws none.</param>
+    public void Set(string text, float size, Color color, Color rim, TextMeshProUGUI? hudStyle, float rimWidth = 1f)
     {
         if (hudStyle != null && _face.font != hudStyle.font)
         {
@@ -99,7 +116,7 @@ internal sealed class OutlinedText
         }
 
         var scale = _face.rectTransform.lossyScale.y;
-        if (text == _bakedText && size == _bakedSize && rim == _bakedRim && ReferenceEquals(_face.font, _bakedFont) &&
+        if (text == _bakedText && size == _bakedSize && rim == _bakedRim && rimWidth == _bakedRimWidth && ReferenceEquals(_face.font, _bakedFont) &&
             Mathf.Abs(scale - _bakedScale) <= RebakeScaleChange * Mathf.Abs(_bakedScale))
         {
             return;
@@ -113,10 +130,11 @@ internal sealed class OutlinedText
             return;
         }
 
-        _rim.Bake(_face, rim);
+        _rim.Bake(_face, rim, rimWidth);
         _bakedText = text.Length == 0 || _face.textInfo.characterCount > 0 ? text : null;
         _bakedSize = size;
         _bakedRim = rim;
+        _bakedRimWidth = rimWidth;
         _bakedFont = _face.font;
         _bakedScale = scale;
     }
@@ -142,7 +160,7 @@ internal sealed class OutlinedText
         if (relayout && _rimmed && _bakedText != null)
         {
             _face.ForceMeshUpdate(ignoreActiveState: true);
-            _rim.Bake(_face, _bakedRim);
+            _rim.Bake(_face, _bakedRim, _bakedRimWidth);
         }
     }
 

@@ -22,6 +22,7 @@
     <Compile Include="..\..\src\NoMapOverhaul\Sharing\DrawingProtocol.cs" Link="Sharing\DrawingProtocol.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\DrawingChannels.cs" Link="MapTools\DrawingChannels.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\ChannelRouting.cs" Link="MapTools\ChannelRouting.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\ChannelKeyModifiers.cs" Link="MapTools\ChannelKeyModifiers.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\ColorWheel.cs" Link="MapTools\ColorWheel.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\CustomColors.cs" Link="MapTools\CustomColors.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\Diagnostics\FrameStats.cs" Link="Diagnostics\FrameStats.cs" />
@@ -70,6 +71,7 @@
     <Compile Include="..\..\src\NoMapOverhaul\Tracking\KnownPositions.cs" Link="Tracking\KnownPositions.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\SettingSections.cs" Link="SettingSections.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\SettingsMigration.cs" Link="SettingsMigration.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\LookUpgrade.cs" Link="LookUpgrade.cs" />
     <None Include="Fixtures\*.cfg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

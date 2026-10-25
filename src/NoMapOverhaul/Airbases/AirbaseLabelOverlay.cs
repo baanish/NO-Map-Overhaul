@@ -67,7 +67,7 @@ internal sealed class AirbaseLabelOverlay
                 label.Rect.localPosition = new Vector2(center.x, center.z) * factor + Vector2.down * (clearance * inverseScale);
                 label.Rect.localScale = Vector3.one * inverseScale;
                 label.Set(NameOf(airbase) ?? string.Empty, _settings.AirbaseNameSize.Value, _settings.AirbaseNameColor.Value,
-                    _settings.OutlineColor.Value, hudStyle);
+                    _settings.OutlineColor.Value, hudStyle, _settings.TextOutlineWidth.Value);
                 _seen.Add(airbase);
             }
         }

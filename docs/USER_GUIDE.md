@@ -12,7 +12,7 @@ The runways, approach line, callout, boundary, and names show only at friendly a
 
 Runways show on both the minimap and the full map. The game uses one map object for both, so everything pans, zooms, and rotates with it. Each runway is a filled strip with a thin dark rim. When you zoom out, the strip keeps a minimum width so it never shrinks to nothing. Once the full map is zoomed far out, all runway numbers hide together until you zoom back in. The minimap always shows them.
 
-Each end carries the runway number you'd land on from that end. The mod works each number out from the runway heading, the same way the game numbers an unnamed runway in its landing clearance. Where the paint on the tarmac differs, the mod uses the paint, so the clearance can name a different number from the map. So far that's one runway, Feldspar's crossing runway on Ignus, which the mod labels 16/34 where the heading gives 15/33. A mission can also give a runway its own name, which the clearance uses. The mod ignores it, because mission names don't always match the paint, so the clearance and the map can differ there too. The mod doesn't draw takeoff-only runways.
+Each end carries the runway number you'd land on from that end. The mod works each number out from the runway heading, the same way the game numbers an unnamed runway in its landing clearance. Two runways on Ignus are painted differently from the game's number, and the map shows the game's, the one ATC calls. Feldspar's crossing runway reads 15/33 where it's painted 16/34, and the southwest one of Harmony Sands' parallel pair reads 13/31 where it's painted 14/32. To show the paint instead, turn on **Map / Runways → Number as painted**. Parallel runways get L, C or R for the side the runway lies on as you land, so Feldspar's two long runways read 06L and 06R landing northeast, and 24R and 24L landing southwest. The paint has no letters. The mod adds them so you can tell the two runways apart. A mission can give a runway its own name, which the clearance uses. The mod ignores it, because mission names don't always match the paint. The mod doesn't draw takeoff-only runways.
 
 ### The approach line
 
@@ -30,17 +30,17 @@ With **Only with gear down** on, the label shows only while your gear is down. I
 
 ### The airbase boundary
 
-Turn on **Map / Airbase Boundary → Show landing zone** to shade each friendly airbase's landing zone with a faint circle and a thin edge line, in the game's friendly map colour.
+**Map / Airbase Boundary → Show landing zone**, on by default, shades each friendly airbase's landing zone with a faint circle and a thin edge line, in the game's friendly map colour.
 
 The circle is the game's own rule. An aircraft that counts as landed inside it (radar altitude under 5 m, speed under 2.5 m/s) ends the sortie as returned rather than crashed. The same radius is the airbase's capture range, so the circle is also the capture zone.
 
 ### Airbase names
 
-Turn on **Map / Airbase Names → Show airbase names** to label your faction's airbases on the full map, under where the game draws their icon. As you zoom in, the name moves down to the edge of the airbase's capture circle, the same circle as the landing zone, so it stays clear of the base's units. A limit keeps it on screen.
+**Map / Airbase Names → Show airbase names**, on by default, labels your faction's airbases on the full map, under where the game draws their icon. As you zoom in, the name moves down to the edge of the airbase's capture circle, the same circle as the landing zone, so it stays clear of the base's units. A limit keeps it on screen.
 
 Every airbase the game gives your side an icon for gets a name. That covers the map's own airbases, ones a mission adds, ones your side captures, and ones the mission switched off, which the game still marks. The name is the one the game shows when you hover over the icon. Enemy and neutral airbases get no name, since the game doesn't mark them. Carriers get none either, since the ship's icon marks the deck. Airbases sharing a name get one label: Ignus free flight has three airbases called "Feldspar International Airport".
 
-By default the labels are a faint version of the runway numbers' green. They don't show on the minimap.
+By default the labels are pale green with a black outline. They don't show on the minimap.
 
 ### Map tools
 
@@ -66,27 +66,38 @@ The table lists the sections in the order F1 shows them.
 | --- | --- | --- | --- | --- |
 | General | Enabled | Enabled | `true` | Off hides everything the mod draws, as if it were not installed. Use it to check whether a problem comes from the mod or the game. |
 | Map / Runways | Show runways | ShowRunways | `true` | Draw runways and their numbers. |
-| Map / Runways | Runway colour | RunwayColor | `00D900D9` | Strip fill. |
-| Map / Runways | Number colour | RunwayLabelColor | `99FF99FF` | Runway number colour. |
+| Map / Runways | Runway colour | RunwayColor | `000000FF` | Strip fill. |
+| Map / Runways | Number colour | RunwayLabelColor | `FFFFFFFF` | Runway number colour. |
 | Map / Runways | Number both ends | NumberBothEnds | `true` | Number both ends of every runway. Off hides the number at the end of a one-way runway that the game never lands you from. |
-| Map / Runways | Number size, *advanced* | RunwayLabelSize | `8` | Runway number size. |
+| Map / Runways | Numbers on runway | NumbersOnRunway | `true` | Once you zoom in far enough for a number to fit across its runway, draw it on the runway at that end, the way it's painted, upright like the rest of the map's text. |
+| Map / Runways | On runway from | NumbersOnRunwayFrom | `0.75` | How large a number must be able to show across its runway, as a multiple of its size beside it, before it moves onto it, from `0.5` to `5`. Higher waits until you're zoomed in further. |
+| Map / Runways | Turn with runway | NumbersOnRunwayTurn | `false` | Turn a number on the runway to read for a pilot landing there, like the paint, instead of keeping it upright. |
+| Map / Runways | Number as painted | PaintedNumbers | `false` | Where the paint on a runway differs from the game's number, show the paint: 34/16 rather than 33/15 on Feldspar's crossing runway, 14/32 rather than 13/31 on Harmony Sands' southwest runway. Off shows the number ATC calls. Applies to the map and the HUD callout. |
+| Map / Runways | Number size, *advanced* | RunwayLabelSize | `14` | Runway number size on the full map. |
+| Map / Runways | Minimap number size, *advanced* | MinimapRunwayLabelSize | `8` | Runway number size on the minimap. |
 | Map / Runways | Minimum width, *advanced* | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
 | Map / Runways | Numbers from zoom, *advanced* | NumbersMinGridSquare | `100` | On the full map, hide every runway number while one grid square is narrower than this on screen, so zoomed far out they don't pile onto the airbases. The minimap always shows them. `0` always shows them. |
+| Map / Runway Centre Line | Show centre line | ShowCentreLine | `false` | A dashed line down the middle of each runway. |
+| Map / Runway Centre Line | Line colour | Color | `FFFFFFFF` | Centre line colour. |
+| Map / Runway Centre Line | Line width | Width | `1` | Centre line width, in map icon units. |
+| Map / Runway Centre Line | Dash length (m) | DashLength | `30` | Length of each dash on the ground, so dashes grow as you zoom in like the paint. Zoomed out, once a dash would be shorter than 2 map icon units, the line isn't drawn. |
+| Map / Runway Centre Line | Gap length (m) | GapLength | `60` | Gap between dashes on the ground. |
 | Map / Approach Line | Show within (km) | TriggerRangeKm | `5` | How close to a runway the approach line and the HUD callout appear. |
 | Map / Approach Line | Line length (km) | LineLengthKm | `5` | Approach line length. |
 | Map / Approach Line | Line colour | LineColor | `00D90066` | Approach line colour. |
 | Map / Approach Line | Line width, *advanced* | LineWidth | `1` | Approach line width. |
-| Map / Airbase Names | Show airbase names | ShowNames | `false` | Name your faction's airbases on the full map. |
-| Map / Airbase Names | Name colour | Color | `99FF99BF` | Name colour. |
-| Map / Airbase Names | Name size, *advanced* | Size | `8` | Name size. |
-| Map / Airbase Boundary | Show landing zone | ShowBoundary | `false` | Shade each friendly airbase's landing zone. |
+| Map / Airbase Names | Show airbase names | ShowNames | `true` | Name your faction's airbases on the full map. |
+| Map / Airbase Names | Name colour | Color | `BFFFBFFF` | Name colour. |
+| Map / Airbase Names | Name size, *advanced* | Size | `14` | Name size. |
+| Map / Airbase Boundary | Show landing zone | ShowBoundary | `true` | Shade each friendly airbase's landing zone. |
 | Map / Airbase Boundary | Fill opacity, *advanced* | FillOpacity | `0.01` | Opacity of the shaded zone, from 0 to 1. |
 | Map / Airbase Boundary | Edge opacity, *advanced* | EdgeOpacity | `0.1` | Opacity of the edge line, from 0 to 1. `0` hides it. |
-| Map / Outline | Outline colour, *advanced* | OutlineColor | `051405D9` | Rim around strips, approach dashes, and map text. |
-| Map / Outline | Outline width, *advanced* | OutlineWidth | `0.75` | Rim width around strips and dashes. `0` turns it off. Text always gets a 1-unit rim. |
+| Map / Outline | Outline colour, *advanced* | OutlineColor | `000000FF` | Rim around strips, approach dashes, and map text. |
+| Map / Outline | Text outline width, *advanced* | TextOutlineWidth | `2` | Rim width around runway numbers and airbase names, in the outline colour, from `0` (none) to `3`. |
+| Map / Outline | Outline width, *advanced* | OutlineWidth | `1` | Rim width around strips and dashes. `0` turns it off. |
 | HUD / Runway Callout | Show runway callout | ShowRunwayCallout | `true` | Show the `RWY 27` label. |
 | HUD / Runway Callout | Only with gear down | OnlyWithGearDown | `false` | Show the label only while the landing gear is down. |
-| HUD / Runway Callout | Include airbase name | IncludeAirbaseName | `false` | Prefix the label with the abbreviated airbase name. |
+| HUD / Runway Callout | Include airbase name | IncludeAirbaseName | `true` | Prefix the label with the abbreviated airbase name. |
 | HUD / Runway Callout | Callout colour | CalloutColor | `33FF33FF` | Label colour. |
 | Map Tools / General | Show map tools | ShowTools | `true` | Show the Tools button on the full map and everything drawn with it. Off hides both. Drawings come back when it's on again, until you leave the mission. |
 | Map Tools / General | Show on minimap | ShowOnMinimap | `true` | Show drawings on the minimap as well as the full map. Off keeps the minimap clear. The full map and the 3D labels still show them. |
@@ -108,6 +119,16 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Keys and Limits | Pen key, *advanced* | PenKey | `Alpha4` | Pick Pen, the same way. |
 | Map Tools / Keys and Limits | Waypoint key, *advanced* | WaypointKey | `Alpha5` | Pick Waypoint, the same way. |
 | Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
+| Map Tools / Keys and Limits | Channel 1 key, *advanced* | ChannelKey1 | `LeftShift + Alpha1` | Pick Broadcast slot 1 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 2 key, *advanced* | ChannelKey2 | `LeftShift + Alpha2` | Pick Broadcast slot 2 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 3 key, *advanced* | ChannelKey3 | `LeftShift + Alpha3` | Pick Broadcast slot 3 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 4 key, *advanced* | ChannelKey4 | `LeftShift + Alpha4` | Pick Broadcast slot 4 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 5 key, *advanced* | ChannelKey5 | `LeftShift + Alpha5` | Pick Broadcast slot 5 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 6 key, *advanced* | ChannelKey6 | `LeftShift + Alpha6` | Pick Broadcast slot 6 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 7 key, *advanced* | ChannelKey7 | `LeftShift + Alpha7` | Pick Broadcast slot 7 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 8 key, *advanced* | ChannelKey8 | `LeftShift + Alpha8` | Pick Broadcast slot 8 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 9 key, *advanced* | ChannelKey9 | `LeftShift + Alpha9` | Pick Broadcast slot 9 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
+| Map Tools / Keys and Limits | Channel 10 key, *advanced* | ChannelKey10 | `LeftShift + Alpha0` | Pick Broadcast slot 10 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
 | Map Tools / Keys and Limits | Most drawings, *advanced* | MaxShapes | `100` | Most drawings kept at once. At most `100`, what one teammate can share. |
 | Map Tools / Keys and Limits | Most pen points, *advanced* | MaxPenPoints | `2500` | Most freehand points kept across all pen strokes, so the map stays fast. At most `2500`. |
 | Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1 compares the frame rate with and without the mod automatically. See [The perf test](#the-perf-test). |
@@ -123,23 +144,9 @@ Widths and sizes use the same units as the game's own map icons, so they look th
 
 The **+** under the rail's swatches adds up to six colours of your own. Right click one to remove it (see [the rail](MAP_TOOLS.md#the-rail)). The file keeps them under the key `CustomColors` in `[Map Tools / Drawing]` as comma-separated `#RRGGBB`, such as `#FF8000,#8040FF`. F1 doesn't show this key. The mod ignores entries that aren't `#RRGGBB`.
 
-To set up sharing, open **Tools → Channels** on the full map, edit **Broadcast** and **Receive only**, turn sharing on or off, and press **Apply**. Sharing starts off, with both lists empty. Both fields show lowercase as you type. Invalid input leaves both active lists unchanged. Cancel, Escape, or closing the map discards edits you haven't applied.
+Sharing's channels aren't in F1. On the full map, open the tool rail, click **Channels**, edit **Broadcast** and **Receive only**, turn sharing on, and press **Apply**. The [sharing guide](SHARING_GUIDE.md) covers setting it up with your flight, picking a channel with the channel keys, erasing a teammate's drawing, and troubleshooting. [Sharing](SHARING.md) is the technical reference.
 
-You receive your Broadcast channels automatically and can collaborate on them. Receive only adds read-only channels and has no shortcuts. The **Draw to** indicator shows which channel new drawings go to. To switch it, click a numbered Broadcast button or press Shift+1 through Shift+9 or Shift+0.
-
-The config file keeps the keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` in `[Map Tools / Sharing]`, hidden from F1.
-
-An accepted shared erase becomes an undo step for its original owner and clears the owner's redo branch, like any new local edit. It doesn't change the requester's undo history.
-
-Sharing uses Steam peer connections and the game's authenticated player roster. A drawing reaches a teammate only when its channel is in your Broadcast list and in either of their lists. Both clients need the updated protocol-6 build. See [sharing behavior and limits](SHARING.md).
-
-Channel names aren't passwords, and same-faction peers can see them. On player-hosted games, Steam may connect teammates directly, so a paired teammate may learn your IP address. On dedicated servers, drawing sessions use Steam's relays and don't expose your IP address to teammates.
-
-Members who broadcast the same channel can use Eraser or right-click to ask its owner to erase a drawing, then draw a replacement. Receive-only channels stay read-only.
-
-Drawings attached to units follow the recipient's own tracks. Like local ones, they read `lost` at the last known position once the recipient's side loses the unit. A drawing on a unit their side never knew stays hidden.
-
-Changing teams keeps your earlier drawings local-only, including undo history. Turning sharing off removes received drawings from your map at once. Teammates drop your drawings after 15 seconds without a message.
+The config file keeps the keys `Enabled`, `BroadcastChannels`, and `ReceiveChannels` in `[Map Tools / Sharing]`, hidden from F1. Sharing starts off, with both lists empty. Invalid channel names in the file turn sharing off until you correct them.
 
 A perf test keeps sharing your drawings and showing your teammates' as before. Its own drawings stay local unless **Perf test sharing** sends them. A team or mission change during a test cancels it and discards the test drawings.
 

@@ -9,6 +9,7 @@ using BepInEx.Configuration;
 using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using NoMapOverhaul.Sharing;
 
 namespace NoMapOverhaul.MapTools;
@@ -248,7 +249,7 @@ internal sealed class MapToolHost
             {
                 if (TakeChannelShortcut())
                 {
-                    // Shift+digits belong to channel selection even when that channel is not configured.
+                    // Channel keys belong to channel selection even when that channel is not configured.
                 }
                 else if (_settings.MapToolUndoKey.Value.IsDown())
                 {
@@ -385,7 +386,7 @@ internal sealed class MapToolHost
         _configuredPerf = perfJoins;
         if (perfJoins is { } perf)
         {
-            // Last in its list, so the player's channels keep their Shift+number keys.
+            // Last in its list, so the player's channels keep their shortcut slots.
             if (perf.Sends) broadcast += "," + PerfSharing.Channel;
             else receive += "," + PerfSharing.Channel;
         }
@@ -535,17 +536,9 @@ internal sealed class MapToolHost
 
     private bool TakeChannelShortcut()
     {
-        if (!(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) ||
-            Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
-            Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
+        for (var index = 0; index < _settings.MapChannelKeys.Length; index++)
         {
-            return false;
-        }
-
-        for (var index = 0; index < DrawingChannels.MaxChannels; index++)
-        {
-            var key = index == 9 ? KeyCode.Alpha0 : (KeyCode)((int)KeyCode.Alpha1 + index);
-            if (!Input.GetKeyDown(key))
+            if (!ChannelKeyDown(_settings.MapChannelKeys[index].Value))
             {
                 continue;
             }
@@ -559,6 +552,17 @@ internal sealed class MapToolHost
         }
 
         return false;
+    }
+
+    private static bool ChannelKeyDown(KeyboardShortcut shortcut)
+    {
+        if (shortcut.MainKey == KeyCode.None || !Input.GetKeyDown(shortcut.MainKey)) return false;
+        if (!shortcut.Modifiers.Any(key => key == KeyCode.LeftShift || key == KeyCode.RightShift)) return shortcut.IsDown();
+
+        // Match BepInEx's exact combination check, ignoring unbound mouse buttons as it does, but accepting either Shift.
+        var held = BepInEx.UnityInput.Current.SupportedKeyCodes.Where(key => key != shortcut.MainKey && key != KeyCode.None &&
+            (key < KeyCode.Mouse0 || key > KeyCode.Mouse6 || shortcut.Modifiers.Contains(key)) && Input.GetKey(key));
+        return ChannelKeyModifiers.Match(shortcut.Modifiers, held, KeyCode.LeftShift, KeyCode.RightShift);
     }
 
     private string ChannelStatus()

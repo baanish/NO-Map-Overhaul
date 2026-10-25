@@ -9,6 +9,7 @@ internal static class SettingSections
 {
     public const string General = "General";
     public const string MapRunways = "Map / Runways";
+    public const string MapCentreLine = "Map / Runway Centre Line";
     public const string MapApproachLine = "Map / Approach Line";
     public const string MapAirbaseNames = "Map / Airbase Names";
     public const string MapAirbaseBoundary = "Map / Airbase Boundary";

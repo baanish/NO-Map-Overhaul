@@ -16,6 +16,18 @@ internal sealed class RunwayMapOverlay
 {
     private const float LabelGap = 14f;
 
+    /// <summary>How much of the runway's width a number painted on it spans.</summary>
+    private const float PaintedSpan = 0.8f;
+
+    /// <summary>How far in from the threshold a painted number starts, as a share of its height.</summary>
+    private const float PaintedInset = 0.4f;
+
+    /// <summary>A long runway zoomed far in would need thousands of dashes, mostly off screen; past this many the rest are left out.</summary>
+    private const int MaxCentreLineDashes = 400;
+
+    /// <summary>The shortest a centre line dash is drawn, in map icon units; zoomed out past it the line goes.</summary>
+    private const float MinCentreLineDash = 2f;
+
     /// <summary>
     /// One square of the game's map grid, in meters: the map image is sized so 81920 m spans the grid's 16 squares
     /// (<c>MapSettings.MapSize / 81920 * 900</c> in <c>DynamicMap</c>), whatever the map. Its size on screen is a zoom
@@ -178,14 +190,47 @@ internal sealed class RunwayMapOverlay
 
     /// <summary>
     /// The numbers for a runway's Start and End, shared by the map labels and the HUD callout. Every number comes
-    /// from the runway heading, then the paint table. A runway's <c>name</c> is ignored: missions set names that
-    /// disagree with the paint (Ignus free flight calls a runway painted 06 "Runway 07").
+    /// from the runway heading, as the game's clearance numbers it, then with <paramref name="painted"/> the paint
+    /// table. A runway's <c>name</c> is ignored: missions set names that disagree with the paint (Ignus free flight
+    /// calls a runway painted 06 "Runway 07"). A parallel runway adds its side letter, as Feldspar's 06L and 06R.
     /// </summary>
-    internal static (string Start, string End) EndNumbers(Airbase.Runway runway)
+    internal static (string Start, string End) EndNumbers(Airbase.Runway runway, bool painted)
     {
-        var airbase = runway.airbase?.SavedAirbase?.DisplayName;
-        return (RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: false))),
-                RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: true))));
+        var airbase = painted ? runway.airbase?.SavedAirbase?.DisplayName : null; // no airbase, no paint override
+        var side = ParallelSide(runway);
+        return (RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: false))) + side,
+                RunwayNames.Painted(airbase, HeadingNumber(runway.GetDirection(reverse: true))) + RunwayNames.Mirrored(side));
+    }
+
+    /// <summary>The side letter for landing at the runway's Start, among every runway at its airbase.</summary>
+    private static string ParallelSide(Airbase.Runway runway)
+    {
+        var runways = runway.airbase?.runways;
+        if (runways == null)
+        {
+            return string.Empty;
+        }
+
+        var lines = new List<RunwayLine>(runways.Length);
+        var index = -1;
+        foreach (var other in runways)
+        {
+            if (other?.Start == null || other.End == null)
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(other, runway))
+            {
+                index = lines.Count;
+            }
+
+            var start = other.Start.GlobalPosition();
+            var end = other.End.GlobalPosition();
+            lines.Add(new RunwayLine(new System.Numerics.Vector2(start.x, start.z), new System.Numerics.Vector2(end.x, end.z)));
+        }
+
+        return index < 0 ? string.Empty : RunwayNames.ParallelSide(lines, index);
     }
 
     /// <summary>The same arithmetic as <c>Airbase.Runway.GetName</c> for an unnamed runway, so the numbers match its clearance.</summary>
@@ -224,13 +269,19 @@ internal sealed class RunwayMapOverlay
     {
         private readonly Airbase.Runway _runway;
         private readonly FeatheredRect _strip;
+        private readonly FeatheredRectBatch _centreLine;
+        private (Vector2 Start, Vector2 End, float InverseScale, float Width, float Dash, float Gap, Color Color, float Margin) _centreLineFor;
         private readonly OutlinedText _startLabel;
         private readonly OutlinedText _endLabel;
+        private bool _startTurned;
+        private bool _endTurned;
 
         public RunwayGraphic(Transform layer, Airbase.Runway runway)
         {
             _runway = runway;
             _strip = NewFeatheredRect("RunwayStrip", layer, new Vector2(0.5f, 0.5f));
+            _centreLine = NewRect("RunwayCentreLine", layer).gameObject.AddComponent<FeatheredRectBatch>(); // over its strip, under the numbers
+            _centreLine.raycastTarget = false;
             _startLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
             _endLabel = new OutlinedText("RunwayLabel", layer, new Vector2(0.5f, 0.5f), TextAlignmentOptions.Center);
             KeepLabelsUpright();
@@ -251,34 +302,136 @@ internal sealed class RunwayMapOverlay
             _strip.color = settings.RunwayColor.Value;
             ApplyEdges(_strip, settings, inverseScale);
 
-            // A number sits past the end it names: that is where a pilot landing on that number touches down.
-            var gap = axis * (LabelGap * inverseScale);
-            var (startNumber, endNumber) = EndNumbers(_runway);
-            PlaceLabel(_startLabel, startNumber, start - gap, settings, inverseScale, hudStyle);
-            PlaceLabel(_endLabel, endNumber, end + gap, settings, inverseScale, hudStyle);
+            var realWidth = _runway.GetWidth() * factor;
+            UpdateCentreLine(start, end, axis, Mathf.Max(realWidth, settings.RunwayMinWidth.Value * inverseScale), settings, factor, inverseScale);
+
+            // A number names the end a pilot lands at, so it sits by that end: past it, or painted on the runway there.
+            var (startNumber, endNumber) = EndNumbers(_runway, settings.RunwayPaintedNumbers.Value);
+            var width = _runway.GetWidth() * factor;
+            _startTurned = PlaceLabel(_startLabel, startNumber, start, axis, width, _startTurned, settings, inverseScale, hudStyle);
+            _endTurned = PlaceLabel(_endLabel, endNumber, end, -axis, width, _endTurned, settings, inverseScale, hudStyle);
 
             _startLabel.Visible = numbersShown;
             _endLabel.Visible = numbersShown && (_runway.Reversable || settings.RunwayBothEnds.Value);
         }
 
+        /// <summary>
+        /// Dashes down the strip's middle, the pattern centred between the ends, kept clear of each end by one and a half
+        /// strip widths, where a number painted on the runway sits. Dashes and gaps are in metres, so they grow as you zoom
+        /// in like the paint; the line's width is in map icon units, so it stays a thin line. Zoomed out, once a dash
+        /// would be shorter than <see cref="MinCentreLineDash"/>, the line isn't drawn. Rebuilt only when the runway's
+        /// place on the map or a setting changes.
+        /// </summary>
+        private void UpdateCentreLine(Vector2 start, Vector2 end, Vector2 axis, float stripWidth, ModSettings settings, float factor, float inverseScale)
+        {
+            var dash = settings.CentreLineDash.Value * factor;
+            var shown = settings.CentreLine.Value && dash >= MinCentreLineDash * inverseScale;
+            var key = shown
+                ? (start, end, inverseScale, settings.CentreLineWidth.Value, settings.CentreLineDash.Value, settings.CentreLineGap.Value,
+                    settings.CentreLineColor.Value, stripWidth)
+                : default;
+            if (key == _centreLineFor)
+            {
+                return;
+            }
+
+            _centreLineFor = key;
+            _centreLine.Clear();
+            if (shown)
+            {
+                var cycle = dash + settings.CentreLineGap.Value * factor;
+                var room = Vector2.Distance(start, end) - 3f * stripWidth;
+                var count = room < dash ? 0 : Mathf.Min(MaxCentreLineDashes, Mathf.FloorToInt((room - dash) / cycle) + 1);
+                var first = (start + end) * 0.5f - axis * ((count - 1) * cycle * 0.5f);
+                var halfWidth = settings.CentreLineWidth.Value * inverseScale * 0.5f;
+                var feather = EdgeProfile.AntiAliasWidth * inverseScale;
+                Color32 color = settings.CentreLineColor.Value;
+                for (var i = 0; i < count; i++)
+                {
+                    var center = first + axis * (i * cycle);
+                    _centreLine.AddLine(center - axis * (dash * 0.5f), center + axis * (dash * 0.5f), halfWidth, color, feather);
+                }
+            }
+
+            _centreLine.Apply();
+        }
+
+        /// <summary>A number turned with its runway keeps the runway's turn; every other number stands upright.</summary>
         public void KeepLabelsUpright()
         {
-            _startLabel.Rect.rotation = Quaternion.identity;
-            _endLabel.Rect.rotation = Quaternion.identity;
+            if (!_startTurned)
+            {
+                _startLabel.Rect.rotation = Quaternion.identity;
+            }
+
+            if (!_endTurned)
+            {
+                _endLabel.Rect.rotation = Quaternion.identity;
+            }
         }
 
         public void Destroy()
         {
             Object.Destroy(_strip.gameObject);
+            Object.Destroy(_centreLine.gameObject);
             _startLabel.Destroy();
             _endLabel.Destroy();
         }
 
-        private static void PlaceLabel(OutlinedText label, string number, Vector2 position, ModSettings settings, float inverseScale, TextMeshProUGUI? hudStyle)
+        /// <summary>
+        /// Places the number for the end at <paramref name="threshold"/>, where a pilot flying <paramref name="landing"/>
+        /// touches down. Once the runway is wide enough to hold the upright number across it at least "On runway from"
+        /// times as large as it shows beside it, the number goes on the runway just past the threshold, growing with the
+        /// runway as you zoom in. It stays upright, or with "Turn with runway" it turns to read for that pilot, like the
+        /// paint. Returns whether it's turned.
+        /// </summary>
+        private static bool PlaceLabel(OutlinedText label, string number, Vector2 threshold, Vector2 landing, float runwayWidth,
+            bool wasTurned, ModSettings settings, float inverseScale, TextMeshProUGUI? hudStyle)
         {
-            TransformWrites.SetLocalPosition(label.Rect, position);
-            TransformWrites.SetLocalScale(label.Rect, Vector3.one * inverseScale);
-            label.Set(number, settings.RunwayLabelSize.Value, settings.RunwayLabelColor.Value, settings.OutlineColor.Value, hudStyle);
+            var size = label.PreferredSize; // zero until the label first typesets, so it starts beside the runway
+            // The text's box measured across the runway and along it, in the layer's frame. Upright, the box turns with
+            // the minimap; turned, its up is the landing direction.
+            var turn = settings.RunwayNumbersTurn.Value;
+            var rotation = turn ? MapRotation(landing) : Quaternion.Inverse(label.Rect.parent.rotation);
+            var right = (Vector2)(rotation * Vector3.right);
+            var up = (Vector2)(rotation * Vector3.up);
+            var across = new Vector2(-landing.y, landing.x);
+            var acrossExtent = Mathf.Abs(Vector2.Dot(right, across)) * size.x + Mathf.Abs(Vector2.Dot(up, across)) * size.y;
+            var alongExtent = Mathf.Abs(Vector2.Dot(right, landing)) * size.x + Mathf.Abs(Vector2.Dot(up, landing)) * size.y;
+            var scale = acrossExtent > 0f ? PaintedSpan * runwayWidth / acrossExtent : 0f;
+            var painted = settings.RunwayNumbersOnRunway.Value && scale >= inverseScale * settings.RunwayNumbersOnRunwayFrom.Value;
+            var rimWidth = settings.TextOutlineWidth.Value;
+            var turned = painted && turn;
+            if (turned)
+            {
+                TransformWrites.SetLocalRotation(label.Rect, rotation);
+            }
+            else if (wasTurned)
+            {
+                label.Rect.rotation = Quaternion.identity;
+            }
+
+            if (painted)
+            {
+                TransformWrites.SetLocalPosition(label.Rect, threshold + landing * (alongExtent * scale * (0.5f + PaintedInset)));
+                TransformWrites.SetLocalScale(label.Rect, Vector3.one * scale);
+                rimWidth *= inverseScale / scale; // the rim keeps its width on screen as the number grows
+            }
+            else
+            {
+                // Parallel runways' numbers would land on each other past their thresholds when zoomed out, so an L or R
+                // number steps aside, towards its own side, by half its width.
+                var side = number.EndsWith("L") ? 1f : number.EndsWith("R") ? -1f : 0f;
+                var left = new Vector2(-landing.y, landing.x);
+                TransformWrites.SetLocalPosition(label.Rect,
+                    threshold - landing * (LabelGap * inverseScale) + left * (side * size.x * 0.5f * inverseScale));
+                TransformWrites.SetLocalScale(label.Rect, Vector3.one * inverseScale);
+            }
+
+            var labelSize = DynamicMap.mapMaximized ? settings.RunwayLabelSize.Value : settings.MinimapRunwayLabelSize.Value;
+            label.Set(number, labelSize, settings.RunwayLabelColor.Value, settings.OutlineColor.Value, hudStyle,
+                rimWidth);
+            return turned;
         }
     }
 }

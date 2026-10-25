@@ -8,16 +8,16 @@ My map mod for Nuclear Option: numbered runways with an approach line and a runw
 
 Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
-Drawing sharing is off by default. Turn it on and teammates with a compatible build see your map drawings on matching Broadcast or Receive only channels, sent over Steam networking. A compatibility patch keeps the drawing connections' callbacks out of the game's Mirage transport, and the mod adds no gameplay messages. Shockfront's dev team reviewed this design in October 2026 and said it's fine. 0.4.0 was tested in multiplayer. Sharing is in the 0.6.0 betas, and its multiplayer reliability is still under test. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
+Drawing sharing, new in 0.6.0 and off by default, shows your map drawings to teammates on your side who run the mod, on channels you name. Shockfront's dev team reviewed the design in October 2026 and said it's fine. The [sharing guide](docs/SHARING_GUIDE.md) shows how to set it up with your flight. To turn everything off without uninstalling, switch off **General → Enabled** in the settings.
 
 ## Runway markers
 
-- **Runways on the map.** Each friendly runway is a green strip with a thin dark rim, so it stays readable over the map's own bright linework. Its number sits past each end, so the west end of an east-west runway reads 09 and the east end 27. The numbers come from the runway heading, the same way the game numbers its landing clearance, except where the paint on the tarmac says otherwise.
+- **Runways on the map.** Each friendly runway is a black strip with white numbers in a black outline, so it stands out over the map's bright green linework. Its number sits past each end, so the west end of an east-west runway reads 09 and the east end 27, and zoomed in far enough it moves onto the runway, the way it's painted. Parallel runways get L, C or R. The numbers come from the runway heading, the same way the game numbers its landing clearance, and a setting shows the paint instead on the two Ignus runways painted differently. An optional dashed centre line runs down each runway. Every colour and size is a setting.
 - **Approach line.** Within 5 km, a dashed 5 km centerline extends off the nearest end of the nearest runway, so you can judge the turn onto final. Each dash plus its gap is 500 m, so the dashes double as distance ticks.
-- **HUD callout.** The same runway end gets a `RWY 27` label pinned over its threshold in the 3D view, ready for an ATC call. An optional prefix adds the airbase (`NBSCLI RWY 27`), and another option hides the label until your gear is down.
-- **Airbase boundary**, off by default. A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
+- **HUD callout.** The same runway end gets a label pinned over its threshold in the 3D view, ready for an ATC call, naming the airbase too (`NBSCLI RWY 27`). Options drop the airbase name and hide the label until your gear is down.
+- **Airbase boundary.** A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
 
-![An airbase with its numbered runway strip, name, and shaded landing zone; the dashed approach line off runway 23; and the MARIS RWY 21 callout over the threshold in the 3D view](docs/images/gallery-runways.jpg)
+![Feldspar on the full map with its black runway strips, white numbers, name, and shaded landing zone; the minimap on final for runway 24L with its dashed approach line; and the MARIS RWY 21 callout over the threshold in the 3D view](docs/images/gallery-runways.jpg)
 
 It doesn't guess which way you'll land. It always shows the end you're closest to. Helicopters get the airbase boundary but no runways (the Tarantula tiltrotor lands on runways, so it counts as a plane), and carriers are left out because the ship's own icon already marks the deck.
 
@@ -44,23 +44,13 @@ See the [map tools guide](docs/MAP_TOOLS.md) for every tool, the keys, and plann
 
 ## Airbase names
 
-Off by default. Your side's airbases get a faint name label on the full map, so you can find the one someone just called out. That includes airbases a mission adds and ones your side captures. Enemy and neutral airbases get no name, since the game doesn't mark them.
+Your side's airbases get a name label on the full map, so you can find the one someone just called out. That includes airbases a mission adds and ones your side captures. Enemy and neutral airbases get no name, since the game doesn't mark them.
 
 ## Coming soon
 
 These are in the 0.6.0 betas, and their multiplayer reliability is still under test:
 
-- **Shared drawings in multiplayer, by channel.** Turn on sharing and set Broadcast channels to send and receive drawings and work on them together. Receive only adds channels you can only read. Each list takes up to 10 comma-separated names. Any teammate with the mod can join a channel by naming it, so a name isn't a password.
-- **Picking a channel.** New drawings go to your first Broadcast channel. `Shift+1` to `Shift+9` pick Broadcast slots 1 to 9 for your next drawings, and `Shift+0` picks Broadcast slot 10. Receive-only channels take no shortcut slots.
-- **Shared erasing.** On a channel you both broadcast, you can ask another broadcaster's game to erase their drawing, then draw a replacement. A channel listed only under Receive only stays read-only.
-
-[Sharing](docs/SHARING.md) covers the design and its limits.
-
-## Requirements
-
-- Nuclear Option 0.34.2.
-- BepInEx 5, tested with 5.4.23.4.
-- Optional: [BepInEx Configuration Manager](https://github.com/BepInEx/BepInEx.ConfigurationManager) to change settings in game with F1.
+- **Shared drawings in multiplayer, by channel.** Turn on sharing and set Broadcast channels to send and receive drawings and worShared drawings, by channel, are in the 0.6.0 betas and RC 1, and their multiplayer reliability is still under test. The [sharing guide](docs/SHARING_GUIDE.md) shows how to use them, and [sharing](docs/SHARING.md) covers the design and its limits.
 
 ## Install
 
