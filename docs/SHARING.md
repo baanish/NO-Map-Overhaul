@@ -1,4 +1,4 @@
-# Drawing sharing in the 0.6.0 beta
+# Drawing sharing
 
 To set sharing up with your flight, read the [sharing guide](SHARING_GUIDE.md). This page is the technical reference: how channels route drawings, the network design and its security checks, and every limit.
 
@@ -98,7 +98,7 @@ Sharing stops when disabled, while the mod or map tools are disabled, during loa
 
 ## Validation before release
 
-For multiplayer diagnosis, have **F1 → Diagnostics → Log network** on for both clients, and save both `BepInEx/LogOutput.log` files before relaunching. It's on by default in this beta. [Network logging](USER_GUIDE.md#logging-multiplayer-sharing) explains the events, privacy limits, and output cap. Diagnostics don't change the sharing protocol or its limits.
+For multiplayer diagnosis, have **F1 → Diagnostics → Log network** on for both clients, and save both `BepInEx/LogOutput.log` files before relaunching. It's off by default. [Network logging](USER_GUIDE.md#logging-multiplayer-sharing) explains the events, privacy limits, and output cap. Diagnostics don't change the sharing protocol or its limits.
 
 `pwsh ./build/Release.ps1 -AllowDirty` runs the game-free tests, compiles against the installed game assemblies, and verifies both local packages. It doesn't launch or install the game. The protocol and peer tests exercise malformed frames, all shape types, session restart and replay, directional channels, edit requests, limits, and ownership isolation.
 

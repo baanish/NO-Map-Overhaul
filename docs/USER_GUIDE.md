@@ -73,11 +73,11 @@ The table lists the sections in the order F1 shows them.
 | Map / Runways | On runway from | NumbersOnRunwayFrom | `0.75` | How large a number must be able to show across its runway, as a multiple of its size beside it, before it moves onto it, from `0.5` to `5`. Higher waits until you're zoomed in further. |
 | Map / Runways | Turn with runway | NumbersOnRunwayTurn | `false` | Turn a number on the runway to read for a pilot landing there, like the paint, instead of keeping it upright. |
 | Map / Runways | Number as painted | PaintedNumbers | `false` | Where the paint on a runway differs from the game's number, show the paint: 34/16 rather than 33/15 on Feldspar's crossing runway, 14/32 rather than 13/31 on Harmony Sands' southwest runway. Off shows the number ATC calls. Applies to the map and the HUD callout. |
-| Map / Runways | Number size, *advanced* | RunwayLabelSize | `14` | Runway number size on the full map. |
+| Map / Runways | Number size, *advanced* | RunwayLabelSize | `10` | Runway number size on the full map. |
 | Map / Runways | Minimap number size, *advanced* | MinimapRunwayLabelSize | `8` | Runway number size on the minimap. |
 | Map / Runways | Minimum width, *advanced* | RunwayMinWidth | `6` | Narrowest a strip gets when zoomed out. |
 | Map / Runways | Numbers from zoom, *advanced* | NumbersMinGridSquare | `100` | On the full map, hide every runway number while one grid square is narrower than this on screen, so zoomed far out they don't pile onto the airbases. The minimap always shows them. `0` always shows them. |
-| Map / Runway Centre Line | Show centre line | ShowCentreLine | `false` | A dashed line down the middle of each runway. |
+| Map / Runway Centre Line | Show centre line | ShowCentreLine | `true` | A dashed line down the middle of each runway. |
 | Map / Runway Centre Line | Line colour | Color | `FFFFFFFF` | Centre line colour. |
 | Map / Runway Centre Line | Line width | Width | `1` | Centre line width, in map icon units. |
 | Map / Runway Centre Line | Dash length (m) | DashLength | `30` | Length of each dash on the ground, so dashes grow as you zoom in like the paint. Zoomed out, once a dash would be shorter than 2 map icon units, the line isn't drawn. |
@@ -134,11 +134,11 @@ The table lists the sections in the order F1 shows them.
 | Diagnostics | Perf test | PerfTest | button | **Run perf test** in F1 compares the frame rate with and without the mod automatically. See [The perf test](#the-perf-test). |
 | Diagnostics | Perf test sharing, *advanced* | PerfTestSharing | `LocalOnly` | Where the perf test's drawings go: `LocalOnly`, `Send`, `Receive`, or `Bidirectional`. See [Testing with sharing](#testing-with-sharing). |
 | Diagnostics | Perf test cycles, *advanced* | PerfTestCycles | `4` | How many times the perf test measures each condition: `4`, `8`, `16`, `32`, `64`, or `128`. More cycles measure sustained performance. |
-| Diagnostics | Log performance, *advanced* | LogPerformance | `true` | Log the frame rate, the mod's own time, Unity's UI and render costs, and each teammate's sharing every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
-| Diagnostics | Log network | LogNetwork | `true` | Log drawing-sharing events and rejection reasons when troubleshooting. |
+| Diagnostics | Log performance, *advanced* | LogPerformance | `false` | Log the frame rate, the mod's own time, Unity's UI and render costs, and each teammate's sharing every 5 seconds. See [Measuring the mod's cost](#measuring-the-mods-cost). |
+| Diagnostics | Log network | LogNetwork | `false` | Log drawing-sharing events and rejection reasons when troubleshooting. |
 | Diagnostics | Draw 3D rings on the CPU, *advanced* | RingsOnCpu | `false` | Build the circles' rings in the 3D view on the CPU instead of drawing them with the mod's shader, as it does when `nomapoverhaul-shaders.bundle` is missing. For comparing the two, or if the rings look wrong on your graphics card. |
 
-Both logs are on in this beta, to find what slows some multiplayer sessions down. Beta 4 switches them on once even if an earlier build saved them off. Turn either off and it stays off.
+Both logs start off. The 0.6.0 betas switched them on to find what slowed some multiplayer sessions down, so 0.6.0 switches them back off once for anyone who ran one. Turn either on and it stays on.
 
 Widths and sizes use the same units as the game's own map icons, so they look the same at every zoom level.
 
@@ -152,7 +152,7 @@ A perf test keeps sharing your drawings and showing your teammates' as before. I
 
 ## Logging multiplayer sharing
 
-**F1 → Diagnostics → Log network** writes timestamped `Network` lines to `BepInEx/LogOutput.log`. It's on by default in this beta. To troubleshoot, make sure it's on for both clients before you reproduce the issue.
+**F1 → Diagnostics → Log network** writes timestamped `Network` lines to `BepInEx/LogOutput.log`. It's off by default. To troubleshoot, turn it on for both clients before you reproduce the issue.
 
 The log records mission eligibility, channel-change resets, anonymous peer labels, handshakes, channel-match counts, Steam send results, connection failure codes, snapshot counts and bytes, exclusions, receive limits, quarantines, and erase results. A successful Steam send only means the message was queued locally. A receiver's `snapshot applied` line confirms that its drawing store accepted the update. Local-only drawing exclusions and channel mismatches have separate counts.
 

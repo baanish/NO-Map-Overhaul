@@ -1,10 +1,10 @@
 # NO Map Overhaul
 
-My map mod for Nuclear Option: numbered runways with an approach line and a runway callout for ATC, planning tools on the full map, and airbase names.
+My map mod for Nuclear Option: numbered runways with an approach line and a runway callout for ATC, planning tools on the full map that you can share with your flight, and airbase names.
 
 ![A seven-waypoint route on the full map, with the Waypoint tool's strip above the map](docs/images/waypoint-route.jpg)
 
-**To install it, follow the [install guide](docs/INSTALL.md).** Nuclear Option Mod Manager lists 0.5.1; the 0.6.0 betas go in by hand.
+**To install it, add NO Map Overhaul in Nuclear Option Mod Manager, or follow the [install guide](docs/INSTALL.md).**
 
 Up to 0.4.0 this mod was called Baanish UI Improvements. If you had it, delete `BepInEx/plugins/BaanishUiImprovements` when you install this; your settings carry over. Its missile arrows are now a mod of their own, [NO Missile Indicators](https://github.com/baanish/NO-Missile-Indicators).
 
@@ -12,7 +12,7 @@ Drawing sharing, new in 0.6.0 and off by default, shows your map drawings to tea
 
 ## Runway markers
 
-- **Runways on the map.** Each friendly runway is a black strip with white numbers in a black outline, so it stands out over the map's bright green linework. Its number sits past each end, so the west end of an east-west runway reads 09 and the east end 27, and zoomed in far enough it moves onto the runway, the way it's painted. Parallel runways get L, C or R. The numbers come from the runway heading, the same way the game numbers its landing clearance, and a setting shows the paint instead on the two Ignus runways painted differently. An optional dashed centre line runs down each runway. Every colour and size is a setting.
+- **Runways on the map.** Each friendly runway is a black strip with white numbers in a black outline, so it stands out over the map's bright green linework. Its number sits past each end, so the west end of an east-west runway reads 09 and the east end 27, and zoomed in far enough it moves onto the runway, the way it's painted. Parallel runways get L, C or R. The numbers come from the runway heading, the same way the game numbers its landing clearance, and a setting shows the paint instead on the two Ignus runways painted differently. A dashed centre line runs down each runway. Every colour and size is a setting.
 - **Approach line.** Within 5 km, a dashed 5 km centerline extends off the nearest end of the nearest runway, so you can judge the turn onto final. Each dash plus its gap is 500 m, so the dashes double as distance ticks.
 - **HUD callout.** The same runway end gets a label pinned over its threshold in the 3D view, ready for an ATC call, naming the airbase too (`NBSCLI RWY 27`). Options drop the airbase name and hide the label until your gear is down.
 - **Airbase boundary.** A faint shaded circle in the game's friendly map colour marks each friendly airbase's landing zone. Stop inside it after landing and the sortie ends as returned instead of crashed.
@@ -46,11 +46,11 @@ See the [map tools guide](docs/MAP_TOOLS.md) for every tool, the keys, and plann
 
 Your side's airbases get a name label on the full map, so you can find the one someone just called out. That includes airbases a mission adds and ones your side captures. Enemy and neutral airbases get no name, since the game doesn't mark them.
 
-## Coming soon
+## Shared drawings
 
-These are in the 0.6.0 betas, and their multiplayer reliability is still under test:
+Turn on sharing, name a channel such as `viper`, and everyone in your flight on the same channel sees each other's drawings on the map and minimap, with arrows, notes and circles in the 3D view too. Sharing works on player-hosted games and Steam dedicated servers, needs no server mod, and stays within your side. Point at a teammate's drawing to see who drew it.
 
-- **Shared drawings in multiplayer, by channel.** Turn on sharing and set Broadcast channels to send and receive drawings and worShared drawings, by channel, are in the 0.6.0 betas and RC 1, and their multiplayer reliability is still under test. The [sharing guide](docs/SHARING_GUIDE.md) shows how to use them, and [sharing](docs/SHARING.md) covers the design and its limits.
+The [sharing guide](docs/SHARING_GUIDE.md) shows how to set it up, and [sharing](docs/SHARING.md) covers the design and its limits.
 
 ## Install
 

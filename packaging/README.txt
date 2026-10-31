@@ -45,25 +45,15 @@ neutral airbases get no name, since the game doesn't mark them.
 
 Sharing drawings
 
-Sharing is off by default. The sharing guide walks through setting it up
-with your flight:
+Sharing is off by default. Turn it on and name a channel, such as "viper",
+and teammates on your side who run the mod on the same channel see each
+other's drawings. It works on player-hosted games and Steam dedicated
+servers, and the server needs no mod. UDP servers and spectators get none.
+Everyone who shares needs 0.6.0. Channel names are not passwords.
+
+On the full map, press H, click Channels, type a name under Broadcast, turn
+Sharing on, and click Apply. The sharing guide covers the rest:
 https://github.com/baanish/NO-Map-Overhaul/blob/main/docs/SHARING_GUIDE.md
-
-It sends drawings between compatible teammates over Steam Messages.
-A compatibility patch keeps drawing connection callbacks out of gameplay
-networking. Both clients need this protocol 6 build.
-
-On the full map, open Tools > Channels to set Broadcast, Receive only, and
-Sharing, then click Apply. Each list takes up to 10 comma-separated names.
-Broadcast channels send and receive drawings. Receive only adds read-only
-channels. Shift+1 to Shift+9 and Shift+0 pick only from the Broadcast list.
-Channel names are not passwords.
-
-Members who broadcast a channel can ask another broadcaster to erase a
-drawing with Eraser or right-click, then draw a replacement. The drawing
-stays visible until the owner's update arrives. Receive-only channels stay
-read-only. Drawings attached to units use each recipient's own tracks and
-read "lost" at the last known position, like local ones.
 
 Requirements
 
@@ -71,34 +61,13 @@ Requirements
 - BepInEx 5, tested with 5.4.23.4
 - BepInEx Configuration Manager, optional, to change settings with F1
 
-Multiplayer playtest
+Reporting a sharing problem
 
-Install this build on both clients, and on the host if a player hosts. A
-Steam dedicated server needs no mod. Older 0.6.0 builds may lack the
-connection ownership fix or use an incompatible handshake. Join the same
-faction in a player-hosted or Steam dedicated server mission. Compatibility
-with an unmodified player-host is unverified. UDP sessions and spectators
-are not supported.
-
-On both clients, open Tools > Channels. Set Broadcast to "playtest", turn
-Sharing on, and click Apply. Select playtest under Draw to. Draw a fixed
-line and note. Check that the other client sees them, can erase them, and
-can draw a replacement. Also check joining after drawings exist and
-switching Sharing off and on. For a read-only receiver, leave Broadcast
-empty and set Receive only to playtest. Sharing polls the network at 5 Hz
-and pairs with up to 32 other players. Channel roles run on the honor
-system.
-
-F1 > Diagnostics > Log network is on by default in this beta. The first
-start of 0.6.0 beta 4 or later switches it on once, even if an earlier build
-saved it off. It records connections, handshakes, packet counts, drawing
-exclusions, and rejection reasons in BepInEx/LogOutput.log, capped at 128
-event lines per five seconds. The mod's Network lines omit Steam IDs, IPs,
-nonces, channel names, note text, and coordinates. Other mods and the game
-may log those elsewhere in the same file. Keep it on for both clients when
-troubleshooting, and save both players' LogOutput.log files before
-restarting the game. Turn Log network off after testing. That doesn't
-disable sharing.
+Both players turn on F1 > Diagnostics > Log network, reproduce the problem,
+and save BepInEx/LogOutput.log before restarting the game. The mod's
+Network lines leave out Steam IDs, IP addresses, channel names, note text,
+and positions. Other mods and the game may log those elsewhere in the same
+file, so read it before posting it.
 
 Install
 

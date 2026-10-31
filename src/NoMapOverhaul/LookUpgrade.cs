@@ -18,7 +18,7 @@ internal static class LookUpgrade
         (SettingSections.MapRunways, "RunwayLabelColor", new[] { "99FF99FF" }, "FFFFFFFF"),
         (SettingSections.MapRunways, "NumbersOnRunwayFrom", new[] { "1" }, "0.75"),
         (SettingSections.MapRunways, "PaintedNumbers", new[] { "true" }, "false"),
-        (SettingSections.MapRunways, "RunwayLabelSize", new[] { "8" }, "14"),
+        (SettingSections.MapRunways, "RunwayLabelSize", new[] { "8" }, "10"),
         (SettingSections.MapAirbaseNames, "ShowNames", new[] { "false" }, "true"),
         (SettingSections.MapAirbaseNames, "Color", new[] { "99FF99BF" }, "BFFFBFFF"),
         (SettingSections.MapAirbaseNames, "Size", new[] { "8", "11" }, "14"),

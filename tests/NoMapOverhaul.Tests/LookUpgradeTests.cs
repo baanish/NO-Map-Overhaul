@@ -33,7 +33,7 @@ internal static class LookUpgradeTests
     {
         var pinned = string.Join(", ", LookUpgrade.Changes.Select(change => $"{change.Key}={change.NewDefault}"));
         ExpectText(pinned, "RunwayColor=000000FF, RunwayLabelColor=FFFFFFFF, NumbersOnRunwayFrom=0.75, PaintedNumbers=false, " +
-            "RunwayLabelSize=14, ShowNames=true, Color=BFFFBFFF, Size=14, ShowBoundary=true, OutlineColor=000000FF, " +
+            "RunwayLabelSize=10, ShowNames=true, Color=BFFFBFFF, Size=14, ShowBoundary=true, OutlineColor=000000FF, " +
             "TextOutlineWidth=2, OutlineWidth=1, IncludeAirbaseName=true");
     }
 }

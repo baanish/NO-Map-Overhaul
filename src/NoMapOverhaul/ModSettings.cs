@@ -31,12 +31,12 @@ internal sealed class ModSettings
         RunwayNumbersOnRunwayFrom = Bind(SettingSections.MapRunways, "NumbersOnRunwayFrom", 0.75f, "On runway from", "How large a number must be able to show across its runway, as a multiple of its size beside the runway, before it moves onto it. Higher waits until you're zoomed in further.", new AcceptableValueRange<float>(0.5f, 5f));
         RunwayNumbersTurn = Bind(SettingSections.MapRunways, "NumbersOnRunwayTurn", false, "Turn with runway", "Turn a number on the runway to read for a pilot landing there, like the paint, instead of keeping it upright.");
         RunwayPaintedNumbers = Bind(SettingSections.MapRunways, "PaintedNumbers", false, "Number as painted", "Where the number painted on a runway differs from the game's own, show the paint: 34/16 rather than 33/15 on Feldspar's crossing runway, and 14/32 rather than 13/31 on Harmony Sands' southwest runway. Off shows the game's number, the one ATC calls. Applies to the map and the HUD callout.");
-        RunwayLabelSize = Bind(SettingSections.MapRunways, "RunwayLabelSize", 14f, "Number size", "Runway number size on the full map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
+        RunwayLabelSize = Bind(SettingSections.MapRunways, "RunwayLabelSize", 10f, "Number size", "Runway number size on the full map.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
         MinimapRunwayLabelSize = Bind(SettingSections.MapRunways, "MinimapRunwayLabelSize", 8f, "Minimap number size", "Runway number size on the minimap, which shows a smaller area.", new AcceptableValueRange<float>(4f, 64f), advanced: true);
         RunwayMinWidth = Bind(SettingSections.MapRunways, "RunwayMinWidth", 6f, "Minimum width", "Narrowest a runway strip gets when zoomed out, in map icon units.", new AcceptableValueRange<float>(1f, 30f), advanced: true);
         RunwayNumbersMinGridSquare = Bind(SettingSections.MapRunways, "NumbersMinGridSquare", 100f, "Numbers from zoom", "On the full map, hide every runway number while one grid square is narrower than this on screen, in map icon units, so zoomed far out they don't pile onto the airbases. The minimap always shows them. 0 always shows them.", new AcceptableValueRange<float>(0f, 1000f), advanced: true);
 
-        CentreLine = Bind(SettingSections.MapCentreLine, "ShowCentreLine", false, "Show centre line", "Draw a dashed line down the middle of each runway, between its ends.");
+        CentreLine = Bind(SettingSections.MapCentreLine, "ShowCentreLine", true, "Show centre line", "Draw a dashed line down the middle of each runway, between its ends.");
         CentreLineColor = Bind(SettingSections.MapCentreLine, "Color", Color.white, "Line colour", "Colour of the runway centre line.");
         CentreLineWidth = Bind(SettingSections.MapCentreLine, "Width", 1f, "Line width", "Centre line width, in map icon units.", new AcceptableValueRange<float>(0.25f, 6f));
         CentreLineDash = Bind(SettingSections.MapCentreLine, "DashLength", 30f, "Dash length (m)", "Length of each dash on the ground, in metres, so the dashes grow as you zoom in like the paint. Zoomed out, once a dash would be shorter than 2 map icon units, the line isn't drawn.", new AcceptableValueRange<float>(5f, 500f));
@@ -108,18 +108,18 @@ internal sealed class ModSettings
         PerfTest = Bind(SettingSections.Diagnostics, "PerfTest", false, "Perf test", "In a mission, in an aircraft: measures the frame rate with the mod off, on, and on with a typical and a heavy set of drawings, on the minimap and the full map, then puts everything back. About 85 seconds; press again to cancel. Results go to the screen and BepInEx/LogOutput.log.", display: PerfTestButton);
         PerfTestSharing = Bind(SettingSections.Diagnostics, "PerfTestSharing", Diagnostics.PerfTestSharing.LocalOnly, "Perf test sharing", "Where the perf test's drawings go. LocalOnly keeps them on this map. Send also sends them over sharing, Receive draws none and shows a teammate's, Bidirectional does both: start the test on both PCs within the same half minute, in a Steam multiplayer mission on the same team, and their slices line up. The test uses its own perf-test channel and needs no channel set up; your drawings and your teammates' are kept and sent as before.", advanced: true);
         PerfTestCycles = Bind(SettingSections.Diagnostics, "PerfTestCycles", 4, "Perf test cycles", "How many times the perf test measures each condition. 4 takes about 85 seconds; more measures sustained performance, and the log gets a line per cycle to show any drift.", new AcceptableValueList<int>(4, 8, 16, 32, 64, 128), advanced: true);
-        LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", true, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
-        LogNetwork = Bind(SettingSections.Diagnostics, "LogNetwork", true, "Log network", "Log drawing-sharing connections, handshakes, channel changes, packet counts and rejection reasons to BepInEx/LogOutput.log. No Steam IDs, IPs, note text or coordinates. Enable when troubleshooting sharing.");
+        LogPerformance = Bind(SettingSections.Diagnostics, "LogPerformance", false, "Log performance", "Every 5 seconds, log the game's frame rate and the mod's own time per frame and per map refresh to BepInEx/LogOutput.log. Flip Enabled while it's on to compare with and without the mod.", advanced: true);
+        LogNetwork = Bind(SettingSections.Diagnostics, "LogNetwork", false, "Log network", "Log drawing-sharing connections, handshakes, channel changes, packet counts and rejection reasons to BepInEx/LogOutput.log. No Steam IDs, IPs, note text or coordinates. Enable when troubleshooting sharing.");
         RingsOnCpu = Bind(SettingSections.Diagnostics, "RingsOnCpu", false, "Draw 3D rings on the CPU", "Build the circles' rings in the 3D view on the CPU, as the mod does when its shader file is missing, instead of drawing them with the shader. For comparing the two, or if the rings look wrong on your graphics card.", advanced: true);
 
-        // The beta's testers ran earlier builds with both logs saved off, which a new default doesn't change: they're
-        // switched on once, and a tester who turns them off afterwards keeps them off.
-        var logsOnFor = Bind(SettingSections.Diagnostics, "LogsTurnedOnFor", string.Empty, "Logs turned on for", "The beta that last switched Log performance and Log network on once.", display: new ConfigurationManagerAttributes { Browsable = false });
-        if (logsOnFor.Value != LogsOnBeta)
+        // 0.6.0 beta 4 and later betas switched both logs on once to find a multiplayer slowdown, and saved this marker.
+        // Those players get both switched back off once, and turning either on afterwards sticks.
+        var logsOnFor = Bind(SettingSections.Diagnostics, "LogsTurnedOnFor", string.Empty, "Logs turned on for", "The beta that switched Log performance and Log network on, until 0.6.0 switches them back off once.", display: new ConfigurationManagerAttributes { Browsable = false });
+        if (logsOnFor.Value.Length > 0)
         {
-            LogPerformance.Value = true;
-            LogNetwork.Value = true;
-            logsOnFor.Value = LogsOnBeta;
+            LogPerformance.Value = false;
+            LogNetwork.Value = false;
+            logsOnFor.Value = string.Empty;
         }
 
         var lookFor = Bind(SettingSections.Diagnostics, "LookUpdatedFor", string.Empty, "Look updated for", "The release that last moved the map's look to its new defaults once (LookUpgrade).", display: new ConfigurationManagerAttributes { Browsable = false });
@@ -138,9 +138,6 @@ internal sealed class ModSettings
             lookFor.Value = LookUpgrade.Release;
         }
     }
-
-    /// <summary>The beta whose first start switches both logs on once, whatever an earlier build saved.</summary>
-    private const string LogsOnBeta = "0.6.0-beta-4";
 
     public ConfigEntry<float> OtherChannelsOpacity { get; }
     public ConfigEntry<float> OtherChannelsBrightness { get; }

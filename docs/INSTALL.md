@@ -1,6 +1,6 @@
 # Install NO Map Overhaul
 
-NO Map Overhaul is a BepInEx 5 plugin, so installing it means installing BepInEx once, then dropping the mod's folder into it. Nuclear Option Mod Manager lists 0.5.1, but the 0.6.0 betas aren't in its catalog, so they go in by hand.
+NO Map Overhaul is a BepInEx 5 plugin, so installing it means installing BepInEx once, then dropping the mod's folder into it. Nuclear Option Mod Manager can do all of this for you: add NO Map Overhaul there and skip this guide. These steps are for installing by hand.
 
 Every path below is relative to the game folder, the one holding `NuclearOption.exe`. To open it, right-click Nuclear Option in your Steam library and choose **Manage → Browse local files**.
 

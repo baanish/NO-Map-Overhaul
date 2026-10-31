@@ -110,7 +110,7 @@ Sharing works on player-hosted games and on Steam dedicated servers, such as the
 
 Servers running in UDP mode can't share, because the mod needs each player's Steam identity. There the status line stays on `Waiting for a Steam team session.`
 
-On a dedicated server, everyone who shares needs 0.6.0, or 0.6.0 beta 5 or later. On a player-hosted game, beta 3 or later also pairs with 0.6.0.
+Everyone who shares needs 0.6.0. Players still on a 0.6.0 beta pair with it too: beta 5 or later on a dedicated server, beta 3 or later on a player-hosted game.
 
 ## Privacy
 
@@ -156,7 +156,7 @@ Their build can't pair with yours. Both of you update to the latest release, the
 
 If sharing misbehaves, a log from both players finds the cause:
 
-1. Make sure **F1 → Diagnostics → Log network** is on for both players. It's on by default.
+1. Both players turn on **F1 → Diagnostics → Log network**. It's off by default.
 2. Reproduce the problem.
 3. Before restarting the game, which overwrites it, each player copies `BepInEx/LogOutput.log` from the game folder.
 4. [Open an issue](https://github.com/baanish/NO-Map-Overhaul/issues) with both logs, each player's Broadcast and Receive only lists, and what you expected to see.
