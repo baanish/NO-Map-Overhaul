@@ -590,5 +590,6 @@ internal static class ReceivedDrawingsTests
     {
         public UnknownShape() : base(ReceivedDrawingsTests.Color) { }
         public override void Draw(IMapCanvas canvas) { }
+        public override MapShape WithColor(ShapeColor color) => throw new NotSupportedException();
     }
 }

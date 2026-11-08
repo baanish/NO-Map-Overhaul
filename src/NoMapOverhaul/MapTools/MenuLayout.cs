@@ -69,11 +69,24 @@ internal sealed class RailGrid
 {
     public const float RailWidth = 48f;
     public const float HeadHeight = 48f;
-    public const float ToolHeight = 44f;
+
+    /// <summary>
+    /// Flatter than the other cells, so three rows of three tools stand beside the map at 16:9 between the speed readout
+    /// and the MFD buttons: at 44, like the actions' 40, the rail would be 36 pixels too tall there.
+    /// </summary>
+    public const float ToolHeight = 31f;
+
     public const float ActionHeight = 40f;
+
+    /// <summary>
+    /// Tool cells the rail keeps, a 3x3 grid in three columns: the tools, then "coming soon" cells for the tools planned
+    /// after them, so the rail keeps its shape as they arrive.
+    /// </summary>
+    public const int ToolSlots = 9;
+
     /// <summary>
     /// The gap between groups. Kept tight, like <see cref="SwatchCell"/>, so three columns, custom row included, stand
-    /// beside the map at 16:9 with their top only 14 pixels above its edge (see <see cref="MenuLayout"/>).
+    /// beside the map at 16:9 with their top only 19 pixels above its edge (see <see cref="MenuLayout"/>).
     /// </summary>
     public const float GroupGap = 6f;
 

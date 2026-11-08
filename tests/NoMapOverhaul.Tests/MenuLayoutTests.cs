@@ -44,48 +44,50 @@ internal static class MenuLayoutTests
     private const float StartHint = 231f;
     private const float RouteButtons = 142f;
 
-    private const int Tools = 6;
+    /// <summary>The rail's tool cells: seven tools and two coming soon.</summary>
+    private const int Tools = RailGrid.ToolSlots;
     private const int Swatches = 6;
     private const int CustomSwatches = 6;
 
     /// <summary>
-    /// The head and its 1-pixel rule (49), six 44-pixel tools (313), a 6-pixel gap (319), three 40-pixel actions (439), a
-    /// gap (445), three 22-pixel rows of built-in swatches (511), three of custom ones (577), and 6 pixels under them.
+    /// The head and its 1-pixel rule (49), nine 31-pixel tool cells (328), a 6-pixel gap (334), three 40-pixel actions
+    /// (454), a gap (460), three 22-pixel rows of built-in swatches (526), three of custom ones (592), and 6 pixels under them.
     /// </summary>
     private static void OneColumnIsDesignC()
     {
         var grid = new RailGrid(1, Tools, Swatches, CustomSwatches);
         ExpectNear(grid.Width, 48f, "width");
-        ExpectNear(grid.Height, 583f, "height");
+        ExpectNear(grid.Height, 598f, "height");
         ExpectSlot(grid.Head, 0f, 0f, "head");
-        ExpectSlot(grid.Tools[5], 0f, 49f + 5 * 44f, "last tool");
-        ExpectSlot(grid.Actions[2], 0f, 319f + 2 * 40f, "clear");
+        ExpectSlot(grid.Tools[8], 0f, 49f + 8 * 31f, "last tool cell");
+        ExpectSlot(grid.Actions[2], 0f, 334f + 2 * 40f, "clear");
         ExpectNear(grid.SwatchCenters[0].X, 12f, "first swatch x");
         ExpectNear(grid.SwatchCenters[5].X, 36f, "last swatch x");
-        ExpectNear(grid.SwatchCenters[5].Y, 445f + 2.5f * 22f, "last swatch y");
+        ExpectNear(grid.SwatchCenters[5].Y, 460f + 2.5f * 22f, "last swatch y");
     }
 
     /// <summary>
-    /// Three columns: the head (49), two rows of tools (137), a gap (143), one row of actions (183), a gap (189), one row
-    /// of built-in swatches (211) and one of custom ones (233), and 6 under them. Two columns take 367.
+    /// Three columns: the head (49), three rows of tool cells (142), a gap (148), one row of actions (188), a gap (194), one
+    /// row of built-in swatches (216) and one of custom ones (238), and 6 under them. Two columns take 390.
     /// </summary>
     private static void ColumnsReadLeftToRight()
     {
         var grid = new RailGrid(3, Tools, Swatches, CustomSwatches);
         ExpectNear(grid.Width, 144f, "width");
-        ExpectNear(grid.Height, 239f, "height");
+        ExpectNear(grid.Height, 244f, "height");
         ExpectSlot(grid.Head, 96f, 0f, "head, at the right end");
         ExpectSlot(grid.Tools[0], 0f, 49f, "first tool");
         ExpectSlot(grid.Tools[2], 96f, 49f, "third tool");
-        ExpectSlot(grid.Tools[3], 0f, 93f, "fourth tool, starting the second row");
-        ExpectSlot(grid.Actions[0], 0f, 143f, "undo, starting its own row");
-        ExpectSlot(grid.Actions[2], 96f, 143f, "clear");
+        ExpectSlot(grid.Tools[3], 0f, 80f, "fourth tool, starting the second row");
+        ExpectSlot(grid.Tools[8], 96f, 111f, "last tool cell, ending the third row");
+        ExpectSlot(grid.Actions[0], 0f, 148f, "undo, starting its own row");
+        ExpectSlot(grid.Actions[2], 96f, 148f, "clear");
         ExpectNear(grid.SwatchCenters[0].X, 12f, "first swatch x");
         ExpectNear(grid.SwatchCenters[5].X, 132f, "last swatch x, in one row");
-        ExpectNear(grid.SwatchCenters[5].Y, 189f + 11f, "swatch row y");
+        ExpectNear(grid.SwatchCenters[5].Y, 194f + 11f, "swatch row y");
 
         var two = new RailGrid(2, Tools, Swatches, CustomSwatches);
-        ExpectNear(two.Height, 367f, "two columns' height");
+        ExpectNear(two.Height, 390f, "two columns' height");
         ExpectNear(two.SwatchCenters[2].X, 80f, "two columns spread three swatches to a row");
     }
 
@@ -93,26 +95,26 @@ internal static class MenuLayoutTests
     private static void CustomSwatchesFollowBuiltIn()
     {
         var one = new RailGrid(1, Tools, Swatches, CustomSwatches);
-        ExpectNear(one.CustomTop, 445f + 3 * 22f, "one column's custom top");
+        ExpectNear(one.CustomTop, 460f + 3 * 22f, "one column's custom top");
         ExpectNear(one.SwatchCenters[Swatches].X, 12f, "first custom slot x");
-        ExpectNear(one.SwatchCenters[Swatches].Y, 511f + 11f, "first custom slot y");
-        ExpectNear(one.SwatchCenters[Swatches + 5].Y, 511f + 2.5f * 22f, "last custom slot y");
+        ExpectNear(one.SwatchCenters[Swatches].Y, 526f + 11f, "first custom slot y");
+        ExpectNear(one.SwatchCenters[Swatches + 5].Y, 526f + 2.5f * 22f, "last custom slot y");
 
         var three = new RailGrid(3, Tools, Swatches, CustomSwatches);
-        ExpectNear(three.CustomTop, 211f, "three columns' custom top, right under the built-in row");
+        ExpectNear(three.CustomTop, 216f, "three columns' custom top, right under the built-in row");
         ExpectNear(three.SwatchCenters[Swatches + 5].X, 132f, "last custom slot x, in one row");
 
-        // The head (49), one row of tools (93), a gap (99), one row of actions (139), a gap (145), then the two swatch rows.
+        // The head (49), two rows of tool cells (111), a gap (117), one row of actions (157), a gap (163), then the two swatch rows.
         var six = new RailGrid(6, Tools, Swatches, CustomSwatches);
         ExpectNear(six.Width, 288f, "six columns' width");
-        ExpectNear(six.Height, 195f, "six columns' height");
-        ExpectSlot(six.Tools[5], 240f, 49f, "last tool, in the first row");
-        ExpectNear(six.SwatchCenters[Swatches - 1].Y, 145f + 11f, "built-in row y");
-        ExpectNear(six.SwatchCenters[Swatches].Y, 167f + 11f, "custom row y, a row of its own");
+        ExpectNear(six.Height, 213f, "six columns' height");
+        ExpectSlot(six.Tools[5], 240f, 49f, "sixth tool cell, ending the first row");
+        ExpectNear(six.SwatchCenters[Swatches - 1].Y, 163f + 11f, "built-in row y");
+        ExpectNear(six.SwatchCenters[Swatches].Y, 185f + 11f, "custom row y, a row of its own");
         ExpectNear(six.SwatchCenters[Swatches + 5].X, 264f, "last custom slot x");
 
         var none = new RailGrid(3, Tools, Swatches, 0);
-        ExpectNear(none.Height, 217f, "three columns without custom slots");
+        ExpectNear(none.Height, 222f, "three columns without custom slots");
     }
 
     private static void OutsideAt2560x1440() => ExpectOutside(2560, 1440, tagRoom: 520f);
@@ -125,15 +127,15 @@ internal static class MenuLayoutTests
     private static void OutsideAt1280x1024() => ExpectOutside(1280, 1024, tagRoom: 140f);
 
     /// <summary>
-    /// A box from 200 pixels below the map's top (192 with its margin) would lift three columns, 239 tall, by 47, past
-    /// the speed readout's margin 22 above the map; four or five columns are as tall, so it takes six, 195 tall, lifted by 3.
+    /// A box from 200 pixels below the map's top (192 with its margin) would lift three columns, 244 tall, by 52, past
+    /// the speed readout's margin 22 above the map; four columns are as tall, so it takes five, 213 tall, lifted by 21.
     /// </summary>
     private static void RailGrowsUpOnlyClearOfHud()
     {
         var hud = new List<PixelBox>(MenuLayout.GameHud(2560, 1440, 4f / 3f)) { new(520f, 320f, 160f, 40f) };
         var (rail, _) = MenuLayout.Place(2560, 1440, Map(2560, 1440, 900f), 1f, hud, Tools, Swatches, CustomSwatches);
-        Expect(rail.Outside && rail.Columns == 6, $"expected six rail columns outside, got {Describe(rail)}");
-        ExpectNear(rail.Y, -3f, "rail y");
+        Expect(rail.Outside && rail.Columns == 5, $"expected five rail columns outside, got {Describe(rail)}");
+        ExpectNear(rail.Y, -21f, "rail y");
     }
 
     /// <summary>The map's sides touch the screen's, leaving no room left of it, while the band above it keeps its width.</summary>
@@ -257,7 +259,7 @@ internal static class MenuLayoutTests
 
     /// <summary>
     /// The rail: three columns, 8 px left of the map, 8 px clear of the MFD buttons below. Those leave 225.33 px under the
-    /// map's top edge for the 239-pixel rail, so its top rises 14 px above that edge, 16 px under the speed readout, which
+    /// map's top edge for the 244-pixel rail, so its top rises 19 px above that edge, 11 px under the speed readout, which
     /// ends 30 px above it. The strip: 8 px above the map, from 8 px right of the speed readout to 8 px short of the mission
     /// clock, free to grow up to 8 px below the screen's top.
     /// </summary>
@@ -266,7 +268,7 @@ internal static class MenuLayoutTests
         var (rail, strip) = Place(width, height);
         Expect(rail.Outside && rail.Columns == 3, $"expected three rail columns outside, got {Describe(rail)}");
         ExpectNear(rail.X, -8f - 144f, "rail x");
-        ExpectNear(rail.Y, -14f, "rail y");
+        ExpectNear(rail.Y, -19f, "rail y");
         ExpectNear(rail.TagRoom, tagRoom, "room left of the rail");
         Expect(strip.Outside, "expected the strip outside");
         ExpectNear(strip.X, 88f, "strip x");

@@ -46,6 +46,8 @@
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\DoubleTap.cs" Link="MapTools\DoubleTap.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\DrawingAuthor.cs" Link="MapTools\DrawingAuthor.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\Eraser\EraserTool.cs" Link="MapTools\Eraser\EraserTool.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\RecolorCanvas.cs" Link="MapTools\RecolorCanvas.cs" />
+    <Compile Include="..\..\src\NoMapOverhaul\MapTools\Recolor\RecolorTool.cs" Link="MapTools\Recolor\RecolorTool.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\IMapCanvas.cs" Link="MapTools\IMapCanvas.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\LabelLayout.cs" Link="MapTools\LabelLayout.cs" />
     <Compile Include="..\..\src\NoMapOverhaul\MapTools\NoteRuns.cs" Link="MapTools\NoteRuns.cs" />

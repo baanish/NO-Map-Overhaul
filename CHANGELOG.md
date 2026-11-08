@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 - Unreleased
+
+### Added
+
+- A Recolour tool, the rail's seventh, on key `7`. Pick a colour, then click one of your drawings to give it that colour. Undo puts the old one back, and a shared drawing changes for your teammates too.
+
+### Changed
+
+- The rail's tools sit in a 3x3 grid of flatter cells, still beside the map, with two cells marked coming soon after Recolour.
+
 ## 0.6.0 - 2026-10-31
 
 ### Added

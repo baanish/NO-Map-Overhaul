@@ -3,6 +3,7 @@ using NoMapOverhaul.MapTools.BearingRange;
 using NoMapOverhaul.MapTools.Circle;
 using NoMapOverhaul.MapTools.Eraser;
 using NoMapOverhaul.MapTools.Pen;
+using NoMapOverhaul.MapTools.Recolor;
 using NoMapOverhaul.MapTools.Text;
 using NoMapOverhaul.MapTools.Waypoint;
 using BepInEx.Configuration;
@@ -188,7 +189,7 @@ internal sealed class MapToolHost
         _layer = new MapShapeLayer(settings, _context);
         _eraser = new EraserTool(_context, _layer, () => _visibleReceived, CanEraseReceived,
             shape => RequestSharedErase?.Invoke(shape) ?? false);
-        // Rail order, each with its icon and the key that picks it, 1 to 6 by default. Each tool lives in its own folder under MapTools.
+        // Rail order, each with its icon and the key that picks it, 1 to 7 by default. Each tool lives in its own folder under MapTools.
         var tools = new (MapTool Tool, RailIcon Icon, ConfigEntry<KeyboardShortcut> Key)[]
         {
             (new BearingRangeTool(_context), RailIcon.BearingRange, settings.MapToolBearingRangeKey),
@@ -197,6 +198,7 @@ internal sealed class MapToolHost
             (new PenTool(_context), RailIcon.Pen, settings.MapToolPenKey),
             (new WaypointTool(_context, settings), RailIcon.Waypoint, settings.MapToolWaypointKey),
             (_eraser, RailIcon.Eraser, settings.MapToolEraserKey),
+            (new RecolorTool(_context, _layer), RailIcon.Recolor, settings.MapToolRecolorKey),
         };
         _tools = System.Array.ConvertAll(tools, entry => entry.Tool);
         _openingTool = System.Array.FindIndex(_tools, tool => tool is BearingRange.BearingRangeTool);

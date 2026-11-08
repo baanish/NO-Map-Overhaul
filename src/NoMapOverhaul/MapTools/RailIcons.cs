@@ -13,6 +13,8 @@ internal enum RailIcon
     BearingRange,
     Circle,
     Eraser,
+    Recolor,
+    ComingSoon,
     Undo,
     Redo,
     Clear,
@@ -73,6 +75,20 @@ internal static class RailIcons
                 pen.Closed(4, 15, 12, 7, 19, 14, 11, 22);
                 pen.Open(8, 11, 15, 18);
                 pen.Open(13, 21, 21, 21);
+                break;
+            case RailIcon.Recolor:
+                // A tipped paint bucket, the paint level across it, and a drop beside it.
+                pen.Closed(11, 3, 19, 11, 10, 20, 2, 12);
+                pen.Open(5, 2, 10, 7);
+                pen.Open(3, 13, 17, 13);
+                pen.Point(20, 15);
+                pen.Arc(20, 20, 2, 0f, 180f);
+                pen.End(closed: true);
+                break;
+            case RailIcon.ComingSoon:
+                pen.Dot(6, 12, 2f);
+                pen.Dot(12, 12, 2f);
+                pen.Dot(18, 12, 2f);
                 break;
             case RailIcon.Undo:
                 pen.Point(8, 9);

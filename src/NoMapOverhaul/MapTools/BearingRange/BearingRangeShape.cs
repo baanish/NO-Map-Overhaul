@@ -30,6 +30,8 @@ public sealed class BearingRangeShape : MapShape
 
     public float ToElevation { get; }
 
+    public override MapShape WithColor(ShapeColor color) => new BearingRangeShape(From, To, FromElevation, ToElevation, color);
+
     /// <summary>
     /// Where an end is now in global meters (X east, Y up from sea level, Z north): a unit at the altitude its side
     /// knows, a fixed point at <paramref name="elevation"/>. False as <see cref="IMapView.TryResolve"/> is.

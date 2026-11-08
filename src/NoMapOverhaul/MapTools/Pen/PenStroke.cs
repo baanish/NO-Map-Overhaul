@@ -17,4 +17,6 @@ public sealed class PenStroke : MapShape
     public override int PointCount => _points.Length;
 
     public override void Draw(IMapCanvas canvas) => canvas.Polyline(_points, Color);
+
+    public override MapShape WithColor(ShapeColor color) => new PenStroke(_points, color);
 }

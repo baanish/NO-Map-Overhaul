@@ -106,6 +106,9 @@ internal sealed class MapToolMenu
 
     private readonly ModSettings _settings;
     private readonly List<RailCell> _cells = new();
+
+    /// <summary>The "coming soon" cells after the tools, up to <see cref="RailGrid.ToolSlots"/>. They take no clicks but show their tag.</summary>
+    private readonly List<RailCell> _comingSoon = new();
     private readonly List<StripButton> _options = new();
     private readonly List<(TextMeshProUGUI Text, FontStyles Extra)> _texts = new();
     private readonly List<RectTransform> _swatches = new();
@@ -289,6 +292,15 @@ internal sealed class MapToolMenu
             }
         }
 
+        foreach (var cell in _comingSoon)
+        {
+            cell.Show(false, interactable: false, false);
+            if (cell.Hover.Hovered)
+            {
+                hovered = cell;
+            }
+        }
+
         ShowTag(hovered);
     }
 
@@ -328,6 +340,7 @@ internal sealed class MapToolMenu
         _outside = null;
         Catcher = null;
         _cells.Clear();
+        _comingSoon.Clear();
         _options.Clear();
         _texts.Clear();
         _swatches.Clear();
@@ -820,7 +833,8 @@ internal sealed class MapToolMenu
         _mapBox = new PixelBox(key.Map.xMin, key.Height - key.Map.yMax, key.Map.width, key.Map.height);
         _pixelsPerDesign = scale * Px;
         _hud = MenuLayout.GameHud(key.Width, key.Height, scale);
-        (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, _mapBox, _pixelsPerDesign, _hud, toolCount, ShapeColor.Palette.Count,
+        var slots = toolCount + _comingSoon.Count;
+        (_railPlace, _stripPlace) = MenuLayout.Place(key.Width, key.Height, _mapBox, _pixelsPerDesign, _hud, slots, ShapeColor.Palette.Count,
             CustomColors.Max);
 
         _strip.SetParent(_stripPlace.Outside ? outside : _root, false);
@@ -830,11 +844,16 @@ internal sealed class MapToolMenu
         _authorLabel.Rect.SetAsLastSibling();
         _shownAuthor = null; // the rim is baked at the canvas's scale
         Box(_rail, _railPlace.X, _railPlace.Y, 0f, 0f);
-        _grid = new RailGrid(_railPlace.Columns, toolCount, ShapeColor.Palette.Count, CustomColors.Max);
+        _grid = new RailGrid(_railPlace.Columns, slots, ShapeColor.Palette.Count, CustomColors.Max);
         _head.Place(_grid.Head);
         for (var i = 0; i < toolCount; i++)
         {
             _cells[i].Place(_grid.Tools[i]);
+        }
+
+        for (var i = 0; i < _comingSoon.Count; i++)
+        {
+            _comingSoon[i].Place(_grid.Tools[toolCount + i]);
         }
 
         _undo.Place(_grid.Actions[0]);
@@ -953,6 +972,11 @@ internal sealed class MapToolMenu
             Box(badge.rectTransform, RailWidth - 13f, 6f, 7f, 7f);
             cell.Badge = badge;
             _cells.Add(cell);
+        }
+
+        for (var i = tools.Count; i < ToolSlots; i++)
+        {
+            _comingSoon.Add(NewCell(open, "Coming soon", RailIcon.ComingSoon, null, ToolHeight, ToolHeight * 0.5f, 1f, 2f, () => { }));
         }
 
         _undo = NewCell(open, "Undo", RailIcon.Undo, _settings.MapToolUndoKey, ActionHeight, ActionHeight * 0.5f, 1f, 2f,
