@@ -43,6 +43,7 @@ internal static class MapToolTests
         ("recolour gives a drawing the picked colour as one undo step, on its channel", RecolorIsOneUndoStepOnItsChannel),
         ("recolour leaves a drawing already in the picked colour alone", RecolorSkipsSameColor),
         ("every shape recolours with its geometry and text", EveryShapeRecolorsWithItsGeometry),
+        ("the recolour preview redraws for a new colour on the same shape", RecolorPreviewFollowsTheColor),
         ("right-click is the game's unless the menu is open with no unit to order", RightClickIsGamesUnlessMenuOpen),
         ("right-click cancels mid-draw, else deletes a drawing", RightClickCancelsElseDeletes),
     };
@@ -402,11 +403,25 @@ internal static class MapToolTests
             route[1].Elevation == 15f, "expected the route's waypoints");
     }
 
-    /// <summary>The cursor moves, then the frame runs. The eraser shows no 3D labels.</summary>
-    private static void Hover(EraserTool eraser, float x, float y)
+    private static void RecolorPreviewFollowsTheColor()
     {
-        eraser.OnPointerMove(new MapPointer(new Vector2(x, y), null));
-        eraser.OnFrame(null!);
+        var context = new FakeContext();
+        context.Shapes.Add(Line(0, 0, 1000, 0));
+        var recolor = new RecolorTool(context);
+        Hover(recolor, 100, 10);
+        Expect(TakeOverlayInvalid(recolor), "expected hovering a shape to draw the preview");
+        Hover(recolor, 600, 20);
+        Expect(!TakeOverlayInvalid(recolor), "expected moving along the same shape to redraw nothing");
+        context.Color = Red;
+        Hover(recolor, 600, 20);
+        Expect(TakeOverlayInvalid(recolor), "expected a new colour to redraw the preview on the same shape");
+    }
+
+    /// <summary>The cursor moves, then the frame runs. The eraser and the recolour tool show no 3D labels.</summary>
+    private static void Hover(MapTool tool, float x, float y)
+    {
+        tool.OnPointerMove(new MapPointer(new Vector2(x, y), null));
+        tool.OnFrame(null!);
     }
 
     private static LineShape Line(float x1, float y1, float x2, float y2, int points = 0) =>

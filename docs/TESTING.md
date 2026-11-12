@@ -8,7 +8,7 @@ Automated checks come first, then in-game checks. A screenshot from one flight s
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-363 tests pass. They cover:
+364 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, L, C and R on parallel runways (Feldspar and Harmony Sands from the game data, and three lines), the abbreviation table, and the fallback abbreviation rule;
@@ -16,7 +16,7 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - channel key modifiers: either Shift key or both matching a Shift binding, missing or extra keys blocking it, combinations requiring every other bound key, and non-Shift modifiers keeping their bound side;
 - bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels where the map placed them, the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
-- recolouring: a drawing taking the picked colour as one undo step on its own channel, one already that colour left alone, and every shape keeping its geometry and text;
+- recolouring: a drawing taking the picked colour as one undo step on its own channel, one already that colour left alone, every shape keeping its geometry and text, and the preview redrawing when the colour changes;
 - the eraser with shared drawings: picking the nearest of shared and local shapes and breaking ties, skipping invisible geometry while a shape at alpha 1 stays selectable, refusing a read-only shape under an overlap, permission changing while the cursor stays still, refusing a stale reference, safe callback defaults, and remote requests keeping received drawings and local history;
 - who drew the drawing under the cursor: a teammate's owner by name, no one for your own, `Teammate` when the roster has no name, and one roster lookup per drawing pointed at;
 - the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, progress coming back after the perf test, the numbered drawing, and the 3D label text;

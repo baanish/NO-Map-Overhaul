@@ -16,6 +16,7 @@ public sealed class RecolorTool : MapTool
     private readonly ShapeHitTest _hitTest;
     private readonly RecolorCanvas _preview = new();
     private MapShape? _hovered;
+    private ShapeColor _previewColor;
     private Vector2? _cursor;
 
     public RecolorTool(IMapToolContext context, ILabelPlacements? placements = null)
@@ -27,9 +28,6 @@ public sealed class RecolorTool : MapTool
     public override string Status => IdleStatus;
 
     public override MapShape? RedrawnShape => Hovered;
-
-    /// <summary>The preview dims with its drawing on another channel, so it shows the drawing as a click will leave it.</summary>
-    public override string? OverlayChannel => Hovered?.Channel;
 
     /// <summary>An undo or Clear can take the hovered drawing away before the cursor moves again.</summary>
     private MapShape? Hovered => _hovered is { } shape && Context.Shapes.Contains(shape) ? shape : null;
@@ -56,7 +54,8 @@ public sealed class RecolorTool : MapTool
 
     /// <summary>
     /// Finds the drawing under the cursor every frame, as the eraser does, since a drawing on a unit moves under a still
-    /// cursor. Redraws the preview only when that's a different drawing.
+    /// cursor. Redraws the preview only when that's a different drawing, or the colour changed some way other than the
+    /// menu's swatches, such as in F1, which would otherwise leave it showing a colour a click no longer applies.
     /// </summary>
     public override void OnFrame(IWorldLabels labels)
     {
@@ -66,9 +65,11 @@ public sealed class RecolorTool : MapTool
         }
 
         var hovered = FindAt(cursor);
-        if (!ReferenceEquals(hovered, _hovered))
+        var color = Context.Color;
+        if (!ReferenceEquals(hovered, _hovered) || color != _previewColor)
         {
             _hovered = hovered;
+            _previewColor = color;
             InvalidateOverlay();
         }
     }
