@@ -52,4 +52,10 @@ public abstract class MapShape
     /// draws ten times a second, so keep label strings cached until their text changes.
     /// </summary>
     public abstract void Draw(IMapCanvas canvas);
+
+    /// <summary>
+    /// A copy in another colour, for the recolour tool to <see cref="ShapeStore.Replace"/> this one with: the same
+    /// geometry and text, but caches of its own, since undo can bring this one back while the copy draws.
+    /// </summary>
+    public abstract MapShape WithColor(ShapeColor color);
 }

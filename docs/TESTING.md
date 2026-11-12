@@ -8,7 +8,7 @@ Automated checks come first, then in-game checks. A screenshot from one flight s
 dotnet run --project tests/NoMapOverhaul.Tests -c Release
 ```
 
-360 tests pass. They cover:
+364 tests pass. They cover:
 
 - the approach: nothing beyond range, the closer end from either side and over the runway, a base leg flown side-on, and the nearest of parallel and crossing runways;
 - callout text, painted-number overrides, L, C and R on parallel runways (Feldspar and Harmony Sands from the game data, and three lines), the abbreviation table, and the fallback abbreviation rule;
@@ -16,6 +16,7 @@ dotnet run --project tests/NoMapOverhaul.Tests -c Release
 - channel key modifiers: either Shift key or both matching a Shift binding, missing or extra keys blocking it, combinations requiring every other bound key, and non-Shift modifiers keeping their bound side;
 - bearing, distance, and altitude text in each unit, which unit the game's setting picks, and the straight-line range, so a target overhead reads its height;
 - the eraser and right-click: hit testing lines, rings, and labels where the map placed them, the topmost shape winning, reach, undoing an erase, and when a right-click is the game's, cancels, or deletes;
+- recolouring: a drawing taking the picked colour as one undo step on its own channel, one already that colour left alone, every shape keeping its geometry and text, and the preview redrawing when the colour changes;
 - the eraser with shared drawings: picking the nearest of shared and local shapes and breaking ties, skipping invisible geometry while a shape at alpha 1 stays selectable, refusing a read-only shape under an overlap, permission changing while the cursor stays still, refusing a stale reference, safe callback defaults, and remote requests keeping received drawings and local history;
 - who drew the drawing under the cursor: a teammate's owner by name, no one for your own, `Teammate` when the roster has no name, and one roster lookup per drawing pointed at;
 - the waypoint route: when a waypoint counts as reached or passed, advancing, restarting, progress across undo, an erase, and undoing back to an older route, progress coming back after the perf test, the numbered drawing, and the 3D label text;
@@ -75,6 +76,13 @@ pwsh ./tools/Test-SteamConnectionOwnership.ps1
 Its seven offline cases cover owned, foreign, invalid, and terminal callbacks. It makes no native Steam calls and applies no Harmony detours, since installing the patches needs the game's Mono runtime.
 
 The suite doesn't start Unity or the game. It doesn't cover drawing, map scale, font borrowing, input handling, 3D label stacking, the perf test switching the mod and map, or game-version compatibility.
+
+## Automated in-game checks for 0.6.1
+
+NO-Agentic-Framework ran these on 2026-11-07 and 2026-11-08, game build 26327221, at 1920x1080. They add evidence, but the owner's own check of how things look still decides.
+
+- **3x3 rail.** The rail stood in three columns left of the map, its 3x3 tools in 31-pixel cells, clear of the speed readout and the BDF button. The two cells after Recolour showed dimmed dots, a COMING SOON tag on hover, and ignored a click. The Recolour icon, a paint bucket with a drop, matched the other icons' weight. Its hint fit on one row of the strip.
+- **Recolour.** With red picked, pointing at a magenta Bearing/range arrow drew it red over itself, label plate included. A click left it red, and Undo brought the magenta back. A red 5 nm circle on the player's aircraft, recoloured cyan, turned cyan on the full map, on the minimap, and as its ring in the 3D view. The log had no errors from the mod.
 
 ## Automated in-game checks for 0.6.0 beta 4
 

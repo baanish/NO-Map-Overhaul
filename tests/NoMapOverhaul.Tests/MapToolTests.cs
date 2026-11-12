@@ -1,12 +1,18 @@
 using System.Numerics;
 using NoMapOverhaul.MapTools;
+using NoMapOverhaul.MapTools.BearingRange;
+using NoMapOverhaul.MapTools.Circle;
 using NoMapOverhaul.MapTools.Eraser;
+using NoMapOverhaul.MapTools.Pen;
+using NoMapOverhaul.MapTools.Recolor;
+using NoMapOverhaul.MapTools.Text;
+using NoMapOverhaul.MapTools.Waypoint;
 using static NoMapOverhaul.Tests.Program;
 
 namespace NoMapOverhaul.Tests;
 
 /// <summary>
-/// The map tools' shared logic: the shape store and its history, distance and bearing text, and the eraser's hit test.
+/// The map tools' shared logic: the shape store and its history, distance and bearing text, the eraser's hit test, and recolouring.
 /// Positions are meters, X east and Y north. The fake map has 10 m per icon unit, so the eraser reaches 80 m.
 /// </summary>
 internal static class MapToolTests
@@ -34,11 +40,16 @@ internal static class MapToolTests
         ("the eraser misses beyond reach", EraserMissesBeyondReach),
         ("an erased shape comes back with undo", ErasedShapeComesBackWithUndo),
         ("the eraser redraws its highlight only for a different shape", EraserHighlightRedrawsOnlyForDifferentShape),
+        ("recolour gives a drawing the picked colour as one undo step, on its channel", RecolorIsOneUndoStepOnItsChannel),
+        ("recolour leaves a drawing already in the picked colour alone", RecolorSkipsSameColor),
+        ("every shape recolours with its geometry and text", EveryShapeRecolorsWithItsGeometry),
+        ("the recolour preview redraws for a new colour on the same shape", RecolorPreviewFollowsTheColor),
         ("right-click is the game's unless the menu is open with no unit to order", RightClickIsGamesUnlessMenuOpen),
         ("right-click cancels mid-draw, else deletes a drawing", RightClickCancelsElseDeletes),
     };
 
     private static readonly ShapeColor White = new(255, 255, 255);
+    private static readonly ShapeColor Red = new(255, 64, 64);
 
     private static void UndoRedoStepThroughEdits()
     {
@@ -343,11 +354,74 @@ internal static class MapToolTests
         Expect(TakeOverlayInvalid(eraser), "expected leaving the shape to clear the highlight");
     }
 
-    /// <summary>The cursor moves, then the frame runs. The eraser shows no 3D labels.</summary>
-    private static void Hover(EraserTool eraser, float x, float y)
+    private static void RecolorIsOneUndoStepOnItsChannel()
     {
-        eraser.OnPointerMove(new MapPointer(new Vector2(x, y), null));
-        eraser.OnFrame(null!);
+        var context = new FakeContext();
+        context.Shapes.DrawingChannel = "a";
+        var stroke = new PenStroke(new[] { new Vector2(0, 0), new Vector2(1000, 0) }, White);
+        context.Shapes.Add(stroke);
+        context.Shapes.DrawingChannel = "b";
+        context.Color = Red;
+        new RecolorTool(context).OnClick(new MapPointer(new Vector2(500, 40), null));
+        Expect(context.Shapes.Shapes[0] is PenStroke pen && pen.Color == Red && pen.Id == stroke.Id && pen.Channel == "a" &&
+            ReferenceEquals(pen.Points, stroke.Points), "expected the same stroke in red, on its own channel");
+        Expect(context.Shapes.Undo(), "expected an undo step");
+        ExpectShapes(context.Shapes, stroke);
+    }
+
+    private static void RecolorSkipsSameColor()
+    {
+        var context = new FakeContext();
+        var line = Line(0, 0, 1000, 0);
+        context.Shapes.Add(line);
+        new RecolorTool(context).OnClick(new MapPointer(new Vector2(500, 40), null));
+        ExpectShapes(context.Shapes, line);
+        Expect(context.Shapes.Version == 1, "expected no undo step");
+    }
+
+    private static void EveryShapeRecolorsWithItsGeometry()
+    {
+        var unit = new MapPoint(new Vector2(100, 200), 7);
+        var fixedPoint = new MapPoint(new Vector2(900, 0));
+
+        var pen = (PenStroke)new PenStroke(new[] { new Vector2(0, 0), new Vector2(10, 10) }, White).WithColor(Red);
+        Expect(pen.Color == Red && pen.PointCount == 2 && pen.Points[1] == new Vector2(10, 10), "expected the pen stroke's points");
+
+        var circle = (CircleShape)new CircleShape(unit, 500f, 30f, White).WithColor(Red);
+        Expect(circle.Color == Red && circle.Center.UnitId == 7 && circle.Center.Position == unit.Position && circle.Radius == 500f &&
+            circle.CenterElevation == 30f, "expected the circle's centre, radius, and elevation");
+
+        var note = (TextNote)new TextNote(unit, 30f, "SAM", White).WithColor(Red);
+        Expect(note.Color == Red && note.At.UnitId == 7 && note.Elevation == 30f && note.Text == "SAM", "expected the note's place and text");
+
+        var bearing = (BearingRangeShape)new BearingRangeShape(unit, fixedPoint, 10f, 20f, White).WithColor(Red);
+        Expect(bearing.Color == Red && bearing.From.UnitId == 7 && bearing.To.Position == fixedPoint.Position &&
+            bearing.FromElevation == 10f && bearing.ToElevation == 20f, "expected the measurement's ends and elevations");
+
+        var route = (WaypointRoute)new WaypointRoute(White, new RouteWaypoint(unit, 0f)).With(new RouteWaypoint(fixedPoint, 15f)).WithColor(Red);
+        Expect(route.Color == Red && route.Count == 2 && route[0].Point.UnitId == 7 && route[1].Point.Position == fixedPoint.Position &&
+            route[1].Elevation == 15f, "expected the route's waypoints");
+    }
+
+    private static void RecolorPreviewFollowsTheColor()
+    {
+        var context = new FakeContext();
+        context.Shapes.Add(Line(0, 0, 1000, 0));
+        var recolor = new RecolorTool(context);
+        Hover(recolor, 100, 10);
+        Expect(TakeOverlayInvalid(recolor), "expected hovering a shape to draw the preview");
+        Hover(recolor, 600, 20);
+        Expect(!TakeOverlayInvalid(recolor), "expected moving along the same shape to redraw nothing");
+        context.Color = Red;
+        Hover(recolor, 600, 20);
+        Expect(TakeOverlayInvalid(recolor), "expected a new colour to redraw the preview on the same shape");
+    }
+
+    /// <summary>The cursor moves, then the frame runs. The eraser and the recolour tool show no 3D labels.</summary>
+    private static void Hover(MapTool tool, float x, float y)
+    {
+        tool.OnPointerMove(new MapPointer(new Vector2(x, y), null));
+        tool.OnFrame(null!);
     }
 
     private static LineShape Line(float x1, float y1, float x2, float y2, int points = 0) =>
@@ -381,6 +455,8 @@ internal static class MapToolTests
         public override int PointCount => _points;
 
         public override void Draw(IMapCanvas canvas) => canvas.Line(_from, _to, Color);
+
+        public override MapShape WithColor(ShapeColor color) => throw new NotSupportedException();
     }
 
     private sealed class Ring : MapShape
@@ -396,6 +472,8 @@ internal static class MapToolTests
         }
 
         public override void Draw(IMapCanvas canvas) => canvas.Circle(_center, _radius, Color);
+
+        public override MapShape WithColor(ShapeColor color) => throw new NotSupportedException();
     }
 
     private sealed class Arrow : MapShape
@@ -411,6 +489,8 @@ internal static class MapToolTests
         }
 
         public override void Draw(IMapCanvas canvas) => canvas.Arrow(_from, _to, Color);
+
+        public override MapShape WithColor(ShapeColor color) => throw new NotSupportedException();
     }
 
     private sealed class Note : MapShape
@@ -426,6 +506,8 @@ internal static class MapToolTests
         }
 
         public override void Draw(IMapCanvas canvas) => canvas.Label(LabelAnchor.Note(_position), _text, Color);
+
+        public override MapShape WithColor(ShapeColor color) => throw new NotSupportedException();
     }
 
     /// <summary>Every shape's first label placed in one box.</summary>
@@ -445,7 +527,7 @@ internal static class MapToolTests
     private sealed class FakeContext : IMapToolContext
     {
         public ShapeStore Shapes { get; } = new();
-        public ShapeColor Color => White;
+        public ShapeColor Color { get; set; } = White;
         public float LineWidth { get; set; } = 1.5f;
         public DistanceUnit Units => DistanceUnit.NauticalMiles;
         public float MetersPerIconUnit => 10f;

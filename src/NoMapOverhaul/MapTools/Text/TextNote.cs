@@ -28,6 +28,8 @@ public sealed class TextNote : MapShape
     /// <summary>The text with the lost line under it, built once, since a note on a unit draws ten times a second.</summary>
     public string LostText { get; }
 
+    public override MapShape WithColor(ShapeColor color) => new TextNote(At, Elevation, Text, color);
+
     /// <summary>The note's map label, shared with the tool's preview while typing: centred on a fixed point, or beside a unit's icon.</summary>
     public static void DrawLabel(IMapCanvas canvas, MapPoint at, string text, string lostText, ShapeColor color)
     {

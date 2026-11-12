@@ -92,6 +92,7 @@ internal sealed class ModSettings
         MapToolPenKey = BindToolKey("PenKey", "Pen", KeyCode.Alpha4);
         MapToolWaypointKey = BindToolKey("WaypointKey", "Waypoint", KeyCode.Alpha5);
         MapToolEraserKey = BindToolKey("EraserKey", "Eraser", KeyCode.Alpha6);
+        MapToolRecolorKey = BindToolKey("RecolorKey", "Recolour", KeyCode.Alpha7);
         MapChannelKeys = new ConfigEntry<KeyboardShortcut>[DrawingChannels.MaxChannels];
         for (var index = 0; index < MapChannelKeys.Length; index++)
         {
@@ -224,6 +225,7 @@ internal sealed class ModSettings
     public ConfigEntry<KeyboardShortcut> MapToolBearingRangeKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolCircleKey { get; }
     public ConfigEntry<KeyboardShortcut> MapToolEraserKey { get; }
+    public ConfigEntry<KeyboardShortcut> MapToolRecolorKey { get; }
     public ConfigEntry<KeyboardShortcut>[] MapChannelKeys { get; }
 
     public ConfigEntry<float> MapToolWaypointReachKm { get; }

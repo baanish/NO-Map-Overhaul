@@ -44,7 +44,7 @@ By default the labels are pale green with a black outline. They don't show on th
 
 ### Map tools
 
-On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `6` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, and an eraser. `Z` and `Y` undo and redo. Drawings start local and clear when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
+On the full map, the **Tools** button just outside the map's top-left corner, or the `H` key, opens a rail of planning tools beside the map. Keys `1` to `7` pick bearing and range measurements, range circles, text notes that can tag a contact, a pen, a waypoint route with markers in the 3D view, an eraser, and a recolour tool. `Z` and `Y` undo and redo. Drawings start local and clear when you leave the mission. The [map tools guide](MAP_TOOLS.md) covers every tool, the mouse and keys, and planning ideas.
 
 ## How the runway end is chosen
 
@@ -119,6 +119,7 @@ The table lists the sections in the order F1 shows them.
 | Map Tools / Keys and Limits | Pen key, *advanced* | PenKey | `Alpha4` | Pick Pen, the same way. |
 | Map Tools / Keys and Limits | Waypoint key, *advanced* | WaypointKey | `Alpha5` | Pick Waypoint, the same way. |
 | Map Tools / Keys and Limits | Eraser key, *advanced* | EraserKey | `Alpha6` | Pick Eraser, the same way. |
+| Map Tools / Keys and Limits | Recolour key, *advanced* | RecolorKey | `Alpha7` | Pick Recolour, the same way. |
 | Map Tools / Keys and Limits | Channel 1 key, *advanced* | ChannelKey1 | `LeftShift + Alpha1` | Pick Broadcast slot 1 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
 | Map Tools / Keys and Limits | Channel 2 key, *advanced* | ChannelKey2 | `LeftShift + Alpha2` | Pick Broadcast slot 2 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |
 | Map Tools / Keys and Limits | Channel 3 key, *advanced* | ChannelKey3 | `LeftShift + Alpha3` | Pick Broadcast slot 3 for new drawings while the full map is open. Either Shift key works. Clear the binding to disable the shortcut. |

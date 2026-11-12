@@ -30,6 +30,8 @@ public sealed class CircleShape : MapShape
 
     public float CenterElevation { get; }
 
+    public override MapShape WithColor(ShapeColor color) => new CircleShape(Center, Radius, CenterElevation, color);
+
     /// <summary>The ring and its label, shared with the tool's preview while the radius is still being picked.</summary>
     public static void DrawRing(IMapCanvas canvas, MeasureLabel label, Vector2 center, float radius, bool onUnit, bool lost, ShapeColor color)
     {

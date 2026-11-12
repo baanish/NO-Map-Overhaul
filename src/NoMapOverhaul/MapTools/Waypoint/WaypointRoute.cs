@@ -78,6 +78,8 @@ public sealed class WaypointRoute : MapShape
         return new WaypointRoute(Color, waypoints);
     }
 
+    public override MapShape WithColor(ShapeColor color) => new WaypointRoute(color, _waypoints);
+
     /// <summary>Each number sits diagonally off its marker; the layout picks which corner.</summary>
     public override void Draw(IMapCanvas canvas)
     {

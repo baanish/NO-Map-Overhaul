@@ -23,14 +23,14 @@ These work on the full map. The mouse works while the rail is open. The keys wor
 | Right click a drawing | Delete your drawing, or request a shared erase on a collaborative channel. Undo restores only your work. |
 | Right click one of your colours | Remove it from the rail. |
 | `H` | Open or close the rail, like clicking **Tools**. |
-| `1` to `6` | Pick Bearing/range, Circle, Text, Pen, Waypoint, or Eraser, in rail order. With the rail closed, this opens it on that tool. |
+| `1` to `7` | Pick Bearing/range, Circle, Text, Pen, Waypoint, Eraser, or Recolour, in rail order. With the rail closed, this opens it on that tool. |
 | `1` twice, quickly | Pick Bearing/range and measure from your aircraft: your next click sets the other end. |
 | `Shift+1` to `Shift+9`, `Shift+0` by default | Pick the next drawing's Broadcast channel, slots 1 through 10. Rebind **Channel 1 key** to **Channel 10 key** in F1. Receive channels have no shortcut slots. |
 | `Z` | Undo. |
 | `Y` | Redo. |
 | Drag on empty map | Pan the map, except with Pen and Circle, which draw by dragging. |
 
-The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels by default, with either Shift key. Rebind them in **F1 → Map Tools / Keys and Limits**, with **Advanced settings** ticked, using **Channel 1 key** to **Channel 10 key**. Clear a binding to disable that slot's shortcut. Ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Eraser key**.
+The keys don't act while you type a note, chat, or type in one of the game's text boxes, or while a game menu is open. Shift+digits select Broadcast channels by default, with either Shift key. Rebind them in **F1 → Map Tools / Keys and Limits**, with **Advanced settings** ticked, using **Channel 1 key** to **Channel 10 key**. Clear a binding to disable that slot's shortcut. Ordinary tool shortcuts don't act with Shift or Ctrl held. Change tool keys with **Tools key**, **Undo key**, **Redo key**, and the advanced **Bearing/range key** to **Recolour key**.
 
 With a friendly unit selected, right click gives it a move order as usual, and the tools leave that click alone.
 
@@ -38,7 +38,7 @@ With a friendly unit selected, right click gives it a move order as usual, and t
 
 ![The tool rail left of the map with Bearing/range picked, and the strip above the map naming the tool](images/tool-rail.jpg)
 
-The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `6`: Bearing/range, Circle, Text, Pen, Waypoint, and Eraser. Clicking **Tools** opens it on the tool you last picked, or on Bearing/range the first time after starting the game. Closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
+The rail stands left of the map, in rows of icons read left to right. It has an icon for each tool, in the order of their keys, `1` to `7`: Bearing/range, Circle, Text, Pen, Waypoint, Eraser, and Recolour. The two dimmed cells after Recolour are marked coming soon and do nothing yet. Clicking **Tools** opens it on the tool you last picked, or on Bearing/range the first time after starting the game. Closing the map closes it. The picked tool is solid green. Hover over an icon to see its name and key. Below the tools are Undo, Redo, and Clear, and then six colour swatches: green, white, orange, red, magenta, and cyan. The swatch you pick colours everything you draw next.
 
 Under the swatches is a row for up to six colours of your own. Click **+** to open the colour picker in the map's top-left corner. Drag around the wheel to pick the hue, out from its centre for a stronger colour, and along **Brightness** for a lighter or darker one. The swatch beside **Add** shows the result. **Add** puts the colour in the next free slot and draws with it. If a swatch already has that exact colour, **Add** picks that swatch instead. **Cancel**, Escape, or closing the map leaves the row as it was. Your colours work like the six above and are kept for your next game. Right click one to remove it. The colour you're drawing with stays until you pick another. Once all six slots are used, the **+** disappears until you remove one.
 
@@ -117,6 +117,12 @@ Each circle also shows in the 3D view as a thin ring, level with its centre: at 
 With the Eraser, an editable drawing under the cursor turns red, and a click deletes it. A right click erases a drawing with any tool picked. **Clear** deletes your drawings at once, as one step, so Undo brings them all back.
 
 On a shared channel, both players must broadcast its name to erase another member's drawing. Broadcast channels also receive, and Receive only adds read-only subscriptions. An erase request leaves the drawing visible until the owner's update arrives. Redraw on the same Broadcast channel to replace it. Receive-only drawings have no erase highlight and block deleting a local drawing directly beneath them. Undo affects only your drawings, and the owner can undo a shared erase. See [erasing a teammate's drawing](SHARING_GUIDE.md#erasing-a-teammates-drawing).
+
+## Recolour
+
+![A cyan route, a red circle and an orange SAM note recoloured on the full map, with a green arrow under the cursor previewing magenta](images/recolour.jpg)
+
+Pick a swatch, then Recolour. Point at one of your drawings and it shows in that colour. Click to keep it, and Undo puts the old colour back. A drawing you share changes colour for your teammates too. A teammate's drawing keeps the colour they gave it.
 
 ## Planning ideas
 
